@@ -7,7 +7,6 @@ import React, {
   useEffect,
 } from "react";
 import jsPDF from "jspdf";
-import mapboxgl from "mapbox-gl";
 import MapContainer, {
   MapSectionHandle,
 } from "../sections/components/MapContainer";
@@ -22,16 +21,11 @@ interface RoofMapSectionProps {
     points: { lat: number; lon: number; seq: number }[]
   ) => void;
   selectedLabel?: { name: string; color: string } | null;
-  onMapLoad?: (map: mapboxgl.Map) => void;
 }
 
-export type RoofMapSectionHandle = MapSectionHandle & {
-  downloadPDF: () => void;
-};
-
-const RoofMapSection = forwardRef<RoofMapSectionHandle, RoofMapSectionProps>(
+const RoofMapSection = forwardRef<MapSectionHandle, RoofMapSectionProps>(
   (
-    { setPlanArea, setRoofArea, setEdges, setPolygonPoints, selectedLabel, onMapLoad },
+    { setPlanArea, setRoofArea, setEdges, setPolygonPoints, selectedLabel },
     ref
   ) => {
     const mapRef = useRef<MapSectionHandle | null>(null);
@@ -61,7 +55,9 @@ const RoofMapSection = forwardRef<RoofMapSectionHandle, RoofMapSectionProps>(
       const map = mapRef.current?.getMap?.();
       if (!map) return;
 
-      const handleEdgeClick = (e: any) => {
+      const handleEdgeClick = (
+        e: mapboxgl.MapMouseEvent & mapboxgl.EventData
+      ) => {
         // ✅ Check which layers exist in the map before querying
         const availableLayers: string[] = [];
         const layerNames = [
@@ -276,7 +272,6 @@ const RoofMapSection = forwardRef<RoofMapSectionHandle, RoofMapSectionProps>(
     // ✅ Expose methods to parent
     useImperativeHandle(ref, () => ({
       startDrawing: () => mapRef.current?.startDrawing(),
-      deleteSelected: () => mapRef.current?.deleteSelected(),
       deleteAll: () => mapRef.current?.deleteAll(),
       setDrawMode: (mode: string) => mapRef.current?.setDrawMode(mode),
       undo: () => mapRef.current?.undo(),
@@ -300,7 +295,6 @@ const RoofMapSection = forwardRef<RoofMapSectionHandle, RoofMapSectionProps>(
           ref={mapRef}
           onMeasurementsChange={handleMeasurementsChange}
           onGridToggle={(visible) => setShowGrid(visible)}
-          onMapLoad={onMapLoad}
           selectedLabel={selectedLabel || undefined}
         />
         {showGrid && (
@@ -321,4 +315,3 @@ const RoofMapSection = forwardRef<RoofMapSectionHandle, RoofMapSectionProps>(
 
 RoofMapSection.displayName = "RoofMapSection";
 export default RoofMapSection;
-export type { MapSectionHandle };

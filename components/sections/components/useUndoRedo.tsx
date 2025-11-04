@@ -4,7 +4,7 @@ import mapboxgl from "mapbox-gl";
 import * as turf from "@turf/turf";
 // import { toFeetInches } from "../components/MapContainer"; // agar helper alag file me hai
 import { EdgeItem, PolygonPoint } from "./MapContainer";
-import { clearLabels as clearLabelsHelper, toFeetInches, normalizeBearing } from "./mapHelper";
+import { clearLabels, toFeetInches, normalizeBearing } from "./mapHelper";
 
 interface UndoRedoHookProps {
   drawRef: any;
@@ -69,7 +69,7 @@ export const useUndoRedo = ({
     });
     
     // ✅ Clear labels
-    clearLabelsHelper(labelsRef);
+    clearLabels(labelsRef);
 
     if (!data || !data.features || data.features.length === 0) {
       setPlanAreaLocal(0);
@@ -303,7 +303,7 @@ export const useUndoRedo = ({
       drawRef.current.deleteAll();
       
       // Clear all labels
-      clearLabelsHelper(labelsRef);
+      clearLabels(labelsRef);
       
       // Clear all custom layers and sources from map
       const map = mapRef.current;
@@ -520,7 +520,7 @@ const handleLineForSplit = (lineFeature: any) => {
       const overhangDistance = 0.5; // Default 0.5 feet (6 inches)
       
       try {
-        const buffered: any = turf.buffer(polygonToBuffer as any, overhangDistance, {
+        const buffered = turf.buffer(polygonToBuffer, overhangDistance, {
           units: "feet",
         });
         

@@ -257,7 +257,7 @@ export default function ProjectDetailsPage() {
                       </td>
                       <td className="px-6 py-4 text-center whitespace-nowrap flex justify-center gap-3">
                         {/* 👁️ View Button */}
-                        {/* <button
+                        <button
                           onClick={() =>
                             router.push(`/customer-panel/map-view/${p._id}`)
                           }
@@ -265,7 +265,7 @@ export default function ProjectDetailsPage() {
                           title="View on Map"
                         >
                           <Eye className="w-5 h-5 text-blue-500 hover:text-blue-700" />
-                        </button> */}
+                        </button>
 
                         {/* 🗑️ Delete Button */}
                         <button

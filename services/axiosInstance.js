@@ -1,15 +1,16 @@
+// services/axiosInstance.js
 import axios from "axios";
 import { parseCookies } from "nookies";
 
+// ✅ Base URL ko relative rakho taake proxy handle kare
 export const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  baseURL: "/", // 👈 ye most important change hai
 });
 
-// Interceptor for adding Authorization header
+// ✅ Interceptor for adding Authorization header
 axiosInstance.interceptors.request.use(
   (config) => {
     try {
-      // Get token from cookies (works on both SSR and client)
       const cookies = parseCookies();
       let token = cookies.token;
 
@@ -18,7 +19,7 @@ axiosInstance.interceptors.request.use(
         token = localStorage.getItem("token");
       }
 
-      // Add token only if it exists
+      // Add token if exists
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -32,13 +33,13 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Interceptor for handling response errors
+// ✅ Interceptor for handling response errors
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error?.response?.status;
 
-    // Redirect to login if unauthorized (client-side)
+    // Optional redirect on 401 (uncomment if needed)
     // if (status === 401 && typeof window !== "undefined") {
     //   window.location.href = "/login";
     // }
@@ -47,6 +48,7 @@ axiosInstance.interceptors.response.use(
   }
 );
 
+// ✅ Unified API handler for error handling
 export const handleAPIRequest = async (requestFunc, endpoint, requestData) => {
   try {
     const { data } = await requestFunc(endpoint, requestData);

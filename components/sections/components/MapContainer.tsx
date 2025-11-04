@@ -37,13 +37,13 @@ export interface MapSectionHandle {
   getMap?: () => mapboxgl.Map | null;
 }
 
-export interface EdgeItem {
+interface EdgeItem {
   id: string;
   length: number;
   type: string;
 }
 
-export interface PolygonPoint {
+interface PolygonPoint {
   lat: number;
   lon: number;
   seq: number;
@@ -423,40 +423,80 @@ const applyPolygonColor = (
         deleted.forEach((feature: any) => {
           const featureId = feature.id;
           
-          // ✅ Get edges from current state (not from stale closure)
-          setPolygonEdgesMap((prev) => {
-            const edges = prev[featureId];
-            
-            if (edges) {
-              edges.forEach((edge: any) => {
-                if (mapInstance.getLayer(edge.id))
-                  mapInstance.removeLayer(edge.id);
-                if (mapInstance.getSource(edge.id))
-                  mapInstance.removeSource(edge.id);
+          // ✅ Clean up ALL related layers and sources
+          const cleanupFeature = (id: string) => {
+            try {
+              // Clean up edge-related items
+              setPolygonEdgesMap((prev) => {
+                const edges = prev[id];
+                if (edges) {
+                  edges.forEach((edge: any) => {
+                    try {
+                      if (mapInstance.getLayer(edge.id)) {
+                        mapInstance.removeLayer(edge.id);
+                      }
+                      if (mapInstance.getSource(edge.id)) {
+                        mapInstance.removeSource(edge.id);
+                      }
+                    } catch (err) {
+                      console.warn("Edge cleanup error:", err);
+                    }
+                  });
+                }
+                const updated = { ...prev };
+                delete updated[id];
+                return updated;
               });
-            }
 
-            // ✅ Remove from React state
-            const updated = { ...prev };
-            delete updated[featureId];
-            return updated;
-          });
+              // Clean up custom color layers
+              const styleLayers = mapInstance.getStyle().layers || [];
+              styleLayers.forEach((layer: any) => {
+                if (layer.id.includes(`custom-line-layer-${id}`)) {
+                  try {
+                    if (mapInstance.getLayer(layer.id)) {
+                      mapInstance.removeLayer(layer.id);
+                    }
+                  } catch (err) {
+                    console.warn("Layer cleanup error:", err);
+                  }
+                }
+              });
 
-          // ✅ Clean up custom color layers for this polygon
-          const existingLayers = mapInstance.getStyle().layers || [];
-          existingLayers.forEach((layer: any) => {
-            if (layer.id.includes(`custom-line-layer-${featureId}`)) {
-              if (mapInstance.getLayer(layer.id)) mapInstance.removeLayer(layer.id);
-            }
-          });
+              // Clean up custom sources
+              const sources = Object.keys(mapInstance.getStyle().sources);
+              sources.forEach((srcId) => {
+                if (srcId.includes(`custom-line-${id}`)) {
+                  try {
+                    if (mapInstance.getSource(srcId)) {
+                      mapInstance.removeSource(srcId);
+                    }
+                  } catch (err) {
+                    console.warn("Source cleanup error:", err);
+                  }
+                }
+              });
 
-          const existingSources = Object.keys(mapInstance.getStyle().sources);
-          existingSources.forEach((srcId) => {
-            if (srcId.includes(`custom-line-${featureId}`)) {
-              if (mapInstance.getSource(srcId)) mapInstance.removeSource(srcId);
+              // Clean up colors state
+              setPolygonColors((prev) => {
+                const updated = { ...prev };
+                delete updated[id];
+                return updated;
+              });
+
+              // Reset selection if this was the selected polygon
+              if (id === selectedPolygonId) {
+                setSelectedPolygonId(null);
+              }
+            } catch (err) {
+              console.warn("Feature cleanup error:", err);
             }
-          });
+          };
+
+          cleanupFeature(featureId);
         });
+
+        // Force redraw to ensure clean state
+        mapInstance.triggerRepaint();
 
         // ✅ Clear labels and update measurements after delete
         clearLabels();
@@ -758,7 +798,7 @@ const handleLabelSelect = (label: { name: string; color: string }) => {
       }
     };
 
-    // ✅ Delete Selected Polygon function
+    // ✅ Delete Selected Polygon function with enhanced cleanup
     const deleteSelected = () => {
       if (!drawRef.current || !mapRef.current) {
         if (drawRef.current) deleteAll();
@@ -767,92 +807,136 @@ const handleLabelSelect = (label: { name: string; color: string }) => {
       
       try {
         let polygonToDelete: string | null = null;
+        const draw = drawRef.current;
         
-        // ✅ First priority: Check draw instance selected features
+        // Enhanced selection detection
+        // ✅ Priority 1: Check currently selected features in draw instance
         try {
-          const selectedFeatures = drawRef.current.getSelected();
-          if (selectedFeatures?.features?.length > 0) {
-            const selected = selectedFeatures.features[0];
-            if (selected && selected.id && selected.geometry?.type === "Polygon") {
-              polygonToDelete = selected.id as string;
-            }
+          const selectedFeatures = draw.getSelected();
+          const selectedPolygons = selectedFeatures?.features?.filter(
+            (f: any) => f.geometry?.type === "Polygon"
+          );
+          if (selectedPolygons?.length > 0) {
+            polygonToDelete = selectedPolygons[0].id as string;
           }
-        } catch (err) {
-          // getSelected() might fail, continue to next check
-        }
+        } catch {}
         
-        // ✅ Second priority: Check state if draw instance doesn't have selection
+        // ✅ Priority 2: Use tracked selection state
         if (!polygonToDelete && selectedPolygonId) {
           try {
-            // ✅ Verify the polygon still exists
-            const feature = drawRef.current.get(selectedPolygonId);
-            if (feature && feature.geometry?.type === "Polygon") {
+            const feature = draw.get(selectedPolygonId);
+            if (feature?.geometry?.type === "Polygon") {
               polygonToDelete = selectedPolygonId;
             }
-          } catch (err) {
-            // get() might fail if polygon doesn't exist
-          }
+          } catch {}
         }
         
-        // ✅ Third priority: Check if there's only one polygon (auto-select it)
+        // ✅ Priority 3: Single polygon auto-selection
         if (!polygonToDelete) {
           try {
-            const allFeatures = drawRef.current.getAll();
+            const allFeatures = draw.getAll();
             const polygons = allFeatures?.features?.filter(
               (f: any) => f.geometry?.type === "Polygon"
-            ) || [];
-            if (polygons.length === 1 && polygons[0].id) {
+            );
+            if (polygons?.length === 1) {
               polygonToDelete = polygons[0].id as string;
             }
-          } catch (err) {
-            // getAll() might fail
-          }
+          } catch {}
         }
-        
-        // If still no selection found, delete all as fallback
+
         if (!polygonToDelete) {
           deleteAll();
           return;
         }
-        
-        // ✅ Save snapshot before delete for undo/redo
+
+        // Save state for undo/redo before deletion
         try {
-          const currentSnapshot = drawRef.current.getAll();
+          const currentSnapshot = draw.getAll();
           undoStackRef.current.push(JSON.parse(JSON.stringify(currentSnapshot)));
           redoStackRef.current = [];
         } catch (err) {
           console.warn("Error saving snapshot:", err);
         }
-        
-        // ✅ Delete only the selected polygon using MapboxDraw's delete method
+
+        // Ensure polygon exists before trying to delete
+        const polygonExists = draw.get(polygonToDelete);
+        if (!polygonExists) {
+          deleteAll();
+          return;
+        }
+
+        // Pre-cleanup to ensure smooth deletion
         try {
-          const featureIds = [polygonToDelete];
-          drawRef.current.delete(featureIds);
-          
-          // ✅ Reset selected polygon state
-          setSelectedPolygonId(null);
+          // Clean up custom styling
+          const map = mapRef.current;
+          const styleLayers = map.getStyle().layers || [];
+          styleLayers.forEach((layer: any) => {
+            if (layer.id.includes(`custom-line-layer-${polygonToDelete}`)) {
+              try {
+                if (map.getLayer(layer.id)) {
+                  map.removeLayer(layer.id);
+                }
+              } catch {}
+            }
+          });
+
+          // Remove custom sources
+          const sources = Object.keys(map.getStyle().sources);
+          sources.forEach((srcId) => {
+            if (srcId.includes(`custom-line-${polygonToDelete}`)) {
+              try {
+                if (map.getSource(srcId)) {
+                  map.removeSource(srcId);
+                }
+              } catch {}
+            }
+          });
+
+          // Clean up edge references
+          setPolygonEdgesMap((prev) => {
+            const updated = { ...prev };
+            delete updated[polygonToDelete!];
+            return updated;
+          });
+
+          // Clean up color references
+          setPolygonColors((prev) => {
+            const updated = { ...prev };
+            delete updated[polygonToDelete!];
+            return updated;
+          });
         } catch (err) {
-          console.error("Error calling draw.delete:", err);
-          // Try fallback: manually remove the feature
+          console.warn("Pre-cleanup error:", err);
+        }
+
+        // Perform the actual deletion
+        try {
+          draw.delete([polygonToDelete]);
+          setSelectedPolygonId(null);
+          
+          // Force a map repaint to ensure clean state
+          mapRef.current.triggerRepaint();
+        } catch (err) {
+          console.error("Primary delete failed:", err);
           try {
-            drawRef.current.deleteAll();
-            const allFeatures = drawRef.current.getAll();
+            // Fallback: manual cleanup and re-add
+            const allFeatures = draw.getAll();
             const remainingFeatures = allFeatures.features.filter(
               (f: any) => f.id !== polygonToDelete
             );
-            drawRef.current.deleteAll();
-            remainingFeatures.forEach((f: any) => {
-              drawRef.current?.add(f);
-            });
+            draw.deleteAll();
+            remainingFeatures.forEach((f: any) => draw.add(f));
             setSelectedPolygonId(null);
-          } catch (fallbackErr) {
-            console.error("Fallback delete failed:", fallbackErr);
-            deleteAll();
+          } catch {
+            deleteAll(); // Last resort
           }
         }
+
+        // Update UI state
+        clearLabels();
+        updateMeasurements();
       } catch (err) {
-        console.error("Error deleting selected polygon:", err);
-        // Fallback to deleteAll if delete fails
+        console.error("Delete operation failed:", err);
         deleteAll();
       }
     };

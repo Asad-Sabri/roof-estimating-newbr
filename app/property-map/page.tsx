@@ -6,11 +6,11 @@ import LeftSidebar from "@/components/common/left-sidebar";
 import TopToolbar from "@/components/common/top-tool-bar";
 import RightSidebar from "@/components/common/right-sidebar";
 import RoofMapSection, {
-  RoofMapSectionHandle,
+  MapSectionHandle,
 } from "@/components/sections/roof-map-section";
 
 export default function RoofEstimatorPage() {
-  const roofMapRef = useRef<RoofMapSectionHandle | null>(null);
+  const roofMapRef = useRef<MapSectionHandle | null>(null);
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
 
   const [planArea, setPlanArea] = useState(0);
