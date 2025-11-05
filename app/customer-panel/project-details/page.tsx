@@ -3,8 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { getUserProjectsAPI } from "@/services/auth";
 import CustomerDashboardLayout from "@/app/dashboard/customer/page";
-import { Search, Trash2, Eye, Router } from "lucide-react";
-import axios from "axios";
+import { Search, Eye } from "lucide-react";
 import router from "next/router";
 
 interface Project {
@@ -33,9 +32,6 @@ export default function ProjectDetailsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roofFilter, setRoofFilter] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("");
-
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -79,37 +75,6 @@ export default function ProjectDetailsPage() {
     setFilteredProjects(filtered);
   }, [searchTerm, roofFilter, propertyFilter, projects]);
 
-  const deleteProject = async (id: string) => {
-    try {
-      const token = localStorage.getItem("token"); // agar auth token use ho raha hai
-      const res = await fetch(
-        `http://88.99.241.139:5000/api/roof-estimate-projects/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // optional, agar API require kare
-          },
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error || "Failed to delete project");
-        return;
-      }
-
-      // Remove project from state
-      setProjects((prev) => prev.filter((p) => p._id !== id));
-      setFilteredProjects((prev) => prev.filter((p) => p._id !== id));
-      alert("Project deleted successfully");
-    } catch (err) {
-      console.error(err);
-      alert("Something went wrong");
-    }
-  };
-
   if (loading) {
     return (
       <CustomerDashboardLayout>
@@ -130,7 +95,6 @@ export default function ProjectDetailsPage() {
     );
   }
 
-  // Get unique roof types and property types for filter dropdowns
   const roofTypes = Array.from(new Set(projects.map((p) => p.roof_type)));
   const propertyTypes = Array.from(
     new Set(projects.map((p) => p.property_type))
@@ -141,9 +105,8 @@ export default function ProjectDetailsPage() {
       <main className="min-h-screen px-4 md:px-8 py-10 bg-gray-100">
         <h1 className="text-3xl font-bold text-gray-800 mb-6">My Projects</h1>
 
-        {/* Filters Card */}
+        {/* Filters */}
         <div className="bg-white shadow-lg rounded-xl p-6 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          {/* Search */}
           <div className="flex items-center flex-1 max-w-md">
             <Search className="w-5 h-5 text-gray-400 mr-2" />
             <input
@@ -155,7 +118,6 @@ export default function ProjectDetailsPage() {
             />
           </div>
 
-          {/* Roof Type Filter */}
           <select
             value={roofFilter}
             onChange={(e) => setRoofFilter(e.target.value)}
@@ -169,7 +131,6 @@ export default function ProjectDetailsPage() {
             ))}
           </select>
 
-          {/* Property Type Filter */}
           <select
             value={propertyFilter}
             onChange={(e) => setPropertyFilter(e.target.value)}
@@ -184,9 +145,8 @@ export default function ProjectDetailsPage() {
           </select>
         </div>
 
-        {/* Table Card */}
+        {/* Table */}
         <div className="bg-white shadow-md rounded-xl border border-gray-300 overflow-hidden">
-          {/* Card Header */}
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-800">My Projects</h2>
             <p className="text-sm text-gray-500">
@@ -194,10 +154,8 @@ export default function ProjectDetailsPage() {
             </p>
           </div>
 
-          {/* Table Container */}
           <div className="table-responsive overflow-x-auto overflow-y-auto max-h-[500px]">
             <table className="min-w-full table-auto text-sm md:text-base border-collapse">
-              {/* Table Head */}
               <thead className="bg-gray-100 border-b border-gray-300 sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">
@@ -227,7 +185,6 @@ export default function ProjectDetailsPage() {
                 </tr>
               </thead>
 
-              {/* Table Body */}
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredProjects.length > 0 ? (
                   filteredProjects.map((p) => (
@@ -256,8 +213,7 @@ export default function ProjectDetailsPage() {
                       <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
                         {new Date(p.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 text-center whitespace-nowrap flex justify-center gap-3">
-                        {/* 👁️ View Button */}
+                      <td className="px-6 py-4 text-center whitespace-nowrap flex justify-center">
                         <button
                           onClick={() =>
                             router.push(`/customer-panel/map-view/${p._id}`)
@@ -266,15 +222,6 @@ export default function ProjectDetailsPage() {
                           title="View on Map"
                         >
                           <Eye className="w-5 h-5 text-blue-500 hover:text-blue-700" />
-                        </button>
-
-                        {/* 🗑️ Delete Button */}
-                        <button
-                          onClick={() => deleteProject(p._id)}
-                          className="p-2 rounded-full hover:bg-red-100 transition"
-                          title="Delete Project"
-                        >
-                          <Trash2 className="w-5 h-5 text-red-500 hover:text-red-700" />
                         </button>
                       </td>
                     </tr>
@@ -293,7 +240,6 @@ export default function ProjectDetailsPage() {
             </table>
           </div>
 
-          {/* Card Footer */}
           <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 text-right text-sm text-gray-500">
             Showing {filteredProjects.length} project(s)
           </div>

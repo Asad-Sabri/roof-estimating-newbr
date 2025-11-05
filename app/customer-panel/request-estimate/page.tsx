@@ -426,13 +426,13 @@ export default function CreateProjectForm() {
                     Go to Map Screen
                   </button>
 
-                  <button
+                  {/* <button
                     type="button"
                     disabled
                     className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-md font-semibold shadow cursor-not-allowed"
                   >
                     Coming Soon
-                  </button>
+                  </button> */}
                 </div>
               </form>
             </>
