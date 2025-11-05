@@ -35,15 +35,17 @@ export interface MapSectionHandle {
   toggleStreetView: () => void;
   getCenter?: () => [number, number] | null;
   getMap?: () => mapboxgl.Map | null;
+  downloadPDF?: () => void;
 }
 
-interface EdgeItem {
+export interface EdgeItem {
   id: string;
   length: number;
   type: string;
+  polygonId: string;
 }
 
-interface PolygonPoint {
+export interface PolygonPoint {
   lat: number;
   lon: number;
   seq: number;

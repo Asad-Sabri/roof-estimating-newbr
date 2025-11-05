@@ -586,7 +586,7 @@ const faqs: FAQ[] = [
       </section>
       <section className="bg-[#f8fcf9] py-16 px-6">
         <h1 className=" text-4xl font-bold text-center my-10">
-          Roof Color Simulator - A journey into Your project's future
+          Roof Color Simulator - A journey into Your projects future
         </h1>
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
           {/* Left Side: Steps */}
@@ -804,7 +804,7 @@ const faqs: FAQ[] = [
         </p>
         <p className="text-sm md:text-base text-gray-700 max-w-2xl mx-auto mb-10">
           Integrating the visualizer is as seamless as it gets. Designed with user-friendliness in mind, it fits
-          right into your current workflow, requiring minimal adjustments. Whether you're tech-savvy or not, getting up
+          right into your current workflow, requiring minimal adjustments. Whether you are tech-savvy or not, getting up
           to speed is straightforward, ensuring you can start enhancing your sales presentations almost immediately.
         </p>
 

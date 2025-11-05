@@ -744,8 +744,8 @@ export default function RoofMeasurements() {
               {/* Left Side Quote */}
               <div className="flex flex-col justify-center">
                 <blockquote className="italic text-lg font-medium text-gray-800">
-                  "This is the only roofing software that includes Free HD
-                  Imagery Credits with your subscription."
+                  This is the only roofing software that includes Free HD
+                  Imagery Credits with your subscription.
                 </blockquote>
                 <p className="mt-3 text-sm text-gray-600">
                   Thomas Brown, Rhode Island
@@ -862,7 +862,7 @@ export default function RoofMeasurements() {
                           className="bg-gradient-to-br from-[#e0f7f1] to-[#cde8e4] p-6 rounded-lg shadow-md h-[300px]"
                         >
                           <p className="italic mb-4 text-gray-800">
-                            "{t.quote}"
+                            {t.quote}
                           </p>
                           <p className="font-semibold text-sm text-gray-900">
                             {t.name} <br />
@@ -1104,7 +1104,7 @@ export default function RoofMeasurements() {
                   The iRoofing Transformation:
                 </h4>
                 <p className="text-sm">
-                  Switching to iRoofing's precision roof measurement feature,
+                  Switching to iRoofings precision roof measurement feature,
                   Laura’s team embraced roof measurements from satellite,
                   slashing estimation time and boosting project throughput.
                 </p>

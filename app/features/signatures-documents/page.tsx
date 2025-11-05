@@ -220,7 +220,7 @@ const Signature = () => {
         <div className="grid lg:grid-cols-2 gap-10 ">
           <div>
             <h2 className="text-3xl lg:text-5xl font-bold leading-tight mb-4">
-              Take Control With iRoofing's Digital Roofing Contracts
+              Take Control With iRoofings Digital Roofing Contracts
             </h2>
             <p className="text-2xl text-gray-200 mb-6">
               Close Your Roof Contract Faster, Work Smarter

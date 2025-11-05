@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Sliders, Grid } from "lucide-react";
-import mapboxgl from "mapbox-gl";
+import * as mapboxgl from "mapbox-gl";
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
 import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
 
@@ -33,7 +33,7 @@ export default function TopToolbar({
   useEffect(() => {
     if (map && geocoderContainerRef.current && !geocoderRef.current) {
       const geocoder = new MapboxGeocoder({
-        accessToken: mapboxgl.accessToken ?? "",
+        accessToken: mapboxgl.default?.accessToken ?? "",
         mapboxgl,
         marker: false,
         zoom: 19,

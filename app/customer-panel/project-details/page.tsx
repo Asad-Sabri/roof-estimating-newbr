@@ -5,6 +5,7 @@ import { getUserProjectsAPI } from "@/services/auth";
 import CustomerDashboardLayout from "@/app/dashboard/customer/page";
 import { Search, Trash2, Eye, Router } from "lucide-react";
 import axios from "axios";
+import router from "next/router";
 
 interface Project {
   _id: string;

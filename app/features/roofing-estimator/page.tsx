@@ -565,7 +565,7 @@ const faqs: FaqItem[] = [
 
             <ul className="space-y-2 text-[#031b4e] mb-4 list-none">
               <li>✔️ Turn any measurement into a professional roof quote</li>
-              <li>✔️ Customize with your company's pricing</li>
+              <li>✔️ Customize with your company pricing</li>
               <li>✔️ Up-sell with good, better, and best options</li>
               <li>✔️ Create line-item or price per square roof estimates</li>
               <li>✔️ Send roofing material orders to distributor</li>

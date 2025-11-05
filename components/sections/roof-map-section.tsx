@@ -14,6 +14,7 @@ import MapContainer, {
 interface RoofMapSectionProps {
   setPlanArea: (area: number) => void;
   setRoofArea: (area: number) => void;
+  onMapLoad?: (mapInstance: mapboxgl.Map) => void;
   setEdges: (
     edges: { id: string; length: number; type: string; polygonId: string }[]
   ) => void;
@@ -56,7 +57,7 @@ const RoofMapSection = forwardRef<MapSectionHandle, RoofMapSectionProps>(
       if (!map) return;
 
       const handleEdgeClick = (
-        e: mapboxgl.MapMouseEvent & mapboxgl.EventData
+        e: mapboxgl.MapMouseEvent & unknown
       ) => {
         // ✅ Check which layers exist in the map before querying
         const availableLayers: string[] = [];
@@ -110,7 +111,7 @@ const RoofMapSection = forwardRef<MapSectionHandle, RoofMapSectionProps>(
             "gl-draw-polygon-stroke-inactive",
             "gl-draw-polygon-stroke-active",
           ];
-          
+
           layerNames.forEach((layer) => {
             try {
               if (map.getLayer(layer)) {
@@ -286,6 +287,7 @@ const RoofMapSection = forwardRef<MapSectionHandle, RoofMapSectionProps>(
       rotateLeft: () => mapRef.current?.rotateLeft(),
       rotateRight: () => mapRef.current?.rotateRight(),
       toggleStreetView: () => mapRef.current?.toggleStreetView(),
+      deleteSelected: () => mapRef.current?.deleteSelected(),
       downloadPDF,
     }));
 

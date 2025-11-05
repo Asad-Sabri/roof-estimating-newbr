@@ -5,9 +5,8 @@ import mapboxgl from "mapbox-gl";
 import LeftSidebar from "@/components/common/left-sidebar";
 import TopToolbar from "@/components/common/top-tool-bar";
 import RightSidebar from "@/components/common/right-sidebar";
-import RoofMapSection, {
-  MapSectionHandle,
-} from "@/components/sections/roof-map-section";
+import RoofMapSection from "@/components/sections/roof-map-section";
+import { MapSectionHandle } from "@/components/sections/components/MapContainer";
 
 export default function RoofEstimatorPage() {
   const roofMapRef = useRef<MapSectionHandle | null>(null);

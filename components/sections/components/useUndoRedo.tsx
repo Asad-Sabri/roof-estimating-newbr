@@ -69,7 +69,7 @@ export const useUndoRedo = ({
     });
     
     // ✅ Clear labels
-    clearLabels(labelsRef);
+    clearLabels();
 
     if (!data || !data.features || data.features.length === 0) {
       setPlanAreaLocal(0);
@@ -121,6 +121,7 @@ export const useUndoRedo = ({
               id: `side-${fIndex}-${i}`,
               length: lengthFeet,
               type: "edge",
+              polygonId: ""
             });
 
             try {
@@ -303,7 +304,7 @@ export const useUndoRedo = ({
       drawRef.current.deleteAll();
       
       // Clear all labels
-      clearLabels(labelsRef);
+      clearLabels();
       
       // Clear all custom layers and sources from map
       const map = mapRef.current;
@@ -534,7 +535,7 @@ const handleLineForSplit = (lineFeature: any) => {
           ...buffered,
           properties: {
             ...polygonToBuffer.properties,
-            ...buffered.properties,
+            ...(buffered?.properties || {}),
           },
         };
         

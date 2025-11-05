@@ -5,12 +5,17 @@ mapboxgl.accessToken =
   process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
   "pk.eyJ1IjoibWFwYm94IiwiYSI6ImNqZ3V6bGd2bjA0Z3gycXA0d3Y2OHF5cGkifQ.fYB8mF-T5lFjIRVJ6_XUA"; // temporary demo token
 
-export default function MapPopup({ onClose, onSelect }) {
+interface MapPopupProps {
+  onClose: () => void;
+  onSelect: (place: string, coordinates: { lng: number; lat: number }) => void;
+}
+
+export default function MapPopup({ onClose, onSelect }: MapPopupProps) {
   const mapContainerRef = useRef(null);
   const [lng, setLng] = useState(74.3587);
   const [lat, setLat] = useState(31.5204);
   const [zoom, setZoom] = useState(12);
-  const mapRef = useRef(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
 
   useEffect(() => {
   if (!mapContainerRef.current) return;

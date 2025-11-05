@@ -123,7 +123,7 @@ const HelpCenter = () => {
           <div className=" mt-20">
           <div className="flex items-center justify-center">
           <h1 className=" text-[35px] text-center font-bold">
-            Roof Estimate's Features
+            Roof Estimates Features
           </h1>
         </div>
         <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center px-4">

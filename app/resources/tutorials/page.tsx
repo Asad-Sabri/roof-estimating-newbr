@@ -46,7 +46,7 @@ const Tutorials = () => {
           </h1>
           <p className=" text-xl md:w-[60%] text-center mt-14">
             Step into the world of accurate and efficient roof estimating with
-            our easy-to-understand video tutorials. Whether you're just starting
+            our easy-to-understand video tutorials. Whether you are just starting
             out or looking to sharpen your estimating skills, our detailed video
             library covers every aspect you need to confidently bid and plan
             your next roofing project.
@@ -118,7 +118,7 @@ const Tutorials = () => {
         {/* Heading */}
         <h2 className="text-center text-2xl md:text-3xl font-bold text-[#05263B] mb-10 w-[50%] mx-auto">
           Please Choose the{" "}
-          <span className="text-[#2bc7e9]">Feature You'd Like</span> to Learn
+          <span className="text-[#2bc7e9]">Feature You not Like</span> to Learn
           More About
         </h2>
 
