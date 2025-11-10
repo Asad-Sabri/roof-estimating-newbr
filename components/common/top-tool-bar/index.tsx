@@ -8,9 +8,6 @@ import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
 
 interface TopToolbarProps {
   map: mapboxgl.Map | null;
-  onSaveRoof?: () => void;
-  onThicknessChange?: (value: number) => void;
-  onSnapToggle?: (enabled: boolean) => void;
   onLocationConfirm?: (coords: [number, number]) => void;
   // ✅ new prop
   onDownloadPDF?: () => void;
@@ -18,9 +15,6 @@ interface TopToolbarProps {
 
 export default function TopToolbar({
   map,
-  onSaveRoof,
-  onThicknessChange,
-  onSnapToggle,
   onLocationConfirm,
   onDownloadPDF,
 }: TopToolbarProps) {
@@ -133,17 +127,6 @@ export default function TopToolbar({
     }
   }, [map, onLocationConfirm]);
 
-  const handleThicknessChange = (value: number) => {
-    setThickness(value);
-    if (onThicknessChange) onThicknessChange(value);
-  };
-
-  const handleSnapToggle = () => {
-    const newSnap = !snap;
-    setSnap(newSnap);
-    if (onSnapToggle) onSnapToggle(newSnap);
-  };
-
   return (
     <div className="absolute top-0 left-0 w-full bg-[#0a1f44]/95 text-white flex justify-between items-center px-6 py-3 shadow-lg z-20 border-b border-gray-700">
       {/* Left Section - Logo / Title */}
@@ -157,37 +140,7 @@ export default function TopToolbar({
         className="flex-1 flex justify-center"
       ></div>
 
-      {/* Right Section - Controls */}
       <div className="flex items-center gap-6">
-        {/* Line Thickness */}
-        <div className="flex items-center gap-2">
-          <Sliders className="w-4 h-4 text-gray-300" />
-          <label className="text-sm">Line Thickness:</label>
-          <select
-            value={thickness}
-            onChange={(e) => handleThicknessChange(Number(e.target.value))}
-            className="bg-gray-800 text-white rounded px-2 py-1 text-sm focus:outline-none"
-          >
-            {[1, 2, 3, 4, 5].map((n) => (
-              <option key={n} value={n}>
-                {n}px
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Snap Toggle */}
-        <div
-          onClick={handleSnapToggle}
-          className={`flex items-center gap-2 cursor-pointer ${
-            snap ? "text-green-400" : "text-gray-300"
-          }`}
-        >
-          <Grid className="w-4 h-4" />
-          <span className="text-sm">Snap: {snap ? "On" : "Off"}</span>
-        </div>
-
-        {/* Download PDF Button */}
         <button
           onClick={onDownloadPDF}
           className="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 text-sm rounded shadow"

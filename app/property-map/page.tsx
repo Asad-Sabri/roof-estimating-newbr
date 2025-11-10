@@ -11,6 +11,7 @@ import { MapSectionHandle } from "@/components/sections/components/MapContainer"
 export default function RoofEstimatorPage() {
   const roofMapRef = useRef<MapSectionHandle | null>(null);
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
+  const [labelsVisible, setLabelsVisible] = useState(true);
 
   const [planArea, setPlanArea] = useState(0);
   const [roofArea, setRoofArea] = useState(0);
@@ -26,8 +27,12 @@ export default function RoofEstimatorPage() {
   // called by LeftSidebar
   const handleSelectLabel = (label: { name: string; color: string }) => {
     setSelectedLabel(label);
-    // direct call to MapContainer method exposed through RoofMapSection
-    roofMapRef.current?.startDrawingWithLabel?.(label);
+    roofMapRef.current?.handleLabelSelect?.(label);
+  };
+
+  const handleToggleLabels = () => {
+    setLabelsVisible((prev) => !prev);
+    roofMapRef.current?.toggleLabels?.();
   };
 const handleMapLoad = (mapInstance: mapboxgl.Map) => {
   console.log("Map loaded ✅", mapInstance);
@@ -36,28 +41,16 @@ const handleMapLoad = (mapInstance: mapboxgl.Map) => {
 
   return (
     <div className="relative w-full h-screen pt-14">
-      <LeftSidebar onSelectLabel={handleSelectLabel} />
+      <LeftSidebar
+      onSelectLabel={handleSelectLabel} 
+      // onSelectLabel={handleLabelSelect}
+      // onToggleLabels={toggleLabels}
+      // onDrawLine={startDrawingLine}
+      // labelsVisible={labelsVisible}
+      />
 
       <TopToolbar
         map={map}
-        onSaveRoof={() => console.log("save")}
-        onThicknessChange={(value) => {
-          // ✅ Update line thickness on map draw layers
-          if (map) {
-            const layers = ["gl-draw-polygon-stroke", "gl-draw-line"];
-            layers.forEach((layerId) => {
-              try {
-                if (map.getLayer(layerId)) {
-                  map.setPaintProperty(layerId, "line-width", value);
-                }
-              } catch {}
-            });
-          }
-        }}
-        onSnapToggle={(enabled) => {
-          // ✅ Toggle snap mode (can be implemented with grid snapping)
-          console.log("Snap:", enabled);
-        }}
         onLocationConfirm={() => {}}
         onDownloadPDF={() => roofMapRef.current?.downloadPDF?.()}
       />
@@ -75,17 +68,17 @@ const handleMapLoad = (mapInstance: mapboxgl.Map) => {
       </div>
 
       <RightSidebar
-        onSetDrawMode={(m) => roofMapRef.current?.setDrawMode?.(m)}
         onStartDrawing={() => roofMapRef.current?.startDrawing?.()}
+        onStartSingleDrawing={() => roofMapRef.current?.startSingleDrawing?.()}
         onDeleteAll={() => roofMapRef.current?.deleteAll?.()}
         onDeleteSelected={() => roofMapRef.current?.deleteSelected?.()}
         onUndo={() => roofMapRef.current?.undo?.()}
         onRedo={() => roofMapRef.current?.redo?.()}
-        onSplit={() => roofMapRef.current?.startSplitMode?.()}
-        onOverhang={() => roofMapRef.current?.applyOverhang?.()}
         onRotateLeft={() => roofMapRef.current?.rotateLeft?.()}
         onRotateRight={() => roofMapRef.current?.rotateRight?.()}
         onToggleStreetView={() => roofMapRef.current?.toggleStreetView?.()}
+        onToggleLabels={handleToggleLabels}
+        labelsVisible={labelsVisible}
       />
     </div>
   );

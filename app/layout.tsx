@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Poppins, Smooch_Sans,  } from "next/font/google";
+import { Poppins, Smooch_Sans } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
 import ReduxProvider from "@/redux/ReduxProvider";
@@ -8,15 +8,15 @@ import { Suspense } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+// const geistSans = Geist({
+//   variable: "--font-geist-sans",
+//   subsets: ["latin"],
+// });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// const geistMono = Geist_Mono({
+//   variable: "--font-geist-mono",
+//   subsets: ["latin"],
+// });
 
 const smoochSans = Smooch_Sans({
   subsets: ["latin"],
@@ -53,7 +53,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${smoochSans.variable} ${poppins.variable} antialiased`}
+        className={`${smoochSans.variable} ${poppins.variable} antialiased`}
       >
         <ReduxProvider>
           <ReactQueryProvider>

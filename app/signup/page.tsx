@@ -68,10 +68,10 @@ const { mutate, isPending } = useMutation({
         {/* Logo */}
         <div className="flex justify-center mb-6">
           <Image
-            src="/Superior Pro Roofing logo black.png"
+            src="/logo-latest.png"
             alt="Superior Pro Roofing Logo"
-            width={280}
-            height={70}
+            width={250}
+            height={50}
             className="w-[220px] sm:w-[260px] h-auto drop-shadow-md"
             priority
           />

@@ -15,7 +15,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { loginAPI } from "@/services/auth";
 import { setCredentials } from "@/redux/slices/authSlice";
 
-import logo from "../../public/Superior Pro Roofing logo black.png";
+import logo from "../../public/logo-latest.png";
 
 export default function LoginPage() {
   const dispatch = useDispatch();
@@ -76,8 +76,8 @@ export default function LoginPage() {
             <Image
               src={logo}
               alt="Superior Pro Roofing Logo"
-              width={250}
-              height={70}
+              width={200}
+              height={50}
               className="w-[220px] sm:w-[260px] h-auto drop-shadow-md"
               priority
             />

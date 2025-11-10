@@ -1,6 +1,5 @@
 "use client";
 
-import DashboardLayout from "@/app/page"; // ✅ adjust path if needed
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";

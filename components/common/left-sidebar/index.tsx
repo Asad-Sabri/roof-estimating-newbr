@@ -8,6 +8,9 @@ import {
   Circle,
   Shuffle,
   Landmark,
+  Eye,
+  EyeOff,
+  LineChart,
 } from "lucide-react";
 
 interface RoofLabel {
@@ -17,7 +20,10 @@ interface RoofLabel {
 }
 
 interface LeftSidebarProps {
-  onSelectLabel?: (label: RoofLabel) => void; // ✅ parent ko label bhejne ke liye
+  onSelectLabel?: (label: RoofLabel) => void;
+  onToggleLabels?: () => void;
+  onDrawLine?: () => void;
+  labelsVisible?: boolean;
 }
 
 const roofLabels: RoofLabel[] = [
@@ -31,7 +37,12 @@ const roofLabels: RoofLabel[] = [
   { name: "Transition", color: "#2c3e50", icon: <Triangle className="" /> },
 ];
 
-const LeftSidebar: React.FC<LeftSidebarProps> = ({ onSelectLabel }) => {
+const LeftSidebar: React.FC<LeftSidebarProps> = ({
+  onSelectLabel,
+  onToggleLabels,
+  onDrawLine,
+  labelsVisible,
+}) => {
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
 
   const handleSelect = (label: RoofLabel) => {
@@ -78,6 +89,38 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ onSelectLabel }) => {
           </button>
         );
       })}
+
+      <button
+        onClick={onDrawLine}
+        className="flex flex-col items-center transition-all duration-200 opacity-90"
+      >
+        <div
+          className="flex items-center justify-center w-9 h-9 rounded-full border-2"
+          style={{ borderColor: "white" }}
+        >
+          <LineChart className="w-5 h-5" color="white" />
+        </div>
+        <span className="text-[10px] mt-1 text-gray-300">Draw Line</span>
+      </button>
+
+      <button
+        onClick={onToggleLabels}
+        className="flex flex-col items-center transition-all duration-200 opacity-90"
+      >
+        <div
+          className="flex items-center justify-center w-9 h-9 rounded-full border-2"
+          style={{ borderColor: "white" }}
+        >
+          {labelsVisible ? (
+            <EyeOff className="w-5 h-5" color="white" />
+          ) : (
+            <Eye className="w-5 h-5" color="white" />
+          )}
+        </div>
+        <span className="text-[10px] mt-1 text-gray-300">
+          {labelsVisible ? "Hide Labels" : "Show Labels"}
+        </span>
+      </button>
     </div>
   );
 };
