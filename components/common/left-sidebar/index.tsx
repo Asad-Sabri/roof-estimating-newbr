@@ -90,7 +90,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
         );
       })}
 
-      <button
+      {/* <button
         onClick={onDrawLine}
         className="flex flex-col items-center transition-all duration-200 opacity-90"
       >
@@ -120,7 +120,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
         <span className="text-[10px] mt-1 text-gray-300">
           {labelsVisible ? "Hide Labels" : "Show Labels"}
         </span>
-      </button>
+      </button> */}
     </div>
   );
 };

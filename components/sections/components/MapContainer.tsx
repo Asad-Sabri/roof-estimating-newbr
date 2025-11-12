@@ -14,6 +14,7 @@ import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import * as turf from "@turf/turf";
 import { useUndoRedo } from "./useUndoRedo";
 import LeftSidebar from "@/components/common/left-sidebar";
+import { toFeetInches, normalizeBearing } from "./mapHelper";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -127,6 +128,10 @@ const MapContainer = forwardRef<MapSectionHandle, MapContainerProps>(
     };
 
     const clearLabels = () => {
+      if (!Array.isArray(labelsRef.current)) {
+        labelsRef.current = [];
+        return;
+      }
       labelsRef.current.forEach((m) => m.remove());
       labelsRef.current = [];
     };
@@ -244,6 +249,61 @@ const MapContainer = forwardRef<MapSectionHandle, MapContainerProps>(
       }
     };
 
+    const showSingleLineEdgeLengths = (feature: any) => {
+      if (!mapRef.current) return;
+      const map = mapRef.current;
+
+      // ✅ Clear previous labels
+      clearLabels();
+
+      // ✅ Get coordinates depending on type
+      const coords: [number, number][] =
+        feature.geometry.type === "Polygon"
+          ? feature.geometry.coordinates[0]
+          : feature.geometry.coordinates;
+
+      // ✅ Remove duplicate last point if closed
+      const uniqueCoords = coords.filter(
+        (c, idx) =>
+          idx === 0 ||
+          !(c[0] === coords[idx - 1][0] && c[1] === coords[idx - 1][1])
+      );
+
+      // ✅ If only 2 points (line), ensure length label still shows
+      if (uniqueCoords.length >= 2) {
+        for (let i = 0; i < uniqueCoords.length - 1; i++) {
+          const from = turf.point(uniqueCoords[i]);
+          const to = turf.point(uniqueCoords[i + 1]);
+          const lengthFeet = turf.distance(from, to, { units: "feet" });
+
+          const midpoint = turf.midpoint(from, to).geometry.coordinates as [
+            number,
+            number
+          ];
+
+          const el = document.createElement("div");
+          el.innerText = toFeetInches(lengthFeet);
+          Object.assign(el.style, {
+            background: "rgba(255,255,255,0.9)",
+            padding: "2px 4px",
+            borderRadius: "3px",
+            fontSize: "10px",
+            fontWeight: "600",
+            color: "black",
+            textAlign: "center",
+            pointerEvents: "none",
+          });
+
+          const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+            .setLngLat(midpoint)
+            .addTo(map);
+
+          // ✅ Store marker for later cleanup
+          labelsRef.current.push(marker);
+        }
+      }
+    };
+
     // ====================== USEEFFECT =========================
     useEffect(() => {
       if (!mapContainerRef.current) return;
@@ -315,14 +375,30 @@ const MapContainer = forwardRef<MapSectionHandle, MapContainerProps>(
             ...MapboxDraw.modes.draw_polygon,
             onClick: function (state: any, e: any): any {
               // Continue to use the default behavior
-              if (MapboxDraw.modes.draw_polygon && MapboxDraw.modes.draw_polygon.onClick) {
-                return MapboxDraw.modes.draw_polygon.onClick.call(this, state, e);
+              if (
+                MapboxDraw.modes.draw_polygon &&
+                MapboxDraw.modes.draw_polygon.onClick
+              ) {
+                return MapboxDraw.modes.draw_polygon.onClick.call(
+                  this,
+                  state,
+                  e
+                );
               }
             },
-            toDisplayFeatures: function(state: any, geojson: any, display: any): void {
+            toDisplayFeatures: function (
+              state: any,
+              geojson: any,
+              display: any
+            ): void {
               // Call parent toDisplayFeatures method
               if (MapboxDraw.modes.draw_polygon.toDisplayFeatures) {
-                MapboxDraw.modes.draw_polygon.toDisplayFeatures.call(this, state, geojson, display);
+                MapboxDraw.modes.draw_polygon.toDisplayFeatures.call(
+                  this,
+                  state,
+                  geojson,
+                  display
+                );
               }
             },
           },
@@ -414,10 +490,10 @@ const MapContainer = forwardRef<MapSectionHandle, MapContainerProps>(
           return null;
         }
 
-        const closedCoords = dedupedCoords.map((coord) => [coord[0], coord[1]]) as [
-          number,
-          number
-        ][];
+        const closedCoords = dedupedCoords.map((coord) => [
+          coord[0],
+          coord[1],
+        ]) as [number, number][];
         closedCoords.push([dedupedCoords[0][0], dedupedCoords[0][1]]);
 
         // Always mark as single-line since this function is specifically for single-line polygons
@@ -447,8 +523,9 @@ const MapContainer = forwardRef<MapSectionHandle, MapContainerProps>(
 
         const newlyAdded = draw.get(newFeatureId as string);
         if (newlyAdded?.geometry?.type === "Polygon") {
-          const coords = newlyAdded.geometry
-            .coordinates[0] as [number, number][];
+          const coords = newlyAdded.geometry.coordinates[0];
+          showSingleLineEdgeLengths(newlyAdded); // ✅ Add this line
+
           const edges: { id: string; coords: [number, number][] }[] = [];
 
           for (let i = 0; i < coords.length - 1; i++) {
@@ -459,7 +536,8 @@ const MapContainer = forwardRef<MapSectionHandle, MapContainerProps>(
               if (mapInstance.getLayer(edgeId)) mapInstance.removeLayer(edgeId);
             } catch {}
             try {
-              if (mapInstance.getSource(edgeId)) mapInstance.removeSource(edgeId);
+              if (mapInstance.getSource(edgeId))
+                mapInstance.removeSource(edgeId);
             } catch {}
 
             mapInstance.addSource(edgeId, {
@@ -704,7 +782,9 @@ const MapContainer = forwardRef<MapSectionHandle, MapContainerProps>(
           const featureId = e.features[0].id;
           if (featureId) {
             setTimeout(() => {
-              drawInstance.changeMode('direct_select', { featureId: featureId });
+              drawInstance.changeMode("direct_select", {
+                featureId: featureId,
+              });
             }, 10);
           }
 
@@ -719,90 +799,108 @@ const MapContainer = forwardRef<MapSectionHandle, MapContainerProps>(
         updateMeasurements();
       });
 
-      // ✅ Draw Delete Event (remove edges + state cleanup)
+      // --- DRAW.DELETE EVENT HANDLER ---
       mapInstance.on("draw.delete", (e: any) => {
         const deleted = e.features;
+        if (!deleted?.length) return;
+
         deleted.forEach((feature: any) => {
           const featureId = feature.id;
+          console.log("[DELETE] Feature deleted:", featureId, feature);
 
-          // ✅ Clean up ALL related layers and sources
           const cleanupFeature = (id: string) => {
-            try {
-              // Clean up edge-related items
-              setPolygonEdgesMap((prev) => {
-                const edges = prev[id];
-                if (edges) {
-                  edges.forEach((edge: any) => {
-                    try {
-                      if (mapInstance.getLayer(edge.id)) {
-                        mapInstance.removeLayer(edge.id);
-                      }
-                      if (mapInstance.getSource(edge.id)) {
-                        mapInstance.removeSource(edge.id);
-                      }
-                    } catch (err) {
-                      console.warn("Edge cleanup error:", err);
-                    }
-                  });
-                }
-                const updated = { ...prev };
-                delete updated[id];
-                return updated;
-              });
-
-              // Clean up custom color layers
-              const styleLayers = mapInstance.getStyle().layers || [];
-              styleLayers.forEach((layer: any) => {
-                if (layer.id.includes(`custom-line-layer-${id}`)) {
+            // ✅ Remove polygon edges from map
+            setPolygonEdgesMap((prev) => {
+              const edges = prev[id];
+              if (edges) {
+                edges.forEach((edge: any) => {
                   try {
-                    if (mapInstance.getLayer(layer.id)) {
-                      mapInstance.removeLayer(layer.id);
-                    }
+                    if (mapInstance.getLayer(edge.id))
+                      mapInstance.removeLayer(edge.id);
+                    if (mapInstance.getSource(edge.id))
+                      mapInstance.removeSource(edge.id);
                   } catch (err) {
-                    console.warn("Layer cleanup error:", err);
+                    console.warn(
+                      "[DELETE] Error removing edge layer/source:",
+                      edge.id,
+                      err
+                    );
                   }
-                }
-              });
-
-              // Clean up custom sources
-              const sources = Object.keys(mapInstance.getStyle().sources);
-              sources.forEach((srcId) => {
-                if (srcId.includes(`custom-line-${id}`)) {
-                  try {
-                    if (mapInstance.getSource(srcId)) {
-                      mapInstance.removeSource(srcId);
-                    }
-                  } catch (err) {
-                    console.warn("Source cleanup error:", err);
-                  }
-                }
-              });
-
-              // Clean up colors state
-              setPolygonColors((prev) => {
-                const updated = { ...prev };
-                delete updated[id];
-                return updated;
-              });
-
-              // Reset selection if this was the selected polygon
-              if (id === selectedPolygonId) {
-                setSelectedPolygonId(null);
+                });
               }
-            } catch (err) {
-              console.warn("Feature cleanup error:", err);
-            }
+              const updated = { ...prev };
+              delete updated[id];
+              return updated;
+            });
+
+            // ✅ Remove custom line layers
+            const styleLayers = mapInstance.getStyle().layers || [];
+            styleLayers.forEach((layer: any) => {
+              if (layer.id.includes(`custom-line-layer-${id}`)) {
+                try {
+                  if (mapInstance.getLayer(layer.id))
+                    mapInstance.removeLayer(layer.id);
+                } catch (err) {
+                  console.warn(
+                    "[DELETE] Error removing custom layer:",
+                    layer.id,
+                    err
+                  );
+                }
+              }
+            });
+
+            // ✅ Remove custom sources
+            const sources = Object.keys(mapInstance.getStyle().sources);
+            sources.forEach((srcId) => {
+              if (srcId.includes(`custom-line-${id}`)) {
+                try {
+                  if (mapInstance.getSource(srcId))
+                    mapInstance.removeSource(srcId);
+                } catch (err) {
+                  console.warn(
+                    "[DELETE] Error removing custom source:",
+                    srcId,
+                    err
+                  );
+                }
+              }
+            });
+
+            // ✅ Clear polygon colors
+            setPolygonColors((prev) => {
+              const updated = { ...prev };
+              delete updated[id];
+              return updated;
+            });
+
+            // ✅ Reset selected polygon if needed
+            if (id === selectedPolygonId) setSelectedPolygonId(null);
           };
 
           cleanupFeature(featureId);
+
+          // ✅ Remove from MapboxDraw if single-line polygon
+          if (feature.properties?.isSingleLine) {
+            try {
+              drawRef.current?.delete(featureId);
+            } catch (err) {
+              console.error(
+                "[DELETE] Single-line delete failed for:",
+                featureId,
+                err
+              );
+            }
+          }
         });
 
-        // Force redraw to ensure clean state
-        mapInstance.triggerRepaint();
-
-        // ✅ Clear labels and update measurements after delete
-        clearLabels();
-        updateMeasurements();
+        // ✅ After cleanup, update measurements and clear labels
+        try {
+          clearLabels();
+          updateMeasurements();
+        } catch (err) {
+          console.warn("[DELETE] Post-cleanup update failed:", err);
+        }
       });
 
       // ✅ Polygon Selection Change - Track selected polygon for delete functionality
@@ -824,7 +922,6 @@ const MapContainer = forwardRef<MapSectionHandle, MapContainerProps>(
         }
 
         if (e.mode === "direct_select") {
-
         }
 
         // Handle draw mode changes for grid toggle

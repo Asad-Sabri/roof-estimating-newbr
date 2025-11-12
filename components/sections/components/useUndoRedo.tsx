@@ -1,5 +1,5 @@
 // hooks/useUndoRedo.tsx
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import * as turf from "@turf/turf";
 import { EdgeItem, PolygonPoint } from "./MapContainer";
@@ -9,14 +9,14 @@ interface UndoRedoHookProps {
   drawRef: any;
   mapRef: any;
   labelsRef: any;
-  awaitingSplitRef: any;
+  awaitingSplitRef?: any;
   setPlanAreaLocal: (value: number) => void;
   setRoofAreaLocal: (value: number) => void;
   setEdgesLocal: (v: EdgeItem[]) => void;
   undoStackRef: any;
   redoStackRef: any;
   clearLabels: () => void;
-  setShowGrid: (value: boolean) => void;
+  setShowGrid?: (value: boolean) => void;
   onGridToggle?: (value: boolean) => void;
   onMeasurementsChange: (data: {
     edges: EdgeItem[];
@@ -40,28 +40,87 @@ export const useUndoRedo = ({
   setEdgesLocal,
   undoStackRef,
   redoStackRef,
-  awaitingSplitRef,
   clearLabels,
-  setShowGrid,
-  onGridToggle,
   onMeasurementsChange,
-  onBearingChange,
-  setCurrentBearing,
   setPolygonEdgesMap,
   labelsVisible = true,
 }: UndoRedoHookProps) => {
   const [drawMode, setDrawModeState] = useState<string>("");
+  const edgeLabelsRef = useRef<Record<string, mapboxgl.Marker>>({});
 
-  // ---------------- UPDATE MEASUREMENTS ----------------
+  // ---------------- EDGE LABELS ----------------
+  const updateEdgeLabels = useCallback(
+    (feature: any) => {
+      if (!mapRef.current) return;
+      const map = mapRef.current;
+
+      const coords =
+        feature.geometry.type === "Polygon"
+          ? feature.geometry.coordinates[0]
+          : feature.geometry.coordinates;
+
+      const uniqueCoords = coords.filter(
+        (v: any, i: number, a: any[]) =>
+          i === 0 || v.toString() !== a[i - 1].toString()
+      );
+
+      // Remove old labels for this feature
+      Object.keys(edgeLabelsRef.current).forEach((key) => {
+        if (key.startsWith(feature.id)) {
+          edgeLabelsRef.current[key].remove();
+          delete edgeLabelsRef.current[key];
+        }
+      });
+
+      if (uniqueCoords.length < 2) return;
+
+      for (let i = 0; i < uniqueCoords.length - 1; i++) {
+        const from = turf.point(uniqueCoords[i]);
+        const to = turf.point(uniqueCoords[i + 1]);
+        const lengthFeet = turf.distance(from, to, { units: "feet" });
+        const midpoint = turf.midpoint(from, to).geometry.coordinates as [
+          number,
+          number
+        ];
+
+        const el = document.createElement("div");
+        el.innerText = toFeetInches(lengthFeet);
+        Object.assign(el.style, {
+          background: "rgba(255,255,255,0.95)",
+          color: "black",
+          fontSize: "10px",
+          fontWeight: "600",
+          padding: "2px 4px",
+          borderRadius: "4px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
+          whiteSpace: "nowrap",
+          pointerEvents: "none",
+          border: "1px solid rgba(0,0,0,0.1)",
+          textAlign: "center",
+        });
+
+        const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+          .setLngLat(midpoint)
+          .addTo(map);
+
+        edgeLabelsRef.current[`${feature.id}_${i}`] = marker;
+      }
+    },
+    [mapRef]
+  );
+
+  // ---------------- MEASUREMENTS ----------------
   const updateMeasurements = useCallback(() => {
     if (!drawRef.current || !mapRef.current) return;
     try {
       const data = drawRef.current.getAll();
+      const map = mapRef.current;
 
-      // ✅ Clear labels upfront; rebuild if visible
-      clearLabels();
+      // Remove all old labels
+      Object.values(edgeLabelsRef.current).forEach((m) => m.remove());
+      edgeLabelsRef.current = {};
 
-      if (!data || !data.features || data.features.length === 0) {
+      if (!data?.features?.length) {
         setPlanAreaLocal(0);
         setRoofAreaLocal(0);
         setEdgesLocal([]);
@@ -75,274 +134,51 @@ export const useUndoRedo = ({
         return;
       }
 
-      const map = mapRef.current;
-      if (map && !map.__bearingListenerAdded) {
-        map.__bearingListenerAdded = true;
-        map.on("rotate", () => {
-          const bearing = map.getBearing();
-          setCurrentBearing(bearing);
-          onBearingChange?.(bearing);
-        });
-      }
-
       const allEdges: EdgeItem[] = [];
-      let totalAreaMeters = 0;
       const polygonPointsAcc: PolygonPoint[] = [];
       const polygonAreas: Record<string, number> = {};
+      let totalAreaMeters = 0;
 
-      data.features.forEach((feature: any, fIndex: number) => {
+      data.features.forEach((feature: any) => {
         if (!feature.geometry) return;
+
+        const coords =
+          feature.geometry.type === "Polygon"
+            ? feature.geometry.coordinates[0]
+            : feature.geometry.coordinates;
+
+        const uniqueCoords = coords.filter(
+          (coord, idx) =>
+            idx === 0 ||
+            coord[0] !== coords[idx - 1][0] ||
+            coord[1] !== coords[idx - 1][1]
+        );
+
+        // ---------------- EDGE LABELS ----------------
+        updateEdgeLabels(feature);
+
+        // ---------------- EDGES DATA ----------------
+        if (uniqueCoords.length >= 2) {
+          for (let i = 0; i < uniqueCoords.length - 1; i++) {
+            const from = uniqueCoords[i];
+            const to = uniqueCoords[i + 1];
+            const lengthFeet = turf.distance(turf.point(from), turf.point(to), {
+              units: "feet",
+            });
+
+            allEdges.push({
+              from: { lat: from[1], lon: from[0] },
+              to: { lat: to[1], lon: to[0] },
+              lengthFeet,
+            });
+          }
+        }
+
+        // ---------------- AREA ----------------
         if (feature.geometry.type === "Polygon") {
-          const coords: number[][] = feature.geometry.coordinates[0];
-          let areaSqMeters = 0;
-          // Check if it's a single line polygon (3 coords, first and last same, or has our flag)
-          let isSingleLine = feature.properties?.isSingleLine || false;
-          try {
-            if (!isSingleLine && coords.length === 3 && JSON.stringify(coords[0]) === JSON.stringify(coords[2])) {
-              isSingleLine = true;
-              areaSqMeters = 0; // No area for line
-            } else {
-              areaSqMeters = turf.area(feature);
-            }
-          } catch {
-            areaSqMeters = 0;
-          }
+          const areaSqMeters = turf.area(feature);
           totalAreaMeters += areaSqMeters;
-
-          const areaSqFt = areaSqMeters * 10.7639;
-
-          // ✅ For single-line, calculate length directly from unique coordinates
-          let lineLengthFeet = 0;
-          let perimeterFeet = 0;
-          
-          if (isSingleLine) {
-            // Get unique coordinates (excluding duplicates)
-            const uniqueCoords = coords.filter((coord, idx) => {
-              if (idx === 0) return true;
-              const prev = coords[idx - 1];
-              return !(coord[0] === prev[0] && coord[1] === prev[1]);
-            });
-            
-            // Calculate length from first to last unique point using lat/lng
-            if (uniqueCoords.length >= 2) {
-              const from = turf.point([uniqueCoords[0][0], uniqueCoords[0][1]]);
-              const to = turf.point([uniqueCoords[uniqueCoords.length - 1][0], uniqueCoords[uniqueCoords.length - 1][1]]);
-              // Calculate distance in feet from coordinates
-              lineLengthFeet = turf.distance(from, to, { units: "feet" });
-              
-              // Add polygon points
-              uniqueCoords.forEach((c, i) => {
-                polygonPointsAcc.push({ lat: c[1], lon: c[0], seq: i + 1 });
-              });
-            }
-          
-          
-          } else {
-            // Regular polygon - calculate perimeter and edge labels
-            coords.forEach((c, i) => {
-              if (i < coords.length - 1) {
-                const from = turf.point(c);
-                const to = turf.point(coords[i + 1]);
-                const lengthFeet = turf.distance(from, to, { units: "feet" });
-                perimeterFeet += lengthFeet;
-                if (labelsVisible) {
-                  // ✅ Calculate edge angle for label rotation
-                  const edgeAngle = Math.atan2(
-                    coords[i + 1][1] - coords[i][1],
-                    coords[i + 1][0] - coords[i][0]
-                  );
-
-                  // ✅ Get midpoint of edge (directly on the line)
-                  const midpoint = turf.midpoint(from, to).geometry.coordinates as [
-                    number,
-                    number
-                  ];
-
-                  // ✅ Calculate label position along the edge with dynamic offset for overlaps
-                  let labelPosition = midpoint;
-                  let offsetAlongEdge = 0; // Offset along the line (0 = midpoint)
-
-                  // ✅ Check for overlapping labels and adjust position along the edge
-                  const existingMarkers = labelsRef.current;
-                  const overlapThreshold = 0.0003; // ~30 meters in degrees
-
-                  for (const existingMarker of existingMarkers) {
-                    const existingLngLat = existingMarker.getLngLat();
-                    const distance = turf.distance(
-                      turf.point([midpoint[0], midpoint[1]]),
-                      turf.point([existingLngLat.lng, existingLngLat.lat]),
-                      { units: "kilometers" }
-                    );
-
-                    // If labels are too close, offset this label along the edge
-                    if (distance < overlapThreshold) {
-                      // Try offsetting along the edge in both directions
-                      const offsetDistance = 0.00005; // Small offset in degrees
-                      const offset1 = offsetAlongEdge + offsetDistance;
-                      const offset2 = offsetAlongEdge - offsetDistance;
-
-                      // Calculate positions along the edge
-                      const edgeLength = lengthFeet * 0.000001; // Approximate conversion
-                      const offset1Pos = [
-                        midpoint[0] + Math.cos(edgeAngle) * offset1,
-                        midpoint[1] + Math.sin(edgeAngle) * offset1,
-                      ] as [number, number];
-
-                      // Check if offset position is better (farther from other labels)
-                      const dist1 = turf.distance(
-                        turf.point(offset1Pos),
-                        turf.point([existingLngLat.lng, existingLngLat.lat]),
-                        { units: "kilometers" }
-                      );
-
-                      if (dist1 > distance) {
-                        labelPosition = offset1Pos;
-                        offsetAlongEdge = offset1;
-                      } else {
-                        // Try opposite direction
-                        const offset2Pos = [
-                          midpoint[0] + Math.cos(edgeAngle) * offset2,
-                          midpoint[1] + Math.sin(edgeAngle) * offset2,
-                        ] as [number, number];
-
-                        const dist2 = turf.distance(
-                          turf.point(offset2Pos),
-                          turf.point([existingLngLat.lng, existingLngLat.lat]),
-                          { units: "kilometers" }
-                        );
-
-                        if (dist2 > distance) {
-                          labelPosition = offset2Pos;
-                          offsetAlongEdge = offset2;
-                        }
-                      }
-                    }
-                  }
-
-                  // ✅ Create label element - keep horizontal (no rotation)
-                  const el = document.createElement("div");
-                  el.innerText = toFeetInches(lengthFeet);
-
-                  // ✅ Smaller font size for better readability
-                  // ✅ Labels stay horizontal regardless of edge angle
-                  Object.assign(el.style, {
-                    background: "rgba(255, 255, 255, 0.95)",
-                    color: "black",
-                    padding: "2px 4px",
-                    fontSize: "10px", // ✅ Reduced from 12px
-                    borderRadius: "4px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
-                    fontWeight: "600",
-                    whiteSpace: "nowrap",
-                    // ✅ No rotation - keep labels horizontal
-                    transform: "none",
-                    border: "1px solid rgba(0,0,0,0.1)",
-                    pointerEvents: "none", // Prevent label from intercepting clicks
-                  });
-
-                  const marker = new mapboxgl.Marker({
-                    element: el,
-                    anchor: "center",
-                    rotationAlignment: "map",
-                  })
-                    .setLngLat(labelPosition)
-                    .addTo(mapRef.current!);
-                  labelsRef.current.push(marker);
-                }
-              }
-              polygonPointsAcc.push({ lat: c[1], lon: c[0], seq: i + 1 });
-            });
-          }
-
-          if (feature.id) {
-            polygonAreas[feature.id] = isSingleLine ? lineLengthFeet : areaSqFt;
-          }
-
-          //  Center label - show area or length for single-line (only if labelsVisible)
-          if (labelsVisible) {
-            try {
-              let center: [number, number] | null = null;
-              if (isSingleLine) {
-                const uniqueCoords = coords.filter((coord, idx) => {
-                  if (idx === 0) return true;
-                  const prev = coords[idx - 1];
-                  return !(coord[0] === prev[0] && coord[1] === prev[1]);
-                });
-                if (uniqueCoords.length >= 2) {
-                  center = turf
-                    .midpoint(
-                      turf.point(uniqueCoords[0]),
-                      turf.point(uniqueCoords[uniqueCoords.length - 1])
-                    )
-                    .geometry.coordinates as [number, number];
-                } else if (coords.length) {
-                  center = coords[0] as [number, number];
-                }
-             
-             
-              } else {
-                center = turf.centerOfMass(feature).geometry
-                  .coordinates as [number, number];
-              }
-
-              if (!center) return;
-
-              // ✅ Get roof type label from feature properties (if assigned)
-              const roofTypeLabel = feature.properties?.label || null;
-
-              let labelText = "";
-              let measurementText = "";
-              if (isSingleLine) {
-                // For single-line, show length instead of area
-                measurementText = toFeetInches(lineLengthFeet);
-                labelText = measurementText;
-                if (roofTypeLabel) {
-                  labelText = `${roofTypeLabel}\n${measurementText}`;
-                }
-             
-             
-              } else {
-                // ✅ Calculate area for this polygon
-                measurementText = Math.round(areaSqFt) + " sqft";
-                labelText = measurementText;
-                if (roofTypeLabel) {
-                  // ✅ Format: "Ridge\n1200 sqft"
-                  labelText = `${roofTypeLabel}\n${measurementText}`;
-                }
-              }
-
-              const centerKey = `${center[0].toFixed(6)},${center[1].toFixed(
-                6
-              )}`;
-              const div = document.createElement("div");
-              if (roofTypeLabel) {
-                // ✅ Use HTML for better styling control
-                div.innerHTML = `<span style="font-size: 9px; font-weight: 600; color: #555; display: block; margin-bottom: 2px;">${roofTypeLabel}</span><span style="font-size: 11px;">${measurementText}</span>`;
-              } else {
-                div.innerText = labelText;
-              }
-              Object.assign(div.style, {
-                background: "rgba(255, 255, 255, 0.95)",
-                color: "black",
-                padding: "4px 6px",
-                fontSize: roofTypeLabel ? "10px" : "11px",
-                borderRadius: "6px",
-                boxShadow: "0 0 4px rgba(0,0,0,0.35)",
-                fontWeight: "700",
-                whiteSpace: "pre-line",
-                textAlign: "center",
-                border: "1px solid rgba(0,0,0,0.1)",
-                lineHeight: roofTypeLabel ? "1.2" : "1.4",
-              });
-              const marker = new mapboxgl.Marker({
-                element: div,
-                anchor: "center",
-              })
-                .setLngLat(center)
-                .addTo(mapRef.current!);
-              labelsRef.current.push(marker);
-            } catch (e) {}
-          }
+          polygonAreas[feature.id] = areaSqMeters * 10.7639;
         }
       });
 
@@ -364,196 +200,52 @@ export const useUndoRedo = ({
   }, [
     drawRef,
     mapRef,
-    labelsRef,
     setPlanAreaLocal,
     setRoofAreaLocal,
     setEdgesLocal,
     onMeasurementsChange,
-    onBearingChange,
-    setCurrentBearing,
-    clearLabels,
-    labelsVisible,
+    updateEdgeLabels,
   ]);
 
+  // ---------------- MAP EVENTS ----------------
+  useEffect(() => {
+    if (!drawRef.current || !mapRef.current) return;
+    const draw = drawRef.current;
+    const map = mapRef.current;
+
+    const onUpdate = () => updateMeasurements();
+
+    map.on("draw.create", onUpdate);
+    map.on("draw.update", onUpdate);
+    map.on("draw.delete", onUpdate);
+
+    return () => {
+      map.off("draw.create", onUpdate);
+      map.off("draw.update", onUpdate);
+      map.off("draw.delete", onUpdate);
+    };
+  }, [drawRef, mapRef, updateMeasurements]);
+
+  // ---------------- UNDO / REDO ----------------
   const undo = () => {
-    if (!drawRef.current) return;
-    const stack = undoStackRef.current;
-    if (!stack.length) return;
-    try {
-      const current = drawRef.current.getAll();
-      redoStackRef.current.push(JSON.parse(JSON.stringify(current)));
-    } catch {}
-    const last = stack.pop();
-    restoreSnapshot(last);
+    if (!drawRef.current || !undoStackRef.current.length) return;
+    const last = undoStackRef.current.pop();
+    clearLabels();
+    if (last?.features) last.features.forEach((f: any) => drawRef.current.add(f));
+    updateMeasurements();
   };
 
   const redo = () => {
-    if (!drawRef.current) return;
-    const rstack = redoStackRef.current;
-    if (!rstack.length) return;
-    try {
-      const current = drawRef.current.getAll();
-      undoStackRef.current.push(JSON.parse(JSON.stringify(current)));
-    } catch {}
-    const next = rstack.pop();
-    restoreSnapshot(next);
-  };
-
-  // ---------------- UNDO / REDO ----------------
-  const restoreSnapshot = (snapshot: any) => {
-    if (!drawRef.current || !mapRef.current) return;
-    try {
-      // Clear all current features
-      drawRef.current.deleteAll();
-
-      // Clear all labels
-      clearLabels();
-
-      // Clear all custom layers and sources from map
-      const map = mapRef.current;
-      const existingLayers = map.getStyle().layers || [];
-      existingLayers.forEach((layer: any) => {
-        if (
-          layer.id &&
-          (layer.id.includes("custom-line-layer-") ||
-            layer.id.includes("-edge-"))
-        ) {
-          try {
-            if (map.getLayer(layer.id)) map.removeLayer(layer.id);
-          } catch {}
-        }
-      });
-
-      const existingSources = Object.keys(map.getStyle().sources || {});
-      existingSources.forEach((srcId) => {
-        if (srcId.includes("custom-line-") || srcId.includes("-edge-")) {
-          try {
-            if (map.getSource(srcId)) map.removeSource(srcId);
-          } catch {}
-        }
-      });
-
-      if (!snapshot?.features) {
-        // If snapshot is empty, clear polygonEdgesMap and update measurements
-        if (setPolygonEdgesMap) {
-          setPolygonEdgesMap(() => ({}));
-        }
-        updateMeasurements();
-        return;
-      }
-
-      // ✅ Restore features from snapshot (preserve all properties including labels/colors)
-      snapshot.features.forEach((f: any) => {
-        // ✅ Ensure properties are preserved when restoring
-        const featureToAdd = {
-          ...f,
-          properties: {
-            ...f.properties, // Preserve all properties (color, label, etc.)
-          },
-        };
-        drawRef.current?.add(featureToAdd);
-      });
-
-      // Rebuild polygonEdgesMap and reapply colors for all polygons
-      if (setPolygonEdgesMap) {
-        const newPolygonEdgesMap: Record<string, any[]> = {};
-        snapshot.features.forEach((feature: any) => {
-          if (feature.geometry?.type === "Polygon" && feature.id) {
-            const featureId = feature.id;
-            const coords = feature.geometry.coordinates[0];
-            const edges: { id: string; coords: [number, number][] }[] = [];
-
-            for (let i = 0; i < coords.length - 1; i++) {
-              const id = `${featureId}-edge-${i}`;
-              edges.push({
-                id,
-                coords: [
-                  [coords[i][0], coords[i][1]] as [number, number],
-                  [coords[i + 1][0], coords[i + 1][1]] as [number, number],
-                ],
-              });
-            }
-
-            newPolygonEdgesMap[featureId] = edges;
-
-            // ✅ Reapply color layers if color exists and is not yellow
-            // ✅ If color is yellow or undefined, custom layers won't be added (keeping default yellow)
-            const color = feature.properties?.color || "yellow";
-            if (color && color !== "yellow") {
-              // ✅ Add custom color layers for non-yellow colors
-              for (let i = 0; i < coords.length - 1; i++) {
-                const edgeId = `custom-line-${featureId}-${i}`;
-                try {
-                  map.addSource(edgeId, {
-                    type: "geojson",
-                    data: {
-                      type: "Feature",
-                      properties: {},
-                      geometry: {
-                        type: "LineString",
-                        coordinates: [coords[i], coords[i + 1]],
-                      },
-                    },
-                  });
-                  map.addLayer({
-                    id: `custom-line-layer-${featureId}-${i}`,
-                    type: "line",
-                    source: edgeId,
-                    layout: { "line-cap": "round", "line-join": "round" },
-                    paint: { "line-color": color, "line-width": 3 },
-                  });
-                } catch {}
-              }
-            }
-            // ✅ If color is yellow or undefined, no custom layers are added
-            // ✅ This ensures yellow polygons show default yellow color without custom layers
-          }
-        });
-        setPolygonEdgesMap(() => newPolygonEdgesMap);
-      }
-
-      // ✅ Update measurements after restore - use requestAnimationFrame for smooth update
-      // This prevents label blinking and respects labelsVisible state
-      // ✅ Ensure labels and titles are properly restored (including center labels with roof type names)
-      requestAnimationFrame(() => {
-        updateMeasurements();
-        // ✅ Force a second update after a brief delay to ensure all labels are restored correctly
-        setTimeout(() => {
-          updateMeasurements();
-        }, 100);
-      });
-    } catch (err) {
-      console.warn("restoreSnapshot error", err);
-    }
+    if (!drawRef.current || !redoStackRef.current.length) return;
+    const next = redoStackRef.current.pop();
+    clearLabels();
+    if (next?.features) next.features.forEach((f: any) => drawRef.current.add(f));
+    updateMeasurements();
   };
 
   // ---------------- MAP ACTIONS ----------------
-  const startDrawing = () => {
-    drawRef.current?.changeMode("draw_polygon");
-    setShowGrid(true);
-    onGridToggle?.(true);
-  };
-
-  const startSingleDrawing = () => {
-    drawRef.current?.changeMode("draw_line_string");
-    setShowGrid(true);
-    onGridToggle?.(true);
-  };
-
-
-
-  const deleteAll = () => {
-    try {
-      const snap = drawRef.current?.getAll();
-      if (snap) undoStackRef.current.push(JSON.parse(JSON.stringify(snap)));
-      if (setPolygonEdgesMap) {
-        setPolygonEdgesMap(() => ({}));
-      }
-      drawRef.current?.deleteAll();
-      clearLabels();
-      updateMeasurements();
-    } catch {}
-  };
+  const startDrawing = () => drawRef.current?.changeMode("draw_polygon");
+  const startSingleDrawing = () => drawRef.current?.changeMode("draw_line_string");
 
   const setDrawMode = (mode: string) => {
     try {
@@ -563,13 +255,7 @@ export const useUndoRedo = ({
     }
   };
 
-  // const setDrawMode = (mode: string) => {
-  //   setDrawModeState(mode);
-  //   if (mode === "draw_polygon") {
-  //     drawRef.current?.changeMode("draw_polygon");
-  //   }
-  // };
-  // ---------------- MAP ROTATION + VIEW ----------------
+  // ---------------- MAP ROTATION ----------------
   const rotateLeft = () => {
     if (!mapRef.current) return;
     const bearing = mapRef.current.getBearing();
@@ -620,40 +306,12 @@ export const useUndoRedo = ({
     localStorage.setItem("selectedAddress", JSON.stringify({ lat, lng }));
   };
 
-  const searchAddress = (address: string) => {
-    if (!mapRef.current) return;
-    fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-        address
-      )}.json?access_token=${mapboxgl.accessToken}`
-    )
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.features?.length > 0) {
-          const coords = data.features[0].center as [number, number];
-          mapRef.current?.flyTo({ center: coords, zoom: 19 });
-        }
-      })
-      .catch((err) => console.warn("geocode error", err));
-  };
-
-  const getMapCanvasDataURL = () => {
-    try {
-      const canvas = mapRef.current?.getCanvas();
-      if (!canvas) return null;
-      return canvas.toDataURL("image/png");
-    } catch {
-      return null;
-    }
-  };
-
   return {
-    updateMeasurements: updateMeasurements,
+    updateMeasurements,
     undo,
     redo,
     startDrawing,
     startSingleDrawing,
-    deleteAll,
     setDrawMode,
     rotateLeft,
     rotateRight,

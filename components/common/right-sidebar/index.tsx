@@ -45,9 +45,9 @@ export default function RightSidebar({
   };
 
   // ✅ Line draw start
-  const handleSingleDrawLine = () => {
-    onStartSingleDrawing?.();
-  };
+    const handleSingleDrawLine = () => {
+      onStartSingleDrawing?.();
+    };
 
   const handleStreetView = () => onToggleStreetView?.();
 

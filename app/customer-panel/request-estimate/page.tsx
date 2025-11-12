@@ -21,6 +21,7 @@ export default function CreateProjectForm() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [mapLoading, setMapLoading] = useState(false);
 
   const formik = useFormik({
     initialValues: {
@@ -78,6 +79,8 @@ export default function CreateProjectForm() {
   });
 
   const goToMap = async () => {
+    setMapLoading(true);
+
     await formik.validateForm();
     formik.setTouched({
       firstName: true,
@@ -89,29 +92,38 @@ export default function CreateProjectForm() {
       propertyType: true,
     });
 
-    if (!formik.isValid) return;
+    if (!formik.isValid) {
+      setMapLoading(false);
+      return;
+    }
 
     try {
       const geoRes = await geocodingClient
         .forwardGeocode({ query: formik.values.address, limit: 1 })
         .send();
+
       const feature = geoRes.body.features[0];
-      if (!feature) return alert("Please enter a valid address");
+      if (!feature) {
+        setMapLoading(false);
+        return alert("Please enter a valid address");
+      }
 
-      const [lng, lat] = feature.center ?? [null, null];
-      if (lat === null || lng === null)
-        return alert("Invalid coordinates from Mapbox");
+      const [lng, lat] = feature.center;
 
-      // Save to localStorage
       localStorage.setItem(
         "projectLocation",
-        JSON.stringify({ address: formik.values.address, lat, lng })
+        JSON.stringify({
+          address: formik.values.address,
+          lat,
+          lng,
+        })
       );
 
       router.push("/property-map");
     } catch (err) {
       console.error(err);
       alert("Error fetching coordinates");
+      setMapLoading(false);
     }
   };
 
@@ -420,10 +432,15 @@ export default function CreateProjectForm() {
                   <button
                     type="button"
                     onClick={goToMap}
-                    className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-md font-semibold shadow hover:opacity-90"
+                    disabled={mapLoading}
+                    className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-md font-semibold shadow hover:opacity-90 disabled:opacity-50 flex items-center justify-center"
                   >
-                    <MapPin className="inline mr-2 w-5 h-5" />
-                    Go to Map Screen
+                    {mapLoading ? (
+                      <Loader2 className="animate-spin w-5 h-5 mr-2" />
+                    ) : (
+                      <MapPin className="inline mr-2 w-5 h-5" />
+                    )}
+                    {mapLoading ? "Processing..." : "Go to Map Screen"}
                   </button>
 
                   {/* <button
