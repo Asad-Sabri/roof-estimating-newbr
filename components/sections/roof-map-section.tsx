@@ -1,168 +1,168 @@
-"use client";
-import React, {
-  useRef,
-  useState,
-  forwardRef,
-  useImperativeHandle,
-  useEffect,
-} from "react";
-import jsPDF from "jspdf";
-// Assuming these types/components are defined elsewhere in your project
-import MapContainer, {
-  MapSectionHandle,
-} from "../sections/components/MapContainer";
+// "use client";
+// import React, {
+//   useRef,
+//   useState,
+//   forwardRef,
+//   useImperativeHandle,
+//   useEffect,
+// } from "react";
+// import jsPDF from "jspdf";
+// // Assuming these types/components are defined elsewhere in your project
+// import MapContainer, {
+//   MapSectionHandle,
+// } from "../sections/components/MapContainer";
 
-// --- Type Definitions (Ensure these match your actual imports) ---
-interface RoofMapSectionProps {
-  setPlanArea: (area: number) => void;
-  setRoofArea: (area: number) => void;
-  onMapLoad?: (mapInstance: mapboxgl.Map) => void;
-  setEdges: (
-    edges: { id: string; length: number; type: string; polygonId: string }[]
-  ) => void;
-  setPolygonPoints: (
-    points: { lat: number; lon: number; seq: number }[]
-  ) => void;
-  selectedLabel?: { name: string; color: string } | null;
-}
+// // --- Type Definitions (Ensure these match your actual imports) ---
+// interface RoofMapSectionProps {
+//   setPlanArea: (area: number) => void;
+//   setRoofArea: (area: number) => void;
+//   onMapLoad?: (mapInstance: mapboxgl.Map) => void;
+//   setEdges: (
+//     edges: { id: string; length: number; type: string; polygonId: string }[]
+//   ) => void;
+//   setPolygonPoints: (
+//     points: { lat: number; lon: number; seq: number }[]
+//   ) => void;
+//   selectedLabel?: { name: string; color: string } | null;
+// }
 
-// --- Component ---
-const RoofMapSection = forwardRef<MapSectionHandle, RoofMapSectionProps>(
-  (
-    { setPlanArea, setRoofArea, setEdges, setPolygonPoints, selectedLabel },
-    ref
-  ) => {
-    // ⚠️ CRITICAL: Use the component's state variables for PDF generation
-    const mapRef = useRef<MapSectionHandle | null>(null);
-    const [edgesState, setEdgesState] = useState<
-      { id: string; length: number; type: string; polygonId: string }[]
-    >([]);
-    const [planAreaState, setPlanAreaState] = useState<number>(0);
-    const [roofAreaState, setRoofAreaState] = useState<number>(0);
-    const [showGrid, setShowGrid] = useState(false);
+// // --- Component ---
+// const RoofMapSection = forwardRef<MapSectionHandle, RoofMapSectionProps>(
+//   (
+//     { setPlanArea, setRoofArea, setEdges, setPolygonPoints, selectedLabel },
+//     ref
+//   ) => {
+//     // ⚠️ CRITICAL: Use the component's state variables for PDF generation
+//     const mapRef = useRef<MapSectionHandle | null>(null);
+//     const [edgesState, setEdgesState] = useState<
+//       { id: string; length: number; type: string; polygonId: string }[]
+//     >([]);
+//     const [planAreaState, setPlanAreaState] = useState<number>(0);
+//     const [roofAreaState, setRoofAreaState] = useState<number>(0);
+//     const [showGrid, setShowGrid] = useState(false);
 
-    // --- Component Logic ---
+//     // --- Component Logic ---
     
-    // Handle measurements from MapContainer
-    const handleMeasurementsChange = (payload: {
-      edges: any[];
-      planArea: number;
-      roofArea: number;
-      polygonPoints: any[];
-    }) => {
-      setEdgesState(payload.edges || []);
-      setPlanAreaState(payload.planArea || 0);
-      setRoofAreaState(payload.roofArea || 0);
-      setPlanArea(payload.planArea);
-      setRoofArea(payload.roofArea);
-      setEdges(payload.edges);
-      setPolygonPoints(payload.polygonPoints);
-    };
+//     // Handle measurements from MapContainer
+//     const handleMeasurementsChange = (payload: {
+//       edges: any[];
+//       planArea: number;
+//       roofArea: number;
+//       polygonPoints: any[];
+//     }) => {
+//       setEdgesState(payload.edges || []);
+//       setPlanAreaState(payload.planArea || 0);
+//       setRoofAreaState(payload.roofArea || 0);
+//       setPlanArea(payload.planArea);
+//       setRoofArea(payload.roofArea);
+//       setEdges(payload.edges);
+//       setPolygonPoints(payload.polygonPoints);
+//     };
 
-    // Edge click + label assignment (polygon-aware) - (Kept your provided logic)
-// --- EDGE CLICK + LABEL ASSIGNMENT ---
-useEffect(() => {
-  const map = mapRef.current?.getMap?.();
-  if (!map) return;
+//     // Edge click + label assignment (polygon-aware) - (Kept your provided logic)
+// // --- EDGE CLICK + LABEL ASSIGNMENT ---
+// useEffect(() => {
+//   const map = mapRef.current?.getMap?.();
+//   if (!map) return;
 
-  const handleEdgeClick = (e: mapboxgl.MapMouseEvent & unknown) => {
-    try {
-      const layerNames = [
-        "gl-draw-line-inactive",
-        "gl-draw-line-active",
-        "gl-draw-polygon-stroke-inactive",
-        "gl-draw-polygon-stroke-active",
-      ];
+//   const handleEdgeClick = (e: mapboxgl.MapMouseEvent & unknown) => {
+//     try {
+//       const layerNames = [
+//         "gl-draw-line-inactive",
+//         "gl-draw-line-active",
+//         "gl-draw-polygon-stroke-inactive",
+//         "gl-draw-polygon-stroke-active",
+//       ];
 
-      // Filter layers that exist
-      const availableLayers = layerNames.filter((layer) => {
-        try { return !!map.getLayer(layer); } catch { return false; }
-      });
-      if (!availableLayers.length) return;
+//       // Filter layers that exist
+//       const availableLayers = layerNames.filter((layer) => {
+//         try { return !!map.getLayer(layer); } catch { return false; }
+//       });
+//       if (!availableLayers.length) return;
 
-      const features = map.queryRenderedFeatures(e.point, { layers: availableLayers });
-      if (!features.length) return;
+//       const features = map.queryRenderedFeatures(e.point, { layers: availableLayers });
+//       if (!features.length) return;
 
-      const edgeFeature = features[0];
-      const edgeId = edgeFeature.properties?.id || edgeFeature.id;
-      const polygonId = edgeFeature.properties?.["draw:feature-id"] || edgeFeature.id;
+//       const edgeFeature = features[0];
+//       const edgeId = edgeFeature.properties?.id || edgeFeature.id;
+//       const polygonId = edgeFeature.properties?.["draw:feature-id"] || edgeFeature.id;
 
-      if (!edgeId || !selectedLabel) return;
+//       if (!edgeId || !selectedLabel) return;
 
-      // ✅ Update only clicked edge in state
-      const updatedEdges = edgesState.map((edgeItem) =>
-        edgeItem.id === edgeId && edgeItem.polygonId === polygonId
-          ? { ...edgeItem, type: selectedLabel.name }
-          : edgeItem
-      );
-      setEdgesState(updatedEdges);
-      setEdges(updatedEdges);
+//       // ✅ Update only clicked edge in state
+//       const updatedEdges = edgesState.map((edgeItem) =>
+//         edgeItem.id === edgeId && edgeItem.polygonId === polygonId
+//           ? { ...edgeItem, type: selectedLabel.name }
+//           : edgeItem
+//       );
+//       setEdgesState(updatedEdges);
+//       setEdges(updatedEdges);
 
-      // ✅ Update color only for this edge
-      layerNames.forEach((layer) => {
-        try {
-          if (map.getLayer(layer)) {
-            map.setPaintProperty(layer, "line-color", [
-              "case",
-              ["all", ["==", ["get", "id"], edgeId], ["==", ["get", "polygonId"], polygonId]],
-              selectedLabel.color,
-              '#FFD500' // default
-            ]);
-          }
-        } catch (err) {
-          console.warn(`[EDGE CLICK] Failed to update color on layer ${layer}:`, err);
-        }
-      });
-    } catch (err) {
-      console.error("[EDGE CLICK] Unexpected error:", err);
-    }
-  };
+//       // ✅ Update color only for this edge
+//       layerNames.forEach((layer) => {
+//         try {
+//           if (map.getLayer(layer)) {
+//             map.setPaintProperty(layer, "line-color", [
+//               "case",
+//               ["all", ["==", ["get", "id"], edgeId], ["==", ["get", "polygonId"], polygonId]],
+//               selectedLabel.color,
+//               '#FFD500' // default
+//             ]);
+//           }
+//         } catch (err) {
+//           console.warn(`[EDGE CLICK] Failed to update color on layer ${layer}:`, err);
+//         }
+//       });
+//     } catch (err) {
+//       console.error("[EDGE CLICK] Unexpected error:", err);
+//     }
+//   };
 
-  map.on("click", handleEdgeClick);
-  return () => map.off("click", handleEdgeClick);
-}, [selectedLabel, edgesState, setEdges]);
+//   map.on("click", handleEdgeClick);
+//   return () => map.off("click", handleEdgeClick);
+// }, [selectedLabel, edgesState, setEdges]);
 
 
-    // --- Static Data and Helpers for PDF ---
-    const STATIC_LENGTH_DATA = [
-      { type: "Eaves", display: "ft in", color: "#6AA84F" },
-      { type: "Valleys", display: "ft in", color: "#D03F3B" },
-      { type: "Hips", display: "ft in", color: "#8E7CC3" },
-      { type: "Ridges", display: "ft in", color: "#B6D7A8" },
-      { type: "Rakes", display: "ft in", color: "#FFD966" },
-      { type: "Wall Flashing", display: "ft in", color: "#4A86E8" },
-      { type: "Step Flashing", display: "ft in", color: "#990000" },
-      { type: "Parapet Wall", display: "ft in", color: "#E69138" },
-      { type: "Transitions", display: "ft in", color: "#FF99FF" },
-      { type: "Unspecified", display: "ft in", color: "#4AC6FF" },
-    ];
+//     // --- Static Data and Helpers for PDF ---
+//     const STATIC_LENGTH_DATA = [
+//       { type: "Eaves", display: "ft in", color: "#6AA84F" },
+//       { type: "Valleys", display: "ft in", color: "#D03F3B" },
+//       { type: "Hips", display: "ft in", color: "#8E7CC3" },
+//       { type: "Ridges", display: "ft in", color: "#B6D7A8" },
+//       { type: "Rakes", display: "ft in", color: "#FFD966" },
+//       { type: "Wall Flashing", display: "ft in", color: "#4A86E8" },
+//       { type: "Step Flashing", display: "ft in", color: "#990000" },
+//       { type: "Parapet Wall", display: "ft in", color: "#E69138" },
+//       { type: "Transitions", display: "ft in", color: "#FF99FF" },
+//       { type: "Unspecified", display: "ft in", color: "#4AC6FF" },
+//     ];
 
-    const EDGE_TYPE_COLORS: Record<string, string> = {
-      Eaves: "#6AA84F",
-      Valleys: "#D03F3B",
-      Hips: "#8E7CC3",
-      Ridges: "#B6D7A8",
-      Rakes: "#FFD966",
-      "Wall Flashing": "#4A86E8",
-      "Step Flashing": "#990000",
-      Transitions: "#FF99FF",
-      "Parapet Wall": "#E69138",
-      Unspecified: "#4AC6FF",
-    };
+//     const EDGE_TYPE_COLORS: Record<string, string> = {
+//       Eaves: "#6AA84F",
+//       Valleys: "#D03F3B",
+//       Hips: "#8E7CC3",
+//       Ridges: "#B6D7A8",
+//       Rakes: "#FFD966",
+//       "Wall Flashing": "#4A86E8",
+//       "Step Flashing": "#990000",
+//       Transitions: "#FF99FF",
+//       "Parapet Wall": "#E69138",
+//       Unspecified: "#4AC6FF",
+//     };
 
-    const dummyRoofArea = 2500.5;
-    const dummyPlanArea = 2200.75;
-    const dummyEdges = [
-      { type: "Eaves", length: 50.1, polygonId: "p1" },
-    ];
+//     const dummyRoofArea = 2500.5;
+//     const dummyPlanArea = 2200.75;
+//     const dummyEdges = [
+//       { type: "Eaves", length: 50.1, polygonId: "p1" },
+//     ];
 
-    // Helper function to convert feet to feet'inches" format
-    const toFeetInchesFormat = (feet: number): string => {
-      if (!isFinite(feet) || feet < 0) return `0'0"`;
-      const feetInt = Math.floor(feet);
-      const inches = Math.round((feet - feetInt) * 12);
-      return `${feetInt}'${inches}"`;
-    };
+//     // Helper function to convert feet to feet'inches" format
+//     const toFeetInchesFormat = (feet: number): string => {
+//       if (!isFinite(feet) || feet < 0) return `0'0"`;
+//       const feetInt = Math.floor(feet);
+//       const inches = Math.round((feet - feetInt) * 12);
+//       return `${feetInt}'${inches}"`;
+//     };
 
     // --- downloadPDF Function ---
     const downloadPDF = async () => {
@@ -569,53 +569,53 @@ useEffect(() => {
       }
     };
 
-    // --- Expose methods to parent ---
-    useImperativeHandle(ref, () => ({
-      startDrawing: () => mapRef.current?.startDrawing(),
-      startSingleDrawing: () => mapRef.current?.startSingleDrawing(),
-      handleLabelSelect: (label: { name: string; color: string }) =>
-        mapRef.current?.handleLabelSelect?.(label),
-      deleteAll: () => mapRef.current?.deleteAll(),
-      setDrawMode: (mode: string) => mapRef.current?.setDrawMode(mode),
-      undo: () => mapRef.current?.undo(),
-      redo: () => mapRef.current?.redo(),
-      toggleLabels: () => mapRef.current?.toggleLabels(),
-      confirmLocation: (coords: [number, number]) =>
-        mapRef.current?.confirmLocation(coords),
-      searchAddress: (address: string) =>
-        mapRef.current?.searchAddress(address),
-      getMapCanvasDataURL: () => mapRef.current?.getMapCanvasDataURL(),
-      rotateLeft: () => mapRef.current?.rotateLeft(),
-      rotateRight: () => mapRef.current?.rotateRight(),
-      toggleStreetView: () => mapRef.current?.toggleStreetView(),
-      deleteSelected: () => mapRef.current?.deleteSelected(),
-      downloadPDF, // This is the function exposed for PDF generation
-    }));
+//     // --- Expose methods to parent ---
+//     useImperativeHandle(ref, () => ({
+//       startDrawing: () => mapRef.current?.startDrawing(),
+//       startSingleDrawing: () => mapRef.current?.startSingleDrawing(),
+//       handleLabelSelect: (label: { name: string; color: string }) =>
+//         mapRef.current?.handleLabelSelect?.(label),
+//       deleteAll: () => mapRef.current?.deleteAll(),
+//       setDrawMode: (mode: string) => mapRef.current?.setDrawMode(mode),
+//       undo: () => mapRef.current?.undo(),
+//       redo: () => mapRef.current?.redo(),
+//       toggleLabels: () => mapRef.current?.toggleLabels(),
+//       confirmLocation: (coords: [number, number]) =>
+//         mapRef.current?.confirmLocation(coords),
+//       searchAddress: (address: string) =>
+//         mapRef.current?.searchAddress(address),
+//       getMapCanvasDataURL: () => mapRef.current?.getMapCanvasDataURL(),
+//       rotateLeft: () => mapRef.current?.rotateLeft(),
+//       rotateRight: () => mapRef.current?.rotateRight(),
+//       toggleStreetView: () => mapRef.current?.toggleStreetView(),
+//       deleteSelected: () => mapRef.current?.deleteSelected(),
+//       downloadPDF, // This is the function exposed for PDF generation
+//     }));
 
-    // --- Render ---
-    return (
-      <div className="relative w-full h-full">
-        <MapContainer
-          ref={mapRef}
-          onMeasurementsChange={handleMeasurementsChange}
-          onGridToggle={(visible) => setShowGrid(visible)}
-          selectedLabel={selectedLabel || undefined}
-        />
-        {showGrid && (
-          <div
-            className="absolute inset-0 z-40 pointer-events-none"
-            style={{
-              backgroundImage:
-                "linear-gradient(to right, rgba(255,255,255,0.29) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.22) 1px, transparent 1px)",
-              backgroundSize: "100px 100px",
-              backdropFilter: "brightness(0.9)",
-            }}
-          />
-        )}
-      </div>
-    );
-  }
-);
+//     // --- Render ---
+//     return (
+//       <div className="relative w-full h-full">
+//         <MapContainer
+//           ref={mapRef}
+//           onMeasurementsChange={handleMeasurementsChange}
+//           onGridToggle={(visible) => setShowGrid(visible)}
+//           selectedLabel={selectedLabel || undefined}
+//         />
+//         {showGrid && (
+//           <div
+//             className="absolute inset-0 z-40 pointer-events-none"
+//             style={{
+//               backgroundImage:
+//                 "linear-gradient(to right, rgba(255,255,255,0.29) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.22) 1px, transparent 1px)",
+//               backgroundSize: "100px 100px",
+//               backdropFilter: "brightness(0.9)",
+//             }}
+//           />
+//         )}
+//       </div>
+//     );
+//   }
+// );
 
-RoofMapSection.displayName = "RoofMapSection";
-export default RoofMapSection;
+// RoofMapSection.displayName = "RoofMapSection";
+// export default RoofMapSection;
