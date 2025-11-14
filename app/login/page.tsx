@@ -140,7 +140,7 @@ export default function LoginPage() {
             )}
           </Formik>
 
-          <p className="text-center font-medium text-xs sm:text-sm mt-4 text-black">
+          {/* <p className="text-center font-medium text-xs sm:text-sm mt-4 text-black">
             Not a member?{" "}
             <Link
               href="/signup"
@@ -148,7 +148,7 @@ export default function LoginPage() {
             >
               Sign Up Now
             </Link>
-          </p>
+          </p> */}
         </div>
       </div>
     </div>

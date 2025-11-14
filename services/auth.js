@@ -38,3 +38,22 @@ export const getUserProjectsAPI = () =>
 
 export const deleteUserProjectsAPI = (id) =>
   handleAPIRequest(axiosInstance.delete, `/api/roof-estimate-projects/${id}`);
+
+
+
+export const deleteProject = async (id) => {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(
+    `http://88.99.241.139:5000/api/roof-estimate-projects/${id}`,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return response.json();
+};

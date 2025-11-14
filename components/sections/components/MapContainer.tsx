@@ -1284,7 +1284,7 @@ mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 //               polygonToDelete = polygons[0].id as string;
 //             }
 //           } catch {}
-//         }
+//         }    
 
 //         if (!polygonToDelete) {
 //           deleteAll();

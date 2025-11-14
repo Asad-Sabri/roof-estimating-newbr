@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { getUserProjectsAPI } from "@/services/auth";
 import CustomerDashboardLayout from "@/app/dashboard/customer/page";
-import { Search, Eye } from "lucide-react";
-import router from "next/router";
+import { Search, Eye, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
 interface Project {
   _id: string;
@@ -21,6 +22,8 @@ interface Project {
     state?: string;
     country?: string;
     zip_code?: string;
+    lat?: number;
+    lng?: number;
   };
   createdAt: string;
 }
@@ -32,6 +35,10 @@ export default function ProjectDetailsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roofFilter, setRoofFilter] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("");
+  const router = useRouter();
+  // PAGINATION STATES
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -50,7 +57,64 @@ export default function ProjectDetailsPage() {
 
     fetchProjects();
   }, []);
+  const fetchProjects = async () => {
+    setLoading(true);
+    try {
+      const response = await getUserProjectsAPI();
+      const dataArray = Array.isArray(response.data) ? response.data : [];
+      setProjects(dataArray);
+      setFilteredProjects(dataArray);
+    } catch (err) {
+      console.error("Failed to fetch projects:", err);
+      toast.error("Failed to load projects. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this project?")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        `http://88.99.241.139:5000/api/roof-estimate-projects/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success === true) {
+        toast.success(data.message || "Project deleted successfully!");
+
+        // ✅ Runtime state update without full fetch
+        const updatedProjects = projects.filter((p) => p._id !== id);
+        setProjects(updatedProjects);
+
+        const updatedFiltered = filteredProjects.filter((p) => p._id !== id);
+        setFilteredProjects(updatedFiltered);
+
+        // ✅ Pagination adjust
+        const newTotalPages = Math.ceil(updatedFiltered.length / itemsPerPage);
+        if (currentPage > newTotalPages)
+          setCurrentPage(newTotalPages > 0 ? newTotalPages : 1);
+      } else {
+        toast.error(data.message || "Delete failed");
+      }
+    } catch (error) {
+      console.error("Delete Error:", error);
+      toast.error("Something went wrong");
+    }
+  };
+
+  // Filtering useEffect
   useEffect(() => {
     let filtered = projects;
 
@@ -64,16 +128,19 @@ export default function ProjectDetailsPage() {
       );
     }
 
-    if (roofFilter) {
+    if (roofFilter)
       filtered = filtered.filter((p) => p.roof_type === roofFilter);
-    }
-
-    if (propertyFilter) {
+    if (propertyFilter)
       filtered = filtered.filter((p) => p.property_type === propertyFilter);
-    }
 
     setFilteredProjects(filtered);
+    setCurrentPage(1);
   }, [searchTerm, roofFilter, propertyFilter, projects]);
+
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const paginatedData = filteredProjects.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
 
   if (loading) {
     return (
@@ -84,21 +151,6 @@ export default function ProjectDetailsPage() {
       </CustomerDashboardLayout>
     );
   }
-
-  if (!projects.length) {
-    return (
-      <CustomerDashboardLayout>
-        <div className="min-h-screen flex justify-center items-center">
-          <p className="text-gray-500 text-lg">No projects found.</p>
-        </div>
-      </CustomerDashboardLayout>
-    );
-  }
-
-  const roofTypes = Array.from(new Set(projects.map((p) => p.roof_type)));
-  const propertyTypes = Array.from(
-    new Set(projects.map((p) => p.property_type))
-  );
 
   return (
     <CustomerDashboardLayout>
@@ -114,114 +166,83 @@ export default function ProjectDetailsPage() {
               placeholder="Search by name, email or phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 placeholder-gray-400"
+              className="w-full border border-gray-300 rounded-lg py-2 px-3"
             />
           </div>
-
-          <select
-            value={roofFilter}
-            onChange={(e) => setRoofFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400"
-          >
-            <option value="">All Roof Types</option>
-            {roofTypes.map((type) => (
-              <option key={type} value={type}>
-                {type.charAt(0).toUpperCase() + type.slice(1)}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={propertyFilter}
-            onChange={(e) => setPropertyFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400"
-          >
-            <option value="">All Property Types</option>
-            {propertyTypes.map((type) => (
-              <option key={type} value={type}>
-                {type.charAt(0).toUpperCase() + type.slice(1)}
-              </option>
-            ))}
-          </select>
         </div>
 
         {/* Table */}
         <div className="bg-white shadow-md rounded-xl border border-gray-300 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-800">My Projects</h2>
-            <p className="text-sm text-gray-500">
-              {filteredProjects.length} total project(s)
-            </p>
           </div>
 
-          <div className="table-responsive overflow-x-auto overflow-y-auto max-h-[500px]">
-            <table className="min-w-full table-auto text-sm md:text-base border-collapse">
-              <thead className="bg-gray-100 border-b border-gray-300 sticky top-0 z-10">
+          {/* Scroll ONLY inside table */}
+          <div className="overflow-x-auto max-h-[450px] overflow-y-auto">
+            <table className="min-w-full table-auto text-sm border-collapse">
+              <thead className="bg-gray-100 border-b sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">
-                    Phone
-                  </th>
-                  <th className="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">
-                    Roof Type
-                  </th>
-                  <th className="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">
-                    Property Type
-                  </th>
-                  <th className="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">
-                    Address
-                  </th>
-                  <th className="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">
-                    Created
-                  </th>
-                  <th className="px-6 py-3 text-center font-semibold text-gray-700 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left">ID</th>
+                  <th className="px-6 py-3 text-left">Name</th>
+                  <th className="px-6 py-3 text-left">Email</th>
+                  <th className="px-6 py-3 text-left">Phone</th>
+                  <th className="px-6 py-3 text-left">Roof</th>
+                  <th className="px-6 py-3 text-left">Property</th>
+                  <th className="px-6 py-3 text-left">Address</th>
+                  <th className="px-6 py-3 text-left">Created</th>
+                  <th className="px-6 py-3 text-center">Actions</th>
                 </tr>
               </thead>
 
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredProjects.length > 0 ? (
-                  filteredProjects.map((p) => (
+              <tbody>
+                {paginatedData.length > 0 ? (
+                  paginatedData.map((p, index) => (
                     <tr
                       key={p._id}
-                      className="hover:bg-gray-50 transition-all duration-200"
+                      className="hover:bg-gray-50 border-b transition"
                     >
-                      <td className="px-6 py-4 text-gray-800 font-medium whitespace-nowrap">
+                      <td className="px-6 py-4 font-semibold text-gray-800">
+                        {(currentPage - 1) * itemsPerPage + index + 1}
+                      </td>
+                      <td className="px-6 py-4">
                         {p.first_name} {p.middle_name || ""} {p.last_name}
                       </td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
-                        {p.email}
-                      </td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
-                        {p.mobile_number}
-                      </td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
-                        {p.roof_type}
-                      </td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
-                        {p.property_type}
-                      </td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
-                        {p.address?.street || "-"}
-                      </td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
+                      <td className="px-6 py-4">{p.email}</td>
+                      <td className="px-6 py-4">{p.mobile_number}</td>
+                      <td className="px-6 py-4">{p.roof_type}</td>
+                      <td className="px-6 py-4">{p.property_type}</td>
+
+                      <td className="px-6 py-4">{p.address?.street || "-"}</td>
+
+                      <td className="px-6 py-4">
                         {new Date(p.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 text-center whitespace-nowrap flex justify-center">
+
+                      <td className="px-6 py-4 text-center whitespace-nowrap flex justify-center gap-4">
+                        {/* VIEW BUTTON */}
+<button
+  onClick={() => {
+    const addr = {
+      lat: p.address?.lat || 31.5204, // fallback Lahore
+      lng: p.address?.lng || 74.3587,
+    };
+    localStorage.setItem("projectAddress", JSON.stringify(addr));
+    router.push("/property-map"); // map screen pe redirect
+  }}
+  className="p-2 rounded-full hover:bg-blue-100 transition"
+  title="View on Map"
+>
+  <Eye className="w-5 h-5 text-blue-500" />
+</button>
+
+
+                        {/* DELETE BUTTON */}
                         <button
-                          onClick={() =>
-                            router.push(`/customer-panel/map-view/${p._id}`)
-                          }
-                          className="p-2 rounded-full hover:bg-blue-100 transition"
-                          title="View on Map"
+                          onClick={() => handleDelete(p._id)}
+                          className="p-2 rounded-full hover:bg-red-100 transition"
+                          title="Delete Project"
                         >
-                          <Eye className="w-5 h-5 text-blue-500 hover:text-blue-700" />
+                          <Trash2 className="w-5 h-5 text-red-500" />
                         </button>
                       </td>
                     </tr>
@@ -240,8 +261,27 @@ export default function ProjectDetailsPage() {
             </table>
           </div>
 
-          <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 text-right text-sm text-gray-500">
-            Showing {filteredProjects.length} project(s)
+          {/* PAGINATION */}
+          <div className="px-6 py-4 flex justify-center gap-3 bg-gray-50 border-t">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => p - 1)}
+              className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+            >
+              Prev
+            </button>
+
+            <span className="px-4 py-2">
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+            >
+              Next
+            </button>
           </div>
         </div>
       </main>
