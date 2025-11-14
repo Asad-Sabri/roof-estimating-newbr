@@ -16,7 +16,7 @@
 // import LeftSidebar from "@/components/layout/LeftSidebar";
 // import { toFeetInches, normalizeBearing } from "./mapHelper";
 
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+// mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
 // export interface MapSectionHandle {
 //   startDrawing: () => void;
