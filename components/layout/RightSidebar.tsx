@@ -2,10 +2,12 @@
 
 import React, { useState } from "react";
 import { Ruler, Landmark, Shuffle, Triangle, Square, Zap, Circle } from "lucide-react";
-import { useMapContext } from "../hooks/mapContext";
+// Assuming this path for the context hook
+import { useMapContext } from "../hooks/mapContext"; 
 
 export default function RightSidebar() {
-  const { selectedFeature, applyColorToSelectedFeature } = useMapContext();
+  // useMapContext se zaroori functions aur state nikalna
+  const { selectedFeature, applyColorToSelectedFeature } = useMapContext(); 
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
 
   const labels = [
@@ -19,9 +21,11 @@ export default function RightSidebar() {
   ];
 
   const handleClick = (label: { name: string; color: string }) => {
-    if (!selectedFeature) return;
+    // Check karta hai agar koi feature selected hai
+    if (!selectedFeature) return; 
     setActiveLabel(label.name);
-    applyColorToSelectedFeature(label.color);
+    // Is call se stroke color update hota hai
+    applyColorToSelectedFeature(label.color); 
   };
 
   return (
