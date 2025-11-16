@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Pencil,
-  Minus,
-  Trash2,
-  RotateCcw,
-  RotateCw,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { Pencil, Minus, Trash2, RotateCcw, RotateCw, Eye, EyeOff } from "lucide-react";
 import React, { useState } from "react";
 import { useMapContext } from "../hooks/mapContext";
 
@@ -23,8 +15,6 @@ export default function LeftSidebar() {
     rotateRight,
     toggleLabels,
     labelsVisible,
-    applyColorToSelectedFeature,
-    selectedFeature,
   } = useMapContext();
 
   const [activeButton, setActiveButton] = useState<string | null>(null);
@@ -37,37 +27,15 @@ export default function LeftSidebar() {
   const buttons = [
     { name: "Draw", icon: <Pencil className="w-5 h-5" />, action: drawPolygon },
     { name: "Line", icon: <Minus className="w-5 h-5" />, action: drawLine },
-    {
-      name: "Delete",
-      icon: <Trash2 className="w-5 h-5" />,
-      action: deleteFeature,
-    },
+    { name: "Delete", icon: <Trash2 className="w-5 h-5" />, action: deleteFeature },
     { name: "Undo", icon: <RotateCcw className="w-5 h-5" />, action: undo },
     { name: "Redo", icon: <RotateCw className="w-5 h-5" />, action: redo },
-    {
-      name: "Rotate L",
-      icon: <RotateCcw className="w-5 h-5" />,
-      action: rotateLeft,
-    },
-    {
-      name: "Rotate R",
-      icon: <RotateCw className="w-5 h-5" />,
-      action: rotateRight,
-    },
+    { name: "Rotate L", icon: <RotateCcw className="w-5 h-5" />, action: rotateLeft },
+    { name: "Rotate R", icon: <RotateCw className="w-5 h-5" />, action: rotateRight },
     {
       name: labelsVisible ? "Hide Labels" : "Show Labels",
-      icon: labelsVisible ? (
-        <EyeOff className="w-5 h-5" />
-      ) : (
-        <Eye className="w-5 h-5" />
-      ),
+      icon: labelsVisible ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />,
       action: toggleLabels,
-    },
-    {
-      name: "Make Red",
-      icon: <div className="w-5 h-5 rounded-full bg-red-500" />,
-      action: () => applyColorToSelectedFeature("#FF0000"),
-      disabled: !selectedFeature,
     },
   ];
 
@@ -77,19 +45,14 @@ export default function LeftSidebar() {
         <React.Fragment key={btn.name}>
           <button
             onClick={() => handleClick(btn.name, btn.action)}
-            disabled={btn.disabled}
             className={`flex flex-col items-center transition-all ${
-              activeButton === btn.name
-                ? "scale-105 bg-white/20 rounded-lg py-1"
-                : "text-white"
-            } ${btn.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+              activeButton === btn.name ? "scale-105 bg-white/20 rounded-lg py-1" : "text-white"
+            }`}
           >
             {btn.icon}
-            <span className="text-xs text-gray-200">{btn.name}</span>
+            <span className="text-xs  text-gray-200">{btn.name}</span>
           </button>
-          {(idx === 2 || idx === 4 || idx === 6) && (
-            <div className="h-px bg-gray-600 my-1"></div>
-          )}
+          {(idx === 2 || idx === 4 || idx === 6) && <div className="h-px bg-gray-600 my-1"></div>}
         </React.Fragment>
       ))}
     </div>
