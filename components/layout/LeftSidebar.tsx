@@ -1,7 +1,7 @@
 "use client";
 
 import { Pencil, Minus, Trash2, RotateCcw, RotateCw, Eye, EyeOff } from "lucide-react";
-import React, { useState } from "react";
+import React, { JSX, useState } from "react";
 import { useMapContext } from "../hooks/mapContext";
 
 export default function LeftSidebar() {
@@ -19,12 +19,16 @@ export default function LeftSidebar() {
 
   const [activeButton, setActiveButton] = useState<string | null>(null);
 
-  const handleClick = (name: string, action: () => void) => {
-    action();
-    setActiveButton(name);
+  const handleClick = (name: string, action: (() => void) | undefined) => {
+    if (typeof action === "function") {
+      action();
+      setActiveButton(name);
+    } else {
+      console.warn(`⚠ Action not found for button: ${name}`);
+    }
   };
 
-  const buttons = [
+  const buttons: { name: string; icon: JSX.Element; action?: () => void }[] = [
     { name: "Draw", icon: <Pencil className="w-5 h-5" />, action: drawPolygon },
     { name: "Line", icon: <Minus className="w-5 h-5" />, action: drawLine },
     { name: "Delete", icon: <Trash2 className="w-5 h-5" />, action: deleteFeature },
@@ -50,8 +54,9 @@ export default function LeftSidebar() {
             }`}
           >
             {btn.icon}
-            <span className="text-xs  text-gray-200">{btn.name}</span>
+            <span className="text-xs text-gray-200">{btn.name}</span>
           </button>
+
           {(idx === 2 || idx === 4 || idx === 6) && <div className="h-px bg-gray-600 my-1"></div>}
         </React.Fragment>
       ))}

@@ -2,12 +2,12 @@
 "use client";
 
 import React, { createContext, useContext } from "react";
-import { useMapboxFunctions as useMapboxFunctionsOriginal } from "./useMapboxFunctions";
+import { useMapboxFunctions } from "./useMapboxFunctions";
 
 const MapContext = createContext<any>(null);
 
 export const MapProvider = ({ children }: { children: React.ReactNode }) => {
-  const mapHook = useMapboxFunctionsOriginal();
+  const mapHook = useMapboxFunctions();
   return <MapContext.Provider value={mapHook}>{children}</MapContext.Provider>;
 };
 

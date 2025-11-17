@@ -1,6 +1,0 @@
-- [ ] Remove select, edit, split, overhang features from right sidebar and entire project
-- [ ] Change default mode to "simple_select" in MapContainer.tsx
-- [ ] Customize draw_polygon mode with minVertices: 2
-- [ ] Fix toggle labels to work on single click by adding useEffect for labelsVisible
-- [ ] Move toggle labels button from left-sidebar to right-sidebar
-- [ ] Test the fixes: map loading, drawing on button click, polygon with 2+ points, single-click toggle
