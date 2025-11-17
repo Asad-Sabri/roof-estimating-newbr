@@ -1,24 +1,17 @@
 "use client";
 
-import React, { useRef } from "react";
-import { Viewer } from "resium";
-import { Cartesian3 } from "cesium";
+import React, { useEffect } from "react";
+import { useMapContext } from "../hooks/mapContext";
 
-export default function CesiumMap() {
-  const viewerRef = useRef<any>(null);
 
+export default function Mapbox() {
+  const { mapContainerRef } = useMapContext();
+
+  // map is already initialized inside the hook (useMapboxFunctions)
+  // so this component only provides the container div
   return (
     <div className="w-full h-full">
-      <Viewer
-        ref={viewerRef}
-        full
-        terrainProvider={undefined} // Cesium Ion terrain or your own
-        imageryProvider={undefined} // Satellite imagery or street map
-        sceneMode={2} // 3D
-        homeButton={false}
-        timeline={false}
-        animation={false}
-      />
+      <div ref={mapContainerRef} className="w-full h-full" />
     </div>
   );
 }

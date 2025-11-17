@@ -14,7 +14,7 @@ interface HistoryState {
 }
 
 export function useMapboxFunctions() {
-  console.log("🟢 Hook Initialized: useMapboxFunctions started.");
+  //console.log("🟢 Hook Initialized: useMapboxFunctions started.");
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -28,6 +28,8 @@ export function useMapboxFunctions() {
 
   const [polygonsData, setPolygonsData] = useState<any[]>([]);
   const [linesData, setLinesData] = useState<any[]>([]);
+  const markerRef = useRef<mapboxgl.Marker | null>(null);
+
 
   // --- Utility Functions ---
   const toFeetInches = (meters: number) => {
@@ -41,7 +43,7 @@ export function useMapboxFunctions() {
 
   const pushHistory = (type: HistoryState["type"]) => {
     if (!drawRef.current) return;
-    console.log(`➡️ pushHistory called. Type: ${type}`);
+    //console.log(`➡️ pushHistory called. Type: ${type}`);
     const allFeatures = drawRef.current.getAll();
     setHistory((prev) => [...prev, { type, features: allFeatures.features }]);
     setRedoStack([]);
@@ -49,7 +51,7 @@ export function useMapboxFunctions() {
 
   // --- Update Shape State (Edges + Measurements) ---
   const updateShapesData = useCallback(() => {
-    console.log("⚙️ updateShapesData called: Processing feature data for display.");
+    //console.log("⚙️ updateShapesData called: Processing feature data for display.");
     if (!drawRef.current) return;
     const allFeatures = drawRef.current.getAll().features;
 
@@ -127,7 +129,7 @@ export function useMapboxFunctions() {
   // --- Label Content and Visibility (State change par chalta hai) ---
   const updateEdgeLabels = useCallback(
     (showLabels: boolean = labelsVisible) => {
-      console.log(`🏷️ updateEdgeLabels called. Visibility: ${showLabels ? 'Visible' : 'Hidden'}`);
+      //console.log(`🏷️ updateEdgeLabels called. Visibility: ${showLabels ? 'Visible' : 'Hidden'}`);
       if (!mapRef.current || !drawRef.current) return;
       const map = mapRef.current;
       const draw = drawRef.current;
@@ -201,13 +203,13 @@ export function useMapboxFunctions() {
 
   // --- Draw Event Handler (Create/Update) ---
   const handleDrawChange = useCallback((e: any) => {
-    console.log(`🗺️ Mapbox Draw Event: ${e.type} occurred.`);
+    //console.log(`🗺️ Mapbox Draw Event: ${e.type} occurred.`);
     if (!drawRef.current) return;
     if (e.type === "draw.create" || e.type === "draw.update") {
       pushHistory(e.type === "draw.create" ? "create" : "update");
       const latestFeature = e.features[0];
       if (latestFeature?.id) {
-        console.log(`   Feature ID: ${latestFeature.id} is now selected/updated.`);
+        //console.log(`   Feature ID: ${latestFeature.id} is now selected/updated.`);
         setSelectedFeature(String(latestFeature.id));
         updateEdgeLabels(true);
         updateShapesData();
@@ -215,18 +217,97 @@ export function useMapboxFunctions() {
     }
   }, [updateEdgeLabels, updateShapesData]);
 
-  // --- Map Initialization Effect (Only Draw events) ---
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+
+const [locationCard, setLocationCard] = useState<{
+  x: number;
+  y: number;
+  lat: number;
+  lng: number;
+  visible: boolean;
+} | null>(null);
+
+
+const getSavedProjectLocation = () => {
+  try {
+    const raw = localStorage.getItem("projectLocation");
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+
+    if (
+      parsed &&
+      typeof parsed.lng === "number" &&
+      typeof parsed.lat === "number"
+    ) {
+      return {
+        center: [parsed.lng, parsed.lat] as [number, number],
+        zoom: parsed.zoom ? parsed.zoom : 19,
+      };
+    }
 
     console.log("🌎 Map Initializing: Creating new Mapbox instance.");
+    return null;
+  } catch (err) {
+    return null;
+  }
+};
+const handleConfirmLocation = () => {
+  if (!locationCard || !mapRef.current) return;
 
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/satellite-streets-v12",
-      center: [-122.4194, 37.7749],
-      zoom: 16,
-    });
+  // delete old marker
+  if (markerRef.current) {
+    markerRef.current.remove();
+  }
+
+  // create NEW red marker
+  const newMarker = new mapboxgl.Marker({ color: "red" })
+    .setLngLat([locationCard.lng, locationCard.lat])
+    .addTo(mapRef.current);
+
+  markerRef.current = newMarker;
+
+  // save to localStorage
+  localStorage.setItem(
+    "projectLocation",
+    JSON.stringify({
+      lat: locationCard.lat,
+      lng: locationCard.lng,
+      zoom: 19,
+    })
+  );
+
+  // hide card
+  setLocationCard((p) => p && { ...p, visible: false });
+};
+
+
+  const savedLocation = getSavedProjectLocation();
+
+const stored = localStorage.getItem("projectLocation");
+let center = [-122.4194, 37.7749]; // fallback
+
+if (stored) {
+  try {
+    const p = JSON.parse(stored);
+    if (p.lng && p.lat) center = [p.lng, p.lat];
+  } catch {}
+}
+
+
+  // --- Map Initialization Effect (Only Draw events) ---
+useEffect(() => {
+  if (!mapContainerRef.current || mapRef.current) return;
+
+  const map = new mapboxgl.Map({
+    container: mapContainerRef.current,
+    style: "mapbox://styles/mapbox/satellite-streets-v12",
+    center,
+    zoom: stored ? 19 : 20,
+    antialias: true,
+    maxZoom: 22,
+  });
+
+  mapRef.current = map;
 
     mapRef.current = map;
 
@@ -290,7 +371,6 @@ export function useMapboxFunctions() {
 
     drawRef.current = draw;
     map.addControl(draw);
-    console.log("   Mapbox Draw added to map.");
 
     map.on("load", () => {
       map.addSource("polygon-edges", {
@@ -311,11 +391,23 @@ export function useMapboxFunctions() {
     });
 
 
+      // 📍 Map Click → Show Card
+  map.on("click", (e) => {
+    setLocationCard({
+      x: e.point.x,
+      y: e.point.y,
+      lat: e.lngLat.lat,
+      lng: e.lngLat.lng,
+      visible: true,
+    });
+  });
+
+
     map.on("draw.create", handleDrawChange);
     map.on("draw.update", handleDrawChange);
 
     return () => {
-      console.log("🗑️ Map Cleanup: Draw and Selection listeners are being cleaned.");
+      //console.log("🗑️ Map Cleanup: Draw and Selection listeners are being cleaned.");
     };
   }, [handleDrawChange, updateEdgeLabels]);
 
@@ -326,11 +418,11 @@ export function useMapboxFunctions() {
     const map = mapRef.current;
 
     map.on("render", updateLabelPositions);
-    console.log("🟢 Render Listener Added: Dynamic label positioning active.");
+    //console.log("🟢 Render Listener Added: Dynamic label positioning active.");
 
     return () => {
       map.off("render", updateLabelPositions);
-      console.log("🗑️ Render Listener Removed.");
+      //console.log("🗑️ Render Listener Removed.");
     };
   }, [updateLabelPositions]);
 
@@ -343,7 +435,7 @@ export function useMapboxFunctions() {
         return;
       }
 
-      console.log(`🎨 Action: applyColorToSelectedFeature called. Applying color ${color} to Feature ID: ${selectedFeature}`);
+      //console.log(`🎨 Action: applyColorToSelectedFeature called. Applying color ${color} to Feature ID: ${selectedFeature}`);
 
       // 1. Feature property set karna
       drawRef.current.setFeatureProperty(selectedFeature, "customColor", color);
@@ -378,11 +470,11 @@ export function useMapboxFunctions() {
       if (e.features.length > 0) {
         const featureId = e.features[0].id;
         setSelectedFeature(featureId);
-        console.log(`📌 draw.selectionchange: Feature ${featureId} selected.`);
+        //console.log(`📌 draw.selectionchange: Feature ${featureId} selected.`);
 
       } else {
         setSelectedFeature(null);
-        console.log("📌 draw.selectionchange: Deselected all features.");
+        //console.log("📌 draw.selectionchange: Deselected all features.");
       }
     };
 
@@ -399,7 +491,7 @@ export function useMapboxFunctions() {
     if (selectedFeature) {
       const defaultColor = "#FFD700";
 
-      console.log(`✨ Applying default color ${defaultColor} to new selection ID: ${selectedFeature}`);
+      //console.log(`✨ Applying default color ${defaultColor} to new selection ID: ${selectedFeature}`);
 
       // Default color lagane ke baad bhi Draw ko refresh karein
       applyColorToSelectedFeature(defaultColor);
@@ -410,12 +502,12 @@ export function useMapboxFunctions() {
   // --- Exposed Functions ---
 
   const drawPolygon = () => {
-    console.log("🔨 Action: drawPolygon called. Mode changed to draw_polygon.");
+    //console.log("🔨 Action: drawPolygon called. Mode changed to draw_polygon.");
     drawRef.current?.changeMode("draw_polygon");
   }
 
   const drawLine = () => {
-    console.log("🔨 Action: drawLine called. Mode changed to draw_line_string.");
+    //console.log("🔨 Action: drawLine called. Mode changed to draw_line_string.");
     drawRef.current?.changeMode("draw_line_string");
   }
 
@@ -426,7 +518,7 @@ export function useMapboxFunctions() {
       console.warn("⚠️ Action: deleteFeature called, but no feature was selected.");
       return;
     }
-    console.log(`🗑️ Action: deleteFeature called. Deleting IDs: ${selected.join(', ')}`);
+    //console.log(`🗑️ Action: deleteFeature called. Deleting IDs: ${selected.join(', ')}`);
     drawRef.current.delete(selected);
     pushHistory("delete");
     updateEdgeLabels();
@@ -439,7 +531,7 @@ export function useMapboxFunctions() {
       console.warn("⏪ Action: undo called, but history is empty.");
       return;
     }
-    console.log("⏪ Action: undo called. Reverting to previous state.");
+    //console.log("⏪ Action: undo called. Reverting to previous state.");
     const lastAction = history[history.length - 1];
     setHistory((prev) => prev.slice(0, -1));
     setRedoStack((prev) => [...prev, lastAction]);
@@ -455,7 +547,7 @@ export function useMapboxFunctions() {
       console.warn("⏩ Action: redo called, but redoStack is empty.");
       return;
     }
-    console.log("⏩ Action: redo called. Applying next state.");
+    //console.log("⏩ Action: redo called. Applying next state.");
     const lastRedo = redoStack[redoStack.length - 1];
     setRedoStack((prev) => prev.slice(0, -1));
     setHistory((prev) => [...prev, lastRedo]);
@@ -466,18 +558,17 @@ export function useMapboxFunctions() {
   };
 
   const rotateLeft = () => {
-    console.log("🔄 Action: rotateLeft called. Rotating map left 15 degrees.");
+    //console.log("🔄 Action: rotateLeft called. Rotating map left 15 degrees.");
     mapRef.current?.rotateTo((mapRef.current.getBearing() || 0) - 15);
   }
 
   const rotateRight = () => {
-    console.log("🔄 Action: rotateRight called. Rotating map right 15 degrees.");
+
     mapRef.current?.rotateTo((mapRef.current.getBearing() || 0) + 15);
   }
 
   const toggleLabels = () => {
     const newState = !labelsVisible;
-    console.log(`👁️ Action: toggleLabels called. New state: ${newState ? 'Visible' : 'Hidden'}`);
     setLabelsVisible((prev) => !prev);
     updateEdgeLabels(!labelsVisible);
   };
