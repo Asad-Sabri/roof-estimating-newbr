@@ -67,3 +67,11 @@ body {
   z-index: 9999;
   pointer-events: none;
 }
+.custom-pin-marker { will-change: transform; }
+.mapboxgl-canvas { cursor: url('/location-pin-cursor.png') 16 32, auto; } /* optional */
+
+
+.custom-pin-marker {
+  will-change: transform;
+  pointer-events: none;
+}

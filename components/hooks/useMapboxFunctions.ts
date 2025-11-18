@@ -22,22 +22,14 @@ export function useMapboxFunctions() {
   const [linesData, setLinesData] = useState<any[]>([]);
   const [gridVisible, setGridVisible] = useState(false);
 
-  const [showLocationCard, setShowLocationCard] = useState(true);
-const [tempLocation, setTempLocation] = useState<[number, number] | null>(null);
-const [pinLocation, setPinLocation] = useState<[number, number] | null>(null);
-// Confirm button
-const handleConfirmLocation = () => {
-  if (!tempLocation) return;
-  setPinLocation(tempLocation);
-  localStorage.setItem("projectLocation", JSON.stringify({ lat: tempLocation[1], lng: tempLocation[0] }));
-  setShowLocationCard(false);
-};
+  const [tempLocation, setTempLocation] = useState<[number, number] | null>(null);
+  const [pinLocation, setPinLocation] = useState<[number, number] | null>(null);
+  const pinMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
-// Change button / click on map
-const handleChangeLocation = (lngLat: [number, number]) => {
-  setTempLocation(lngLat);
-  setShowLocationCard(true);
-};
+  const savedLocation = localStorage.getItem("projectLocation");
+  const initialLocationConfirmed = !!savedLocation;
+  const [showLocationCard, setShowLocationCard] = useState(!initialLocationConfirmed);
+  const [isLocationConfirmed, setIsLocationConfirmed] = useState(initialLocationConfirmed);
 
   // --------------------------
   // Update shapes, labels, edges
@@ -180,7 +172,7 @@ const handleChangeLocation = (lngLat: [number, number]) => {
     updateLabelPositions();
   }, [toFeetInches, updateLabelPositions]);
 
-  // --------------------------
+  // --------------------------states
   // 2) history/actions hook
   // --------------------------
   const {
@@ -193,38 +185,6 @@ const handleChangeLocation = (lngLat: [number, number]) => {
     pushHistory,
     labelsVisible,
   } = useMapHistoryActions(drawRef, updateEdgeLabels, updateShapesData);
-
-  // --------------------------
-  // 3) applyColor, draw modes, draw event handler
-  // --------------------------
-const applyColorToSelectedFeature = useCallback(
-  (color: string) => {
-    if (!drawRef.current || !selectedFeature) return;
-    const feature = drawRef.current.get(selectedFeature);
-    if (!feature) return;
-
-    // Feature property update
-    feature.properties = {
-      ...feature.properties,
-      customColor: color,
-    };
-
-    // Re-add feature to force MapboxDraw repaint
-    drawRef.current.add(feature);
-
-    // Update edges and labels
-    updateShapesData();
-    updateEdgeLabels(labelsVisible);
-
-    // Optional: deselect to apply color cleanly
-    if (drawRef.current.getMode() === "simple_select") {
-      drawRef.current.changeMode("simple_select");
-      setGridVisible(false);
-    }
-  },
-  [selectedFeature, updateShapesData, updateEdgeLabels, labelsVisible]
-);
-
 
   const handleDrawChange = useCallback((e: any) => {
     if (!drawRef.current) return;
@@ -248,11 +208,23 @@ const applyColorToSelectedFeature = useCallback(
     }
   }, [pushHistory, updateShapesData, updateEdgeLabels]);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
   // --------------------------
   // 4) initialize map + draw
   // --------------------------
-  const savedLocation = localStorage.getItem("projectLocation");
-  let center: [number, number] = [-122.4194, 37.7749]; // fallback default
+  let center: [number, number]; // fallback default
 
   if (savedLocation) {
     try {
@@ -265,12 +237,81 @@ const applyColorToSelectedFeature = useCallback(
     }
   }
 
+  const createPinElement = () => {
+    const el = document.createElement("div");
+    el.className = "custom-pin-marker";
+    el.style.width = "36px";
+    el.style.height = "36px";
+    el.style.backgroundImage = "url('/pin-icon.svg')";
+    el.style.backgroundSize = "contain";
+    el.style.backgroundRepeat = "no-repeat";
+    el.style.transform = "translate(-50%, -100%)";
+    return el;
+  };
+
+
+const handleConfirmLocation = () => {
+  if (!tempLocation) return;
+
+  localStorage.setItem(
+    "projectLocation",
+    JSON.stringify({ lat: tempLocation[1], lng: tempLocation[0] })
+  );
+
+  setShowLocationCard(false);
+  setIsLocationConfirmed(true); // ✅ mark as confirmed
+  setPinLocation(tempLocation);
+
+  if (mapRef.current) {
+    mapRef.current.flyTo({
+      center: tempLocation,
+      zoom: 20,
+      essential: true,
+    });
+  }
+};
+
+
+
+
+
+
+
+useEffect(() => {
+  if (!mapRef.current) return;
+  const map = mapRef.current;
+
+  const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
+    if (isLocationConfirmed) return; // ✅ don't show card if confirmed
+
+    const { lng, lat } = e.lngLat;
+    setTempLocation([lng, lat]);
+
+    // Show the marker
+    if (!pinMarkerRef.current) {
+      pinMarkerRef.current = new mapboxgl.Marker({ color: "#e63946" })
+        .setLngLat([lng, lat])
+        .addTo(map);
+    } else {
+      pinMarkerRef.current.setLngLat([lng, lat]);
+    }
+
+    // Only show card if not confirmed
+    setShowLocationCard(true);
+  };
+
+  map.on("click", handleMapClick);
+  return () => map.off("click", handleMapClick);
+}, [isLocationConfirmed]);
+
+
+
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/satellite-streets-v12",
-      center, // use correct lng, lat
+      center,
       zoom: 19,
     });
 
@@ -345,6 +386,12 @@ const applyColorToSelectedFeature = useCallback(
         });
       }
     });
+    const mapCenter = map.getCenter();
+    const lngLat: [number, number] = [mapCenter.lng, mapCenter.lat];
+
+    setTempLocation(lngLat);
+    setPinLocation(lngLat);
+    setShowLocationCard(true);
 
     map.on("draw.create", handleDrawChange);
     map.on("draw.update", handleDrawChange);
@@ -365,6 +412,120 @@ const applyColorToSelectedFeature = useCallback(
       drawRef.current = null;
     };
   }, [handleDrawChange, updateLabelPositions, pushHistory, updateEdgeLabels, updateShapesData]);
+
+  // Add marker for pin location
+
+  useEffect(() => {
+    const saved = localStorage.getItem("projectLocation");
+
+    if (saved) {
+      setShowLocationCard(true);  // <-- problem: saved hone par bhi true set ho raha
+      const coords = JSON.parse(saved);
+      const lngLat: [number, number] = [coords.lng, coords.lat];
+      setTempLocation(lngLat);
+      setPinLocation(lngLat);
+    } else {
+      setShowLocationCard(true);
+    }
+  }, []);
+
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    // remove old marker element (if any)
+    pinMarkerRef.current?.remove();
+    pinMarkerRef.current = null;
+
+    if (!tempLocation) return;
+
+    // create custom DOM element so CSS/position won't push it to bottom
+    const el = document.createElement("div");
+    el.className = "custom-pin-marker";
+    el.style.width = "36px";
+    el.style.height = "36px";
+    el.style.backgroundImage = "url('/pin-icon.svg')"; // use your icon in public/
+    el.style.backgroundSize = "contain";
+    el.style.backgroundRepeat = "no-repeat";
+    el.style.transform = "translate(-50%, -100%)"; // center bottom of icon on coordinates
+    el.style.pointerEvents = "auto";
+
+    // draggable only until user confirms
+    const draggable = !isLocationConfirmed;
+
+    const marker = new mapboxgl.Marker({ element: el, anchor: "bottom", draggable })
+      .setLngLat(tempLocation)
+      .addTo(map);
+
+    // update tempLocation while dragging (live)
+    if (draggable) {
+      marker.on("drag", (ev) => {
+        const lngLat = (ev.target as any).getLngLat();
+        setTempLocation([lngLat.lng, lngLat.lat]);
+      });
+    }
+
+    pinMarkerRef.current = marker;
+
+    return () => {
+      marker.remove();
+    };
+  }, [tempLocation, isLocationConfirmed]);
+
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    const handleClick = (e) => {
+      const lngLat: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+      setTempLocation(lngLat);
+    };
+
+    map.on("click", handleClick);
+    return () => {
+      map.off("click", handleClick);
+    };
+  }, [isLocationConfirmed]);
+
+
+
+
+
+
+
+  // --------------------------
+  // 3) applyColor, draw modes, draw event handler
+  // --------------------------
+  const applyColorToSelectedFeature = useCallback(
+    (color: string) => {
+      if (!drawRef.current || !selectedFeature) return;
+      const feature = drawRef.current.get(selectedFeature);
+      if (!feature) return;
+
+      // Feature property update
+      feature.properties = {
+        ...feature.properties,
+        customColor: color,
+      };
+
+      // Re-add feature to force MapboxDraw repaint
+      drawRef.current.add(feature);
+
+      // Update edges and labels
+      updateShapesData();
+      updateEdgeLabels(labelsVisible);
+
+      // Optional: deselect to apply color cleanly
+      if (drawRef.current.getMode() === "simple_select") {
+        drawRef.current.changeMode("simple_select");
+        setGridVisible(false);
+      }
+    },
+    [selectedFeature, updateShapesData, updateEdgeLabels, labelsVisible]
+  );
+
 
   // selection change -> setSelectedFeature
   useEffect(() => {
@@ -388,6 +549,7 @@ const applyColorToSelectedFeature = useCallback(
       mapRef.current?.off("draw.selectionchange", handleSelectionChange);
     };
   }, [labelsVisible, updateShapesData, updateEdgeLabels]);
+
 
 
   const createGridLayer = useCallback(() => {
@@ -452,7 +614,6 @@ const applyColorToSelectedFeature = useCallback(
     };
   }, []);
 
-
   const drawPolygon = useCallback(() => {
     if (!drawRef.current) return;
     drawRef.current.changeMode("draw_polygon");
@@ -496,6 +657,9 @@ const applyColorToSelectedFeature = useCallback(
     toggleLabels,
     pushHistory,
     labelsVisible,
-    createGridLayer
+    createGridLayer,
+    handleConfirmLocation,
+    showLocationCard,
+    tempLocation,
   };
 }
