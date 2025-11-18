@@ -31,6 +31,7 @@
     "leaflet": "^1.9.4",
     "leaflet-draw": "^1.0.4",
     "leaflet-geometryutil": "^0.10.3",
+    "lucide": "^0.554.0",
     "lucide-react": "^0.543.0",
     "mapbox-gl": "^3.16.0",
     "mapbox-gl-draw-snap-mode": "^0.4.0",

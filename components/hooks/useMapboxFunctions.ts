@@ -195,8 +195,6 @@ export function useMapboxFunctions() {
     [selectedFeature, updateShapesData, updateEdgeLabels, labelsVisible]
   );
 
-
-
   const handleDrawChange = useCallback((e: any) => {
     if (!drawRef.current) return;
 
@@ -371,8 +369,8 @@ export function useMapboxFunctions() {
 
       const features: Feature<LineString, GeoJsonProperties>[] = [];
 
-      const latStep = 0.0001; // grid spacing
-      const lngStep = 0.0001;
+      const latStep = 0.00005; // grid spacing
+      const lngStep = 0.00005;
 
       // vertical lines
       for (let x = bounds.getWest(); x <= bounds.getEast(); x += lngStep) {
