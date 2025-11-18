@@ -1,17 +1,16 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import { useMapContext } from "../hooks/mapContext";
-
+import GridOverlay from "./GridOverlay";
 
 export default function Mapbox() {
-  const { mapContainerRef } = useMapContext();
+  const { mapContainerRef, showGrid } = useMapContext();
 
-  // map is already initialized inside the hook (useMapboxFunctions)
-  // so this component only provides the container div
   return (
-    <div className="w-full h-full">
+    <div className="relative w-full h-full">
       <div ref={mapContainerRef} className="w-full h-full" />
+      {showGrid && <GridOverlay />}
     </div>
   );
 }

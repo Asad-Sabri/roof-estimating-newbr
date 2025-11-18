@@ -1,4 +1,3 @@
-// components/hooks/useMapboxFunctions.ts
 "use client";
 
 import { useRef, useCallback, useState, useEffect } from "react";
@@ -7,7 +6,9 @@ import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import * as turf from "@turf/turf";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { useMapHistoryActions } from "./useMapHistoryActions";
-import { Feature, Polygon, GeoJsonProperties } from "geojson";
+import { Feature, Polygon, GeoJsonProperties, LineString } from "geojson";
+import { SnapPolygonMode, SnapLineMode } from "mapbox-gl-draw-snap-mode";
+
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
 export function useMapboxFunctions() {
@@ -19,9 +20,9 @@ export function useMapboxFunctions() {
   const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
   const [polygonsData, setPolygonsData] = useState<any[]>([]);
   const [linesData, setLinesData] = useState<any[]>([]);
-
+  const [gridVisible, setGridVisible] = useState(false);
   // --------------------------
-  // 1) functions: updateShapesData, updateLabelPositions, updateEdgeLabels
+  // Update shapes, labels, edges
   // --------------------------
   const updateShapesData = useCallback(() => {
     if (!drawRef.current) return;
@@ -56,10 +57,8 @@ export function useMapboxFunctions() {
       source.setData({ type: "FeatureCollection", features: edgeFeatures });
     }
 
-    const newPolygons = (drawRef.current?.getAll().features || []).filter((f: any) => f.geometry?.type === "Polygon");
-    const newLines = (drawRef.current?.getAll().features || []).filter((f: any) => f.geometry?.type === "LineString");
-    setPolygonsData(newPolygons);
-    setLinesData(newLines);
+    setPolygonsData(allFeatures.filter(f => f.geometry?.type === "Polygon"));
+    setLinesData(allFeatures.filter(f => f.geometry?.type === "LineString"));
   }, []);
 
   const updateLabelPositions = useCallback(() => {
@@ -102,19 +101,23 @@ export function useMapboxFunctions() {
     const map = mapRef.current;
     const draw = drawRef.current;
     const shouldShow = typeof showLabels === "boolean" ? showLabels : true;
+
     if (!shouldShow) {
       Object.values(labelElementsRef.current).forEach(el => el.remove());
       labelElementsRef.current = {};
-      return;}
+      return;
+    }
 
     const features = draw.getAll().features || [];
     const currentLabelKeys = new Set<string>();
+
     features.forEach((feature: any) => {
-      const coords = feature.geometry?.type === "Polygon"
-        ? feature.geometry.coordinates[0]
-        : feature.geometry?.type === "LineString"
-          ? feature.geometry.coordinates
-          : [];
+      const coords =
+        feature.geometry?.type === "Polygon"
+          ? feature.geometry.coordinates[0]
+          : feature.geometry?.type === "LineString"
+            ? feature.geometry.coordinates
+            : [];
       const numSegments = Math.max(0, coords.length - 1);
       for (let i = 0; i < numSegments; i++) {
         const start = coords[i];
@@ -124,7 +127,7 @@ export function useMapboxFunctions() {
         const key = `${feature.id}-${i}`;
         currentLabelKeys.add(key);
         let el = labelElementsRef.current[key];
-        
+
         if (!el) {
           el = document.createElement("div");
           el.style.cssText = `
@@ -144,6 +147,7 @@ export function useMapboxFunctions() {
           map.getContainer().appendChild(el);
           labelElementsRef.current[key] = el;
         }
+
         el.innerText = toFeetInches(lenMeters);
       }
     });
@@ -159,7 +163,7 @@ export function useMapboxFunctions() {
   }, [toFeetInches, updateLabelPositions]);
 
   // --------------------------
-  // 2) CALL history/actions hook AFTER functions declared
+  // 2) history/actions hook
   // --------------------------
   const {
     undo,
@@ -183,67 +187,80 @@ export function useMapboxFunctions() {
       drawRef.current.setFeatureProperty(selectedFeature, "customColor", color);
       updateShapesData();
       updateEdgeLabels(labelsVisible);
-      const currentMode = drawRef.current.getMode();
-      if (currentMode !== "simple_select") {
-        drawRef.current.changeMode("simple_select", { featureIds: [selectedFeature] });
+      if (drawRef.current?.getMode() === "simple_select") {
+        drawRef.current.changeMode("simple_select");
+        setGridVisible(false);
       }
     },
     [selectedFeature, updateShapesData, updateEdgeLabels, labelsVisible]
   );
 
-  const drawPolygon = useCallback(() => drawRef.current?.changeMode("draw_polygon"), []);
-  const drawLine = useCallback(() => drawRef.current?.changeMode("draw_line_string"), []);
+
 
   const handleDrawChange = useCallback((e: any) => {
     if (!drawRef.current) return;
+
     e.features.forEach((feature: any) => {
       const currentColor = feature.properties?.customColor || "#FFD700";
       drawRef.current?.setFeatureProperty(feature.id, "customColor", currentColor);
-
-      if (feature.geometry.type === "LineString" && feature.geometry.coordinates.length === 2) {
-        const coords = feature.geometry.coordinates;
-        const polygonFeature: Feature<Polygon, GeoJsonProperties> = {
-          type: "Feature",
-          geometry: {
-            type: "Polygon",
-            coordinates: [[...coords, coords[0]]],
-          },
-          properties: { customColor: currentColor },
-          id: crypto.randomUUID(),
-        };
-        drawRef.current?.delete(feature.id);
-        drawRef.current?.add(polygonFeature);
-        setSelectedFeature(polygonFeature.id as string);
-      }
     });
 
-    if (e.type === "draw.create" || e.type === "draw.update") {
+    if (["draw.create", "draw.update"].includes(e.type)) {
       pushHistory(e.type === "draw.create" ? "create" : "update");
-      updateEdgeLabels(true);
       updateShapesData();
+      updateEdgeLabels(true);
+
+      // **Remove grid after drawing is complete**
+      if (mapRef.current && mapRef.current.getLayer("grid-layer")) {
+        mapRef.current.removeLayer("grid-layer");
+        mapRef.current.removeSource("grid-layer");
+      }
+      setGridVisible(false);
     }
-  }, [pushHistory, updateEdgeLabels, updateShapesData]);
+  }, [pushHistory, updateShapesData, updateEdgeLabels]);
 
   // --------------------------
   // 4) initialize map + draw
   // --------------------------
+  const savedLocation = localStorage.getItem("projectLocation");
+  let center: [number, number] = [-122.4194, 37.7749]; // fallback default
+
+  if (savedLocation) {
+    try {
+      const coords = JSON.parse(savedLocation);
+      if (coords && typeof coords.lat === "number" && typeof coords.lng === "number") {
+        center = [coords.lng, coords.lat]; // mapbox expects [lng, lat]
+      }
+    } catch (err) {
+      console.warn("Invalid projectLocation in localStorage", err);
+    }
+  }
+
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/satellite-streets-v12",
-      center: [-122.4194, 37.7749],
+      center, // use correct lng, lat
       zoom: 19,
     });
+
     mapRef.current = map;
+
     const draw = new MapboxDraw({
       displayControlsDefault: false,
+      userProperties: true,
+      modes: {
+        ...MapboxDraw.modes,
+        draw_polygon: SnapPolygonMode,
+        draw_line_string: SnapLineMode,
+      },
       styles: [
         {
           id: "gl-draw-polygon-fill",
           type: "fill",
           filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
-          paint: { "fill-color": "#000000", "fill-opacity": 0 },
+          paint: { "fill-color": "transparent", "fill-opacity": 0 },
         },
         {
           id: "gl-draw-polygon-stroke",
@@ -255,8 +272,7 @@ export function useMapboxFunctions() {
           id: "gl-draw-line",
           type: "line",
           filter: ["all", ["==", "$type", "LineString"], ["!=", "mode", "static"]],
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-color": ["coalesce", ["get", "customColor"], "#FFD700"], "line-width": 4 },
+          paint: { "line-color": "#FFD700", "line-width": 4 },
         },
         {
           id: "gl-draw-polygon-midpoint",
@@ -276,15 +292,19 @@ export function useMapboxFunctions() {
           },
         },
       ],
-    });
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      snap: true,
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+
+      snapOptions: { snapPx: 15, snapToMidPoints: true },
+    } as any);
+
     drawRef.current = draw;
     map.addControl(draw);
+
     map.on("load", () => {
       if (!map.getSource("polygon-edges")) {
-        map.addSource("polygon-edges", {
-          type: "geojson",
-          data: { type: "FeatureCollection", features: [] },
-        });
+        map.addSource("polygon-edges", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       }
       if (!map.getLayer("polygon-edges-layer")) {
         map.addLayer({
@@ -292,10 +312,7 @@ export function useMapboxFunctions() {
           type: "line",
           source: "polygon-edges",
           layout: { "line-cap": "round", "line-join": "round" },
-          paint: {
-            "line-width": 4,
-            "line-color": ["get", "color"],
-          },
+          paint: { "line-width": 4, "line-color": ["get", "color"] },
         });
       }
     });
@@ -308,7 +325,6 @@ export function useMapboxFunctions() {
       updateEdgeLabels();
     });
 
-    // render loop to update label positions
     map.on("render", updateLabelPositions);
 
     return () => {
@@ -328,7 +344,6 @@ export function useMapboxFunctions() {
       if (e.features.length > 0) {
         const featureId = e.features[0].id;
         setSelectedFeature(featureId);
-
         const feature = drawRef.current?.get(featureId);
         if (feature && feature.properties?.customColor) {
           updateShapesData();
@@ -344,6 +359,91 @@ export function useMapboxFunctions() {
       mapRef.current?.off("draw.selectionchange", handleSelectionChange);
     };
   }, [labelsVisible, updateShapesData, updateEdgeLabels]);
+
+
+  const createGridLayer = useCallback(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    const updateGrid = () => {
+      const bounds = map.getBounds();
+      if (!bounds) return;
+
+      const features: Feature<LineString, GeoJsonProperties>[] = [];
+
+      const latStep = 0.0001; // grid spacing
+      const lngStep = 0.0001;
+
+      // vertical lines
+      for (let x = bounds.getWest(); x <= bounds.getEast(); x += lngStep) {
+        features.push({
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: [[x, bounds.getSouth()], [x, bounds.getNorth()]] },
+          properties: {},
+        });
+      }
+
+      // horizontal lines
+      for (let y = bounds.getSouth(); y <= bounds.getNorth(); y += latStep) {
+        features.push({
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: [[bounds.getWest(), y], [bounds.getEast(), y]] },
+          properties: {},
+        });
+      }
+
+      if (!map.getSource("grid-layer")) {
+        map.addSource("grid-layer", { type: "geojson", data: { type: "FeatureCollection", features } });
+        map.addLayer({
+          id: "grid-layer",
+          type: "line",
+          source: "grid-layer",
+          paint: {
+            "line-color": "#333333",  // dark gray
+            "line-width": 1.5,
+            "line-opacity": 0.7,
+          },
+        });
+      } else {
+        (map.getSource("grid-layer") as any).setData({ type: "FeatureCollection", features });
+      }
+    };
+
+    // Initial grid draw
+    updateGrid();
+
+    // Update grid on rotate/move
+    // map.on("rotate", updateGrid);
+    // map.on("move", updateGrid);
+
+    // Cleanup
+    return () => {
+      // map.off("rotate", updateGrid);
+      // map.off("move", updateGrid);
+    };
+  }, []);
+
+
+  const drawPolygon = useCallback(() => {
+    if (!drawRef.current) return;
+    drawRef.current.changeMode("draw_polygon");
+    setGridVisible(true);
+
+    // Map aur bounds check karke grid create karo
+    if (mapRef.current && mapRef.current.getBounds()) {
+      // createGridLayer();
+    }
+  }, [createGridLayer]);
+
+  const drawLine = useCallback(() => {
+    if (!drawRef.current) return;
+    drawRef.current.changeMode("draw_line_string");
+    setGridVisible(true);
+
+    if (mapRef.current && mapRef.current.getBounds()) {
+      createGridLayer();
+    }
+  }, [createGridLayer]);
 
   return {
     mapRef,
@@ -367,5 +467,6 @@ export function useMapboxFunctions() {
     toggleLabels,
     pushHistory,
     labelsVisible,
+    createGridLayer
   };
 }
