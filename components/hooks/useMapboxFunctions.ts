@@ -21,6 +21,24 @@ export function useMapboxFunctions() {
   const [polygonsData, setPolygonsData] = useState<any[]>([]);
   const [linesData, setLinesData] = useState<any[]>([]);
   const [gridVisible, setGridVisible] = useState(false);
+
+  const [showLocationCard, setShowLocationCard] = useState(true);
+const [tempLocation, setTempLocation] = useState<[number, number] | null>(null);
+const [pinLocation, setPinLocation] = useState<[number, number] | null>(null);
+// Confirm button
+const handleConfirmLocation = () => {
+  if (!tempLocation) return;
+  setPinLocation(tempLocation);
+  localStorage.setItem("projectLocation", JSON.stringify({ lat: tempLocation[1], lng: tempLocation[0] }));
+  setShowLocationCard(false);
+};
+
+// Change button / click on map
+const handleChangeLocation = (lngLat: [number, number]) => {
+  setTempLocation(lngLat);
+  setShowLocationCard(true);
+};
+
   // --------------------------
   // Update shapes, labels, edges
   // --------------------------
@@ -179,21 +197,34 @@ export function useMapboxFunctions() {
   // --------------------------
   // 3) applyColor, draw modes, draw event handler
   // --------------------------
-  const applyColorToSelectedFeature = useCallback(
-    (color: string) => {
-      if (!drawRef.current || !selectedFeature) return;
-      const feature = drawRef.current.get(selectedFeature);
-      if (!feature) return;
-      drawRef.current.setFeatureProperty(selectedFeature, "customColor", color);
-      updateShapesData();
-      updateEdgeLabels(labelsVisible);
-      if (drawRef.current?.getMode() === "simple_select") {
-        drawRef.current.changeMode("simple_select");
-        setGridVisible(false);
-      }
-    },
-    [selectedFeature, updateShapesData, updateEdgeLabels, labelsVisible]
-  );
+const applyColorToSelectedFeature = useCallback(
+  (color: string) => {
+    if (!drawRef.current || !selectedFeature) return;
+    const feature = drawRef.current.get(selectedFeature);
+    if (!feature) return;
+
+    // Feature property update
+    feature.properties = {
+      ...feature.properties,
+      customColor: color,
+    };
+
+    // Re-add feature to force MapboxDraw repaint
+    drawRef.current.add(feature);
+
+    // Update edges and labels
+    updateShapesData();
+    updateEdgeLabels(labelsVisible);
+
+    // Optional: deselect to apply color cleanly
+    if (drawRef.current.getMode() === "simple_select") {
+      drawRef.current.changeMode("simple_select");
+      setGridVisible(false);
+    }
+  },
+  [selectedFeature, updateShapesData, updateEdgeLabels, labelsVisible]
+);
+
 
   const handleDrawChange = useCallback((e: any) => {
     if (!drawRef.current) return;
@@ -264,13 +295,13 @@ export function useMapboxFunctions() {
           id: "gl-draw-polygon-stroke",
           type: "line",
           filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
-          paint: { "line-color": "#FFD700", "line-width": 4 },
+          paint: { "line-color": "#FFD700", "line-width": 3 },
         },
         {
           id: "gl-draw-line",
           type: "line",
           filter: ["all", ["==", "$type", "LineString"], ["!=", "mode", "static"]],
-          paint: { "line-color": "#FFD700", "line-width": 4 },
+          paint: { "line-color": "#FFD700", "line-width": 3 },
         },
         {
           id: "gl-draw-polygon-midpoint",
@@ -283,10 +314,10 @@ export function useMapboxFunctions() {
           type: "circle",
           filter: ["all", ["==", "$type", "Point"], ["==", "meta", "vertex"]],
           paint: {
-            "circle-radius": 5,
+            "circle-radius": 4,
             "circle-color": ["coalesce", ["get", "customColor"], "white"],
             "circle-stroke-color": ["coalesce", ["get", "customColor"], "white"],
-            "circle-stroke-width": 1,
+            "circle-stroke-width": 0.1,
           },
         },
       ],
@@ -310,7 +341,7 @@ export function useMapboxFunctions() {
           type: "line",
           source: "polygon-edges",
           layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-width": 4, "line-color": ["get", "color"] },
+          paint: { "line-width": 3, "line-color": ["get", "color"] },
         });
       }
     });
