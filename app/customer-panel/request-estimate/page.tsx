@@ -85,6 +85,7 @@ export default function CreateProjectForm() {
     formik.setTouched({
       firstName: true,
       lastName: true,
+      middleName: true,
       mobile: true,
       email: true,
       address: true,
@@ -110,14 +111,27 @@ export default function CreateProjectForm() {
 
       const [lng, lat] = feature.center;
 
-      localStorage.setItem(
-        "projectLocation",
-        JSON.stringify({
-          address: formik.values.address,
-          lat,
-          lng,
-        })
+      // 🔹 Save complete project data to localStorage
+      const projectData = {
+        firstName: formik.values.firstName,
+        middleName: formik.values.middleName,
+        lastName: formik.values.lastName,
+        email: formik.values.email,
+        mobile: formik.values.mobile,
+        address: formik.values.address,
+        roofType: formik.values.roofType,
+        propertyType: formik.values.propertyType,
+        lat,
+        lng,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Save as array if multiple projects need to be stored
+      const existingProjects = JSON.parse(
+        localStorage.getItem("projects") || "[]"
       );
+      existingProjects.push(projectData);
+      localStorage.setItem("projects", JSON.stringify(existingProjects));
 
       router.push("/property-map");
     } catch (err) {
@@ -173,14 +187,26 @@ export default function CreateProjectForm() {
       }
     }
 
-    localStorage.setItem(
-      "projectLocation",
-      JSON.stringify({
-        address: formik.values.address,
-        lat: latitude,
-        lng: longitude,
-      })
+    const projectData = {
+      firstName: formik.values.firstName,
+      middleName: formik.values.middleName,
+      lastName: formik.values.lastName,
+      email: formik.values.email,
+      mobile: formik.values.mobile,
+      address: formik.values.address,
+      roofType: formik.values.roofType,
+      propertyType: formik.values.propertyType,
+      lat: latitude,
+      lng: longitude,
+      createdAt: new Date().toISOString(),
+    };
+
+    const existingProjects = JSON.parse(
+      localStorage.getItem("projects") || "[]"
     );
+    existingProjects.push(projectData);
+    localStorage.setItem("projects", JSON.stringify(existingProjects));
+
     router.push("/property-map");
   };
 

@@ -13,6 +13,7 @@ mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
 export function useMapboxFunctions() {
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  (window as any).mapRef = mapRef;
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const drawRef = useRef<MapboxDraw | null>(null);
 
