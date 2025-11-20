@@ -12,7 +12,7 @@ export default function LocationCard() {
     <div
       className="
         absolute
-        top-40
+        top-100
         left-1/2
         -translate-x-1/2
         -translate-y-1/2

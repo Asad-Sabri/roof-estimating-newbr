@@ -2,22 +2,34 @@
 import React from "react";
 import logoSrc from "../../../public/logo-latest.png";
 import Image from "next/image";
+import { useCallback } from "react";
+import * as turf from "@turf/turf";
 
 interface PolygonData {
   id: string;
-  color: string;
-  edges: string[];
-  coordinates?: [number, number][];
+  coordinates: number[][];
+  color?: string; // agar pehle se hai
+  customColor?: string; // ye add karo
+  edges?: { start: number[]; end: number[]; lengthFeet: number }[];
+  label?: string; // ye add karo
 }
 interface LineData {
+  label: any;
   id: string;
-  color: string;
   coordinates: [number, number][];
+  edges?: {
+    start: [number, number];
+    end: [number, number];
+    lengthFeet: number;
+  }[];
+  customColor?: string; // ye add karo
 }
+
 interface ProjectLocation {
   lat: number;
   lng: number;
 }
+
 interface PDFTemplateProps {
   mapImage?: string;
   topViewImage?: string;
@@ -32,6 +44,15 @@ interface PDFTemplateProps {
   };
 }
 
+// Helper function to convert meters to feet and inches
+const toFeetInches = (meters: number) => {
+  const ft = meters * 3.28084;
+  const feet = Math.floor(ft);
+  const inches = Math.round((ft - feet) * 12);
+  if (inches >= 12) return `${feet + 1}'0"`;
+  return `${feet}'${inches}"`;
+};
+
 const PAGE_BG_COLOR = "#f3f3f3";
 const CARD_BG_COLOR = "#f3f3f3";
 const CARD_HEADER_BG_COLOR = "#0f2346";
@@ -45,9 +66,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
 }) => {
   const polygons = data.polygons || [];
   const lines = data.lines || [];
-  const userName = data.userName || "N/A";
-  const projectName = data.projectName;
-  const summary = data.summary || "";
 
   // Get latest project from localStorage
   let latestProject: any = {};
@@ -136,13 +154,25 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
     <>
       {/* Page 1: Cover + Project Details + Summary */}
       <PageWrapper page={1}>
-        <div style={headerCardStyle}>
-          <Image src={logoSrc} alt="Logo" height={100} width={100} />
-          <div style={{ textAlign: "right" }}>
-            <p style={{ margin: 0 }}>
+        <div
+          style={{
+            ...headerCardStyle,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "20px 16px",
+            borderRadius: "8px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Image src={logoSrc} alt="Logo" height={150} width={150} />
+          </div>
+
+          <div style={{ textAlign: "right", color: "#fff" }}>
+            <p style={{ margin: 0, fontSize: "14px" }}>
               Prepared For: <strong>Superior Pro Roofs</strong>
             </p>
-            <p style={{ margin: 0 }}>
+            <p style={{ margin: 0, fontSize: "14px" }}>
               Date:{" "}
               <strong>
                 {latestProject.createdAt
@@ -176,89 +206,89 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             style={{
               ...cardContentStyle,
               display: "flex",
-              alignItems: "center",
               flexWrap: "wrap",
-              gap: "30px",
+              gap: 30,
             }}
           >
-            <div style={{ minWidth: "200px" }}>
+            <div style={{ minWidth: 200 }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>First Name:</p>
               <p>{latestProject.firstName || "N/A"}</p>
             </div>
-            <div style={{ minWidth: "200px" }}>
+            <div style={{ minWidth: 200 }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Last Name:</p>
               <p>{latestProject.lastName || "N/A"}</p>
             </div>
-            <div style={{ minWidth: "200px" }}>
+            <div style={{ minWidth: 200 }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Email:</p>
               <p>{latestProject.email || "N/A"}</p>
             </div>
-            <div style={{ minWidth: "200px" }}>
+            <div style={{ minWidth: 200 }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Mobile:</p>
               <p>{latestProject.mobile || "N/A"}</p>
             </div>
-            <div style={{ minWidth: "200px" }}>
+            <div style={{ minWidth: 200 }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Property Type:</p>
               <p>{latestProject.propertyType || "N/A"}</p>
             </div>
-            <div style={{ minWidth: "200px" }}>
+            <div style={{ minWidth: 200 }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Roof Type:</p>
               <p>{latestProject.roofType || "N/A"}</p>
             </div>
-            <div style={{ minWidth: "200px" }}>
+            <div style={{ minWidth: 200 }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Address:</p>
               <p>{latestProject.address || "N/A"}</p>
             </div>
           </div>
         </div>
 
-        {/* Project Summary Card */}
+        {/* Project Summary */}
         <div
           style={{ ...cardContainerStyle, border: `1px solid ${ACCENT_COLOR}` }}
         >
           <div style={cardHeaderStyle}>
             <h3 style={headingStyle}>Project Summary</h3>
           </div>
-          <div style={{ ...cardContentStyle, display: "flex", gap: "20px" }}>
-            <div style={{ minWidth: "200px" }}>
+          <div
+            style={{
+              ...cardContentStyle,
+              display: "flex",
+              justifyContent: "space-around",
+              gap: 16,
+            }}
+          >
+            <div style={{ minWidth: 200, textAlign: "center" }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Total Area</p>
-              <p>4,952 sq ft</p>
+              <p>{latestProject?.totalArea || "0"} sq ft</p>
             </div>
-            <div style={{ minWidth: "200px" }}>
-              <p style={{ margin: 0, fontWeight: "bold" }}>Predominant Pitch</p>
-              <p>15/12</p>
-            </div>
-            <div style={{ minWidth: "200px" }}>
+            <div style={{ minWidth: 200, textAlign: "center" }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Total Length</p>
-              <p>205 ft</p>
+              <p>{latestProject?.totalLength || "0"} ft</p>
             </div>
           </div>
         </div>
       </PageWrapper>
 
-      {/* Page 2: Project Map */}
+      {/* Page 2: Map */}
       {mapImage && (
         <PageWrapper page={2}>
           <div style={cardContainerStyle}>
             <div style={cardHeaderStyle}>
-              <h3 style={headingStyle}>Project Map</h3>
+              <h3 style={headingStyle}>Top View</h3>
             </div>
             <div style={cardContentStyle}>
               <img
                 src={mapImage}
                 alt="Map Screenshot"
-                style={{ width: "100%", borderRadius: "6px" }}
+                style={{ width: "100%", borderRadius: 6 }}
               />
             </div>
           </div>
         </PageWrapper>
       )}
-
-      {/* Page 3: Polygons + Lines */}
       <PageWrapper page={3}>
-        <div style={{ display: "flex", gap: "20px" }}>
-          {/* Polygons card */}
-          <div style={{ ...cardContainerStyle, flex: 1 }}>
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+          {/* Polygons */}
+          <div style={{ ...cardContainerStyle, flex: 1, minWidth: 300 }}>
             <div style={cardHeaderStyle}>
               <h3 style={headingStyle}>Polygons (Roof Facets)</h3>
             </div>
@@ -266,38 +296,53 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               {polygons.length === 0 ? (
                 <p>No polygons drawn.</p>
               ) : (
-                polygons.map((p, idx) => (
-                  <div
-                    key={p.id || idx}
-                    style={{
-                      marginBottom: "12px",
-                      borderBottom: "1px dotted #ccc",
-                    }}
-                  >
-                    <strong style={{ color: ACCENT_COLOR }}>
-                      Facet {idx + 1} (Color: {p.color})
-                    </strong>
-                    <ul
+                polygons.map((p, idx) => {
+                  const edges =
+                    (p.coordinates?.[0] || [])
+                      .map((coord, i, arr) => {
+                        if (i === arr.length - 1) return null; // skip last point
+                        const start = coord as unknown as [number, number];
+                        const end = arr[i + 1] as unknown as [number, number];
+                        return turf.length(turf.lineString([start, end]), {
+                          units: "meters",
+                        });
+                      })
+                      .filter((e): e is number => e !== null) || [];
+
+                  return (
+                    <div
+                      key={p.id || idx}
                       style={{
-                        paddingLeft: "20px",
-                        margin: "4px 0",
-                        fontSize: "14px",
+                        marginBottom: 12,
+                        borderBottom: "1px dotted #ccc",
+                        paddingBottom: 8,
                       }}
                     >
-                      {(p.edges || []).map((e, i) => (
-                        <li key={i}>
-                          Edge {i + 1}: {e}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))
+                      <strong style={{ color: p.customColor || ACCENT_COLOR }}>
+                        Polygon #{idx + 1} {p.label ? `(${p.label})` : ""}
+                      </strong>
+                      <ul
+                        style={{
+                          paddingLeft: 20,
+                          margin: "8px 0",
+                          fontSize: 14,
+                        }}
+                      >
+                        {edges.map((length, i) => (
+                          <li key={i} style={{ color: "black" }}>
+                            Edge {i + 1}: {toFeetInches(length)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
 
-          {/* Lines card */}
-          <div style={{ ...cardContainerStyle, flex: 1 }}>
+          {/* Lines */}
+          <div style={{ ...cardContainerStyle, flex: 1, minWidth: 300 }}>
             <div style={cardHeaderStyle}>
               <h3 style={headingStyle}>Lines (Measurements)</h3>
             </div>
@@ -305,173 +350,47 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               {lines.length === 0 ? (
                 <p>No lines drawn.</p>
               ) : (
-                lines.map((l, idx) => (
-                  <div
-                    key={l.id || idx}
-                    style={{
-                      marginBottom: "12px",
-                      borderBottom: "1px dotted #ccc",
-                    }}
-                  >
-                    <strong style={{ color: ACCENT_COLOR }}>
-                      Line {idx + 1} (Color: {l.color})
-                    </strong>
-                    <ul
+                lines.map((l, idx) => {
+                  const edges: number[] = [];
+                  if (l.coordinates && l.coordinates.length > 1) {
+                    for (let i = 0; i < l.coordinates.length - 1; i++) {
+                      const start = l.coordinates[i];
+                      const end = l.coordinates[i + 1];
+                      const line = turf.lineString([start, end]);
+                      edges.push(turf.length(line, { units: "meters" }));
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={l.id || idx}
                       style={{
-                        paddingLeft: "20px",
-                        margin: "4px 0",
-                        fontSize: "14px",
+                        marginBottom: 12,
+                        borderBottom: "1px dotted #ccc",
+                        paddingBottom: 8,
                       }}
                     >
-                      {l.coordinates.map((c, i) => (
-                        <li key={i}>
-                          Point {i + 1}: {c[0].toFixed(6)}, {c[1].toFixed(6)}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))
+                      <strong style={{ color: l.customColor || ACCENT_COLOR }}>
+                        Line #{idx + 1} {l.label ? `(${l.label})` : ""}
+                      </strong>
+                      <ul
+                        style={{
+                          paddingLeft: 20,
+                          margin: "8px 0",
+                          fontSize: 14,
+                        }}
+                      >
+                        {edges.map((length, i) => (
+                          <li key={i} style={{ color: "black" }}>
+                            Edge {i + 1}: {toFeetInches(length)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })
               )}
             </div>
-          </div>
-        </div>
-      </PageWrapper>
-
-      {/* Page 4: Top View */}
-      <PageWrapper page={4}>
-        <div style={cardContainerStyle}>
-          <div style={cardHeaderStyle}>
-            <h3 style={headingStyle}>Top View Diagram</h3>
-          </div>
-          <div style={cardContentStyle}>
-            {topViewImage ? (
-              <img
-                src={topViewImage}
-                alt="Top View"
-                style={{ width: "100%", borderRadius: "6px" }}
-              />
-            ) : (
-              <p>No top view available.</p>
-            )}
-          </div>
-        </div>
-      </PageWrapper>
-
-      {/* Page 5: Edge Lengths */}
-      <PageWrapper page={5}>
-        <div style={cardContainerStyle}>
-          <div style={cardHeaderStyle}>
-            <h3 style={headingStyle}>Edge Lengths Detail</h3>
-          </div>
-          <div style={{ ...cardContentStyle }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ backgroundColor: CARD_HEADER_BG_COLOR }}>
-                  <th
-                    style={{
-                      padding: "8px 8px 18px 8px",
-                      textAlign: "left",
-                      borderBottom: "1px solid #ccc",
-                      color: "#f3f3f3",
-                    }}
-                  >
-                    Type
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px 8px 18px 8px",
-                      textAlign: "right",
-                      borderBottom: "1px solid #ccc",
-                      color: "#f3f3f3",
-                    }}
-                  >
-                    Length (ft)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td
-                    style={{ padding: "8px", borderBottom: "1px dotted #ccc" }}
-                  >
-                    Eaves
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px",
-                      textAlign: "right",
-                      borderBottom: "1px dotted #ccc",
-                    }}
-                  >
-                    342
-                  </td>
-                </tr>
-                <tr style={{ backgroundColor: "#fafafa" }}>
-                  <td
-                    style={{ padding: "8px", borderBottom: "1px dotted #ccc" }}
-                  >
-                    Rakes
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px",
-                      textAlign: "right",
-                      borderBottom: "1px dotted #ccc",
-                    }}
-                  >
-                    119
-                  </td>
-                </tr>
-                <tr>
-                  <td
-                    style={{ padding: "8px", borderBottom: "1px dotted #ccc" }}
-                  >
-                    Hips
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px",
-                      textAlign: "right",
-                      borderBottom: "1px dotted #ccc",
-                    }}
-                  >
-                    99
-                  </td>
-                </tr>
-                <tr style={{ backgroundColor: "#fafafa" }}>
-                  <td
-                    style={{ padding: "8px", borderBottom: "1px dotted #ccc" }}
-                  >
-                    Ridges
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px",
-                      textAlign: "right",
-                      borderBottom: "1px dotted #ccc",
-                    }}
-                  >
-                    106
-                  </td>
-                </tr>
-                <tr>
-                  <td
-                    style={{ padding: "8px", borderBottom: "1px dotted #ccc" }}
-                  >
-                    Valleys
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px",
-                      textAlign: "right",
-                      borderBottom: "1px dotted #ccc",
-                    }}
-                  >
-                    55
-                  </td>
-                </tr>
-              </tbody>
-            </table>
           </div>
         </div>
       </PageWrapper>

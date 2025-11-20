@@ -1,28 +1,73 @@
-// pdfGenerator.tsx
-import html2pdf from "html2pdf.js";
-import PDFTemplate from "./PDFTemplate";
-import ReactDOMServer from "react-dom/server";
-import { captureMapImage } from "./MapCaptureUtil";
-import { getPDFData } from "./PDFDataProvider";
+"use client";
+
 import React from "react";
+import PDFTemplate from "./PDFTemplate";
+import { createRoot } from "react-dom/client";
+import html2pdf from "html2pdf.js";
 
-export const generatePDF = () => {
-  const mapRef = (window as any).mapRef;
-  const mapImage = captureMapImage(mapRef);
-  const data = getPDFData();
+interface GeneratePDFOptions {
+  mapImage?: string;
+  topViewImage?: string;
+}
 
-  // ✅ JSX allowed only in .tsx
-  const pdfHtml = ReactDOMServer.renderToStaticMarkup(
-    <PDFTemplate mapImage={mapImage} data={data} />
+export const generatePDF = ({ mapImage, topViewImage }: GeneratePDFOptions) => {
+  // Latest project from localStorage
+  let latestProject: any = { polygons: [], lines: [] };
+  if (typeof window !== "undefined") {
+    const projectsRaw = localStorage.getItem("projects");
+    if (projectsRaw) {
+      const projects = JSON.parse(projectsRaw);
+      if (Array.isArray(projects) && projects.length > 0) {
+        latestProject = projects[projects.length - 1];
+      }
+    }
+  }
+
+  const polygons = latestProject.polygons || [];
+  const lines = latestProject.lines || [];
+
+  // Temporary div create
+  const tempDiv = document.createElement("div");
+  document.body.appendChild(tempDiv);
+
+  const root = createRoot(tempDiv);
+  root.render(
+    <PDFTemplate
+      mapImage={mapImage}
+      topViewImage={topViewImage}
+      data={{
+        polygons,
+        lines,
+        projectName: latestProject.projectName,
+        userName: latestProject.userName,
+        summary: latestProject.summary,
+        createdAt: latestProject.createdAt,
+        firstName: latestProject.firstName,
+        lastName: latestProject.lastName,
+        email: latestProject.email,
+        mobile: latestProject.mobile,
+        propertyType: latestProject.propertyType,
+        roofType: latestProject.roofType,
+        address: latestProject.address,
+        totalArea: latestProject.totalArea,
+        totalLength: latestProject.totalLength,
+      }}
+    />
   );
 
-  html2pdf()
-    .from(pdfHtml)
-    .set({
-      margin: [10, 10, 10, 10],
-      filename: `Roof_Report_${Date.now()}.pdf`,
-      html2canvas: { scale: 2 },
-      jsPDF: { orientation: "portrait", unit: "pt", format: "a4" },
-    })
-    .save();
+  setTimeout(() => {
+    html2pdf()
+      .from(tempDiv)
+      .set({
+        margin: [10, 10, 10, 10],
+        filename: `Roof_Report_${Date.now()}.pdf`,
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { orientation: "portrait", unit: "pt", format: "a4" },
+      })
+      .save()
+      .finally(() => {
+        root.unmount();
+        document.body.removeChild(tempDiv);
+      });
+  }, 500);
 };

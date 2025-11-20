@@ -32,27 +32,110 @@ export function useMapboxFunctions() {
   const [showLocationCard, setShowLocationCard] = useState(!initialLocationConfirmed);
   const [isLocationConfirmed, setIsLocationConfirmed] = useState(initialLocationConfirmed);
 
+  const defaultPolygonLabels = ["Ridge","Hip","Valley","Rake", "Eave", "Flashing", "Step Flashing"];
+  const defaultLineLabels = ["Ridge","Hip","Valley","Rake", "Eave", "Flashing", "Step Flashing"];
   // --------------------------
-  // Update shapes, labels, edges
+  // 1) LocalStorage save function
+  // --------------------------
+
+const saveShapesToProjects = (features: any[]) => {
+  if (typeof window === "undefined") return;
+
+  const projectsRaw = localStorage.getItem("projects");
+  let projects = projectsRaw ? JSON.parse(projectsRaw) : [];
+  if (projects.length === 0) return;
+
+  const latestProject = projects[projects.length - 1];
+  const polygons: any[] = [];
+  const lines: any[] = [];
+  let totalAreaFeet = 0;
+  let totalLengthFeet = 0;
+
+  features.forEach((feature, idx) => {
+    const coords = feature.geometry.coordinates;
+    const edges: any[] = [];
+
+    if (feature.geometry.type === "Polygon") {
+      const polyCoords = coords[0];
+
+      for (let i = 0; i < polyCoords.length - 1; i++) {
+        const lenMeters = turf.length(turf.lineString([polyCoords[i], polyCoords[i + 1]]), { units: "meters" });
+        const lenFeet = lenMeters * 3.28084;
+        totalLengthFeet += lenFeet;
+
+        edges.push({
+          start: polyCoords[i],
+          end: polyCoords[i + 1],
+          lengthFeet: lenFeet,
+        });
+      }
+
+      const areaSqFeet = turf.area(feature) * 10.7639;
+      totalAreaFeet += areaSqFeet;
+
+      polygons.push({
+        id: feature.id,
+        coordinates: coords,
+        edges,
+        area: areaSqFeet,
+        customColor: feature.properties?.customColor || "#FFD700",
+        label: feature.properties?.label || defaultPolygonLabels[idx] || `Polygon #${idx + 1}`,
+      });
+    }
+
+    if (feature.geometry.type === "LineString") {
+      for (let i = 0; i < coords.length - 1; i++) {
+        const lenMeters = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: "meters" });
+        const lenFeet = lenMeters * 3.28084;
+        totalLengthFeet += lenFeet;
+
+        edges.push({
+          start: coords[i],
+          end: coords[i + 1],
+          lengthFeet: lenFeet,
+        });
+      }
+
+      lines.push({
+        id: feature.id,
+        coordinates: coords,
+        edges,
+        customColor: feature.properties?.customColor || "#FFD700",
+        label: feature.properties?.label || defaultLineLabels[idx] || `Line #${idx + 1}`,
+      });
+    }
+  });
+
+  latestProject.polygons = polygons;
+  latestProject.lines = lines;
+  latestProject.totalArea = totalAreaFeet.toFixed(2);
+  latestProject.totalLength = totalLengthFeet.toFixed(2);
+
+  localStorage.setItem("projects", JSON.stringify(projects));
+};
+
+
+  // --------------------------
+  // Update shapes & save to new structure
   // --------------------------
   const updateShapesData = useCallback(() => {
     if (!drawRef.current) return;
     const allFeatures = drawRef.current.getAll().features;
 
+    // Update edges on map
     const edgeFeatures: any[] = [];
     allFeatures.forEach((feature) => {
+      const coords = feature.geometry.coordinates;
       if (feature.geometry.type === "Polygon") {
-        const coords = feature.geometry.coordinates[0];
-        coords.forEach((c, i) => {
-          if (!coords[i + 1]) return;
+        coords[0].forEach((c, i) => {
+          if (!coords[0][i + 1]) return;
           edgeFeatures.push({
             type: "Feature",
             properties: { color: feature.properties?.customColor || "#FFD700" },
-            geometry: { type: "LineString", coordinates: [coords[i], coords[i + 1]] },
+            geometry: { type: "LineString", coordinates: [coords[0][i], coords[0][i + 1]] },
           });
         });
       } else if (feature.geometry.type === "LineString") {
-        const coords = feature.geometry.coordinates;
         for (let i = 0; i < coords.length - 1; i++) {
           edgeFeatures.push({
             type: "Feature",
@@ -64,13 +147,16 @@ export function useMapboxFunctions() {
     });
 
     const source = mapRef.current?.getSource("polygon-edges") as any;
-    if (source) {
-      source.setData({ type: "FeatureCollection", features: edgeFeatures });
-    }
+    if (source) source.setData({ type: "FeatureCollection", features: edgeFeatures });
 
-    setPolygonsData(allFeatures.filter(f => f.geometry?.type === "Polygon"));
-    setLinesData(allFeatures.filter(f => f.geometry?.type === "LineString"));
+    setPolygonsData(allFeatures.filter(f => f.geometry.type === "Polygon"));
+    setLinesData(allFeatures.filter(f => f.geometry.type === "LineString"));
+
+    // Save to projects array instead of measurementData
+    saveShapesToProjects(allFeatures);
   }, []);
+
+
 
   const updateLabelPositions = useCallback(() => {
     if (!mapRef.current) return;
@@ -195,23 +281,22 @@ export function useMapboxFunctions() {
       drawRef.current?.setFeatureProperty(feature.id, "customColor", currentColor);
     });
 
-    if (["draw.create", "draw.update"].includes(e.type)) {
-      pushHistory(e.type === "draw.create" ? "create" : "update");
+    if (["draw.create", "draw.update", "draw.delete"].includes(e.type)) {
+      pushHistory(
+        e.type === "draw.create" ? "create" :
+          e.type === "draw.update" ? "update" : "delete"
+      );
       updateShapesData();
       updateEdgeLabels(true);
 
-      // **Remove grid after drawing is complete**
-      if (mapRef.current && mapRef.current.getLayer("grid-layer")) {
+      // Remove grid after drawing
+      if (mapRef.current?.getLayer("grid-layer")) {
         mapRef.current.removeLayer("grid-layer");
         mapRef.current.removeSource("grid-layer");
       }
       setGridVisible(false);
     }
   }, [pushHistory, updateShapesData, updateEdgeLabels]);
-
-
-
-
 
 
 
@@ -243,7 +328,7 @@ export function useMapboxFunctions() {
     el.className = "custom-pin-marker";
     el.style.width = "36px";
     el.style.height = "36px";
-    el.style.backgroundImage = "url('/pin-icon.svg')";
+    // el.style.backgroundImage = "url('/pin-icon.svg')";
     el.style.backgroundSize = "contain";
     el.style.backgroundRepeat = "no-repeat";
     el.style.transform = "translate(-50%, -100%)";
@@ -251,59 +336,59 @@ export function useMapboxFunctions() {
   };
 
 
-const handleConfirmLocation = () => {
-  if (!tempLocation) return;
+  const handleConfirmLocation = () => {
+    if (!tempLocation) return;
 
-  localStorage.setItem(
-    "projectLocation",
-    JSON.stringify({ lat: tempLocation[1], lng: tempLocation[0] })
-  );
+    localStorage.setItem(
+      "projectLocation",
+      JSON.stringify({ lat: tempLocation[1], lng: tempLocation[0] })
+    );
 
-  setShowLocationCard(false);
-  setIsLocationConfirmed(true); // ✅ mark as confirmed
-  setPinLocation(tempLocation);
+    setShowLocationCard(false);
+    setIsLocationConfirmed(true); // ✅ mark as confirmed
+    setPinLocation(tempLocation);
 
-  if (mapRef.current) {
-    mapRef.current.flyTo({
-      center: tempLocation,
-      zoom: 20,
-      essential: true,
-    });
-  }
-};
-
-
-
-
-
-
-
-useEffect(() => {
-  if (!mapRef.current) return;
-  const map = mapRef.current;
-
-  const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
-    if (isLocationConfirmed) return; // ✅ don't show card if confirmed
-
-    const { lng, lat } = e.lngLat;
-    setTempLocation([lng, lat]);
-
-    // Show the marker
-    if (!pinMarkerRef.current) {
-      pinMarkerRef.current = new mapboxgl.Marker({ color: "#e63946" })
-        .setLngLat([lng, lat])
-        .addTo(map);
-    } else {
-      pinMarkerRef.current.setLngLat([lng, lat]);
+    if (mapRef.current) {
+      mapRef.current.flyTo({
+        center: tempLocation,
+        zoom: 20,
+        essential: true,
+      });
     }
-
-    // Only show card if not confirmed
-    setShowLocationCard(true);
   };
 
-  map.on("click", handleMapClick);
-  return () => map.off("click", handleMapClick);
-}, [isLocationConfirmed]);
+
+
+
+
+
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
+      if (isLocationConfirmed) return; // ✅ don't show card if confirmed
+
+      const { lng, lat } = e.lngLat;
+      setTempLocation([lng, lat]);
+
+      // Show the marker
+      if (!pinMarkerRef.current) {
+        pinMarkerRef.current = new mapboxgl.Marker({ color: "#e63946" })
+          .setLngLat([lng, lat])
+          .addTo(map);
+      } else {
+        pinMarkerRef.current.setLngLat([lng, lat]);
+      }
+
+      // Only show card if not confirmed
+      setShowLocationCard(true);
+    };
+
+    map.on("click", handleMapClick);
+    return () => map.off("click", handleMapClick);
+  }, [isLocationConfirmed]);
 
 
 
@@ -314,6 +399,8 @@ useEffect(() => {
       style: "mapbox://styles/mapbox/satellite-streets-v12",
       center,
       zoom: 19,
+      preserveDrawingBuffer: true,
+
     });
 
     mapRef.current = map;
@@ -446,7 +533,7 @@ useEffect(() => {
     el.className = "custom-pin-marker";
     el.style.width = "36px";
     el.style.height = "36px";
-    el.style.backgroundImage = "url('/pin-icon.svg')"; // use your icon in public/
+    // el.style.backgroundImage = "url('/pin-icon.svg')"; // use your icon in public/
     el.style.backgroundSize = "contain";
     el.style.backgroundRepeat = "no-repeat";
     el.style.transform = "translate(-50%, -100%)"; // center bottom of icon on coordinates
@@ -475,21 +562,29 @@ useEffect(() => {
   }, [tempLocation, isLocationConfirmed]);
 
 
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const map = mapRef.current;
+useEffect(() => {
+  if (!mapRef.current) return;
+  const map = mapRef.current;
 
-    const handleClick = (e) => {
-      const lngLat: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-      setTempLocation(lngLat);
-    };
+    const handleClick = (e: mapboxgl.MapMouseEvent) => {
 
-    map.on("click", handleClick);
-    return () => {
-      map.off("click", handleClick);
-    };
-  }, [isLocationConfirmed]);
+    // Agar location already confirm ho gayi hai to ignore
+    if (isLocationConfirmed) return;
 
+    const lngLat: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+    setTempLocation(lngLat);
+
+    // Optional: Pin marker update agar required ho
+    if (pinMarkerRef.current) {
+      pinMarkerRef.current.setLngLat(lngLat);
+    }
+  };
+
+  map.on("click", handleClick);
+  return () => {
+    map.off("click", handleClick);
+  };
+}, [isLocationConfirmed]);
 
 
 
@@ -499,33 +594,35 @@ useEffect(() => {
   // --------------------------
   // 3) applyColor, draw modes, draw event handler
   // --------------------------
-  const applyColorToSelectedFeature = useCallback(
-    (color: string) => {
-      if (!drawRef.current || !selectedFeature) return;
-      const feature = drawRef.current.get(selectedFeature);
-      if (!feature) return;
+const applyColorToSelectedFeature = useCallback(
+  (label: { name: string; color: string }) => {
+    if (!drawRef.current || !selectedFeature) return;
+    const feature = drawRef.current.get(selectedFeature);
+    if (!feature) return;
 
-      // Feature property update
-      feature.properties = {
-        ...feature.properties,
-        customColor: color,
-      };
+    // Update both color & label for the feature
+    feature.properties = {
+      ...feature.properties,
+      customColor: label.color,
+      label: label.name, // ✅ Add this line
+    };
 
-      // Re-add feature to force MapboxDraw repaint
-      drawRef.current.add(feature);
+    // Re-add feature to force MapboxDraw repaint
+    drawRef.current.add(feature);
 
-      // Update edges and labels
-      updateShapesData();
-      updateEdgeLabels(labelsVisible);
+    // Update edges and labels
+    updateShapesData();
+    updateEdgeLabels(labelsVisible);
 
-      // Optional: deselect to apply color cleanly
-      if (drawRef.current.getMode() === "simple_select") {
-        drawRef.current.changeMode("simple_select");
-        setGridVisible(false);
-      }
-    },
-    [selectedFeature, updateShapesData, updateEdgeLabels, labelsVisible]
-  );
+    // Optional: deselect to apply color cleanly
+    if (drawRef.current.getMode() === "simple_select") {
+      drawRef.current.changeMode("simple_select");
+      setGridVisible(false);
+    }
+  },
+  [selectedFeature, updateShapesData, updateEdgeLabels, labelsVisible]
+);
+
 
 
   // selection change -> setSelectedFeature
