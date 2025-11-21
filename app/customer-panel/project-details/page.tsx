@@ -220,21 +220,23 @@ export default function ProjectDetailsPage() {
 
                       <td className="px-6 py-4 text-center whitespace-nowrap flex justify-center gap-4">
                         {/* VIEW BUTTON */}
-<button
-  onClick={() => {
-    const addr = {
-      lat: p.address?.lat || 31.5204, // fallback Lahore
-      lng: p.address?.lng || 74.3587,
-    };
-    localStorage.setItem("projectAddress", JSON.stringify(addr));
-    router.push("/property-map"); // map screen pe redirect
-  }}
-  className="p-2 rounded-full hover:bg-blue-100 transition"
-  title="View on Map"
->
-  <Eye className="w-5 h-5 text-blue-500" />
-</button>
-
+                        <button
+                          onClick={() => {
+                            const addr = {
+                              lat: p.address?.lat || 31.5204, // fallback Lahore
+                              lng: p.address?.lng || 74.3587,
+                            };
+                            localStorage.setItem(
+                              "projectAddress",
+                              JSON.stringify(addr)
+                            );
+                            router.push("/property-map"); // map screen pe redirect
+                          }}
+                          className="p-2 rounded-full hover:bg-blue-100 transition"
+                          title="View on Map"
+                        >
+                          <Eye className="w-5 h-5 text-blue-500" />
+                        </button>
 
                         {/* DELETE BUTTON */}
                         <button

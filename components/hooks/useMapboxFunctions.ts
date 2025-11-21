@@ -1,3 +1,4 @@
+// useMapboxFunctions.ts
 "use client";
 
 import { useRef, useCallback, useState, useEffect } from "react";
@@ -23,140 +24,120 @@ export function useMapboxFunctions() {
   const [linesData, setLinesData] = useState<any[]>([]);
   const [gridVisible, setGridVisible] = useState(false);
 
+  // Location states
   const [tempLocation, setTempLocation] = useState<[number, number] | null>(null);
   const [pinLocation, setPinLocation] = useState<[number, number] | null>(null);
   const pinMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
-  const savedLocation = localStorage.getItem("projectLocation");
-  const initialLocationConfirmed = !!savedLocation;
-  const [showLocationCard, setShowLocationCard] = useState(!initialLocationConfirmed);
-  const [isLocationConfirmed, setIsLocationConfirmed] = useState(initialLocationConfirmed);
+  const savedLocationRaw = typeof window !== "undefined" ? localStorage.getItem("projectLocation") : null;
+  const initialLocationConfirmed = !!savedLocationRaw;
+  const [showLocationCard, setShowLocationCard] = useState<boolean>(!initialLocationConfirmed);
+  const [isLocationConfirmed, setIsLocationConfirmed] = useState<boolean>(initialLocationConfirmed);
 
   const defaultPolygonLabels = ["Ridge","Hip","Valley","Rake", "Eave", "Flashing", "Step Flashing"];
   const defaultLineLabels = ["Ridge","Hip","Valley","Rake", "Eave", "Flashing", "Step Flashing"];
+
   // --------------------------
-  // 1) LocalStorage save function
+  // Save shapes to projects (unchanged logic)
   // --------------------------
+  const saveShapesToProjects = useCallback((features: any[]) => {
+    if (typeof window === "undefined") return;
 
-const saveShapesToProjects = (features: any[]) => {
-  if (typeof window === "undefined") return;
+    const projectsRaw = localStorage.getItem("projects");
+    let projects = projectsRaw ? JSON.parse(projectsRaw) : [];
+    if (projects.length === 0) return;
 
-  const projectsRaw = localStorage.getItem("projects");
-  let projects = projectsRaw ? JSON.parse(projectsRaw) : [];
-  if (projects.length === 0) return;
+    const latestProject = projects[projects.length - 1];
+    const polygons: any[] = [];
+    const lines: any[] = [];
+    let totalAreaFeet = 0;
+    let totalLengthFeet = 0;
 
-  const latestProject = projects[projects.length - 1];
-  const polygons: any[] = [];
-  const lines: any[] = [];
-  let totalAreaFeet = 0;
-  let totalLengthFeet = 0;
+    features.forEach((feature: any, idx: number) => {
+      if (!feature || !feature.geometry) return;
+      const coords = feature.geometry.coordinates;
+      const edges: any[] = [];
 
-  features.forEach((feature, idx) => {
-    const coords = feature.geometry.coordinates;
-    const edges: any[] = [];
-
-    if (feature.geometry.type === "Polygon") {
-      const polyCoords = coords[0];
-
-      for (let i = 0; i < polyCoords.length - 1; i++) {
-        const lenMeters = turf.length(turf.lineString([polyCoords[i], polyCoords[i + 1]]), { units: "meters" });
-        const lenFeet = lenMeters * 3.28084;
-        totalLengthFeet += lenFeet;
-
-        edges.push({
-          start: polyCoords[i],
-          end: polyCoords[i + 1],
-          lengthFeet: lenFeet,
+      if (feature.geometry.type === "Polygon") {
+        const polyCoords = coords[0];
+        for (let i = 0; i < polyCoords.length - 1; i++) {
+          const lenMeters = turf.length(turf.lineString([polyCoords[i], polyCoords[i + 1]]), { units: "meters" });
+          const lenFeet = lenMeters * 3.28084;
+          totalLengthFeet += lenFeet;
+          edges.push({ start: polyCoords[i], end: polyCoords[i + 1], lengthFeet: lenFeet });
+        }
+        const areaSqFeet = turf.area(feature) * 10.7639;
+        totalAreaFeet += areaSqFeet;
+        polygons.push({
+          id: feature.id,
+          coordinates: coords,
+          edges,
+          area: areaSqFeet,
+          customColor: feature.properties?.customColor || "#FFD700",
+          label: feature.properties?.label || defaultPolygonLabels[idx] || `Polygon #${idx + 1}`,
         });
       }
 
-      const areaSqFeet = turf.area(feature) * 10.7639;
-      totalAreaFeet += areaSqFeet;
-
-      polygons.push({
-        id: feature.id,
-        coordinates: coords,
-        edges,
-        area: areaSqFeet,
-        customColor: feature.properties?.customColor || "#FFD700",
-        label: feature.properties?.label || defaultPolygonLabels[idx] || `Polygon #${idx + 1}`,
-      });
-    }
-
-    if (feature.geometry.type === "LineString") {
-      for (let i = 0; i < coords.length - 1; i++) {
-        const lenMeters = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: "meters" });
-        const lenFeet = lenMeters * 3.28084;
-        totalLengthFeet += lenFeet;
-
-        edges.push({
-          start: coords[i],
-          end: coords[i + 1],
-          lengthFeet: lenFeet,
+      if (feature.geometry.type === "LineString") {
+        for (let i = 0; i < coords.length - 1; i++) {
+          const lenMeters = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: "meters" });
+          const lenFeet = lenMeters * 3.28084;
+          totalLengthFeet += lenFeet;
+          edges.push({ start: coords[i], end: coords[i + 1], lengthFeet: lenFeet });
+        }
+        lines.push({
+          id: feature.id,
+          coordinates: coords,
+          edges,
+          customColor: feature.properties?.customColor || "#FFD700",
+          label: feature.properties?.label || defaultLineLabels[idx] || `Line #${idx + 1}`,
         });
       }
+    });
 
-      lines.push({
-        id: feature.id,
-        coordinates: coords,
-        edges,
-        customColor: feature.properties?.customColor || "#FFD700",
-        label: feature.properties?.label || defaultLineLabels[idx] || `Line #${idx + 1}`,
-      });
-    }
-  });
+    latestProject.polygons = polygons;
+    latestProject.lines = lines;
+    latestProject.totalArea = totalAreaFeet.toFixed(2);
+    latestProject.totalLength = totalLengthFeet.toFixed(2);
 
-  latestProject.polygons = polygons;
-  latestProject.lines = lines;
-  latestProject.totalArea = totalAreaFeet.toFixed(2);
-  latestProject.totalLength = totalLengthFeet.toFixed(2);
-
-  localStorage.setItem("projects", JSON.stringify(projects));
-};
-
+    localStorage.setItem("projects", JSON.stringify(projects));
+  }, []);
 
   // --------------------------
   // Update shapes & save to new structure
   // --------------------------
-  const updateShapesData = useCallback(() => {
-    if (!drawRef.current) return;
-    const allFeatures = drawRef.current.getAll().features;
+ const updateShapesData = useCallback(() => {
+  if (!drawRef.current) return;
+  const allFeatures = drawRef.current.getAll().features;
 
-    // Update edges on map
-    const edgeFeatures: any[] = [];
-    allFeatures.forEach((feature) => {
-      const coords = feature.geometry.coordinates;
-      if (feature.geometry.type === "Polygon") {
-        coords[0].forEach((c, i) => {
-          if (!coords[0][i + 1]) return;
-          edgeFeatures.push({
-            type: "Feature",
-            properties: { color: feature.properties?.customColor || "#FFD700" },
-            geometry: { type: "LineString", coordinates: [coords[0][i], coords[0][i + 1]] },
-          });
-        });
-      } else if (feature.geometry.type === "LineString") {
-        for (let i = 0; i < coords.length - 1; i++) {
-          edgeFeatures.push({
-            type: "Feature",
-            properties: { color: feature.properties?.customColor || "#FFD700" },
-            geometry: { type: "LineString", coordinates: [coords[i], coords[i + 1]] },
-          });
-        }
-      }
-    });
+  const edgeFeatures: any[] = [];
+  allFeatures.forEach((feature) => {
+    const color = feature.properties?.customColor || "#FFD700"; // always use feature color
+    let coords: any[] = [];
 
-    const source = mapRef.current?.getSource("polygon-edges") as any;
-    if (source) source.setData({ type: "FeatureCollection", features: edgeFeatures });
+    if (feature.geometry.type === "Polygon") {
+      coords = feature.geometry.coordinates[0];
+    } else if (feature.geometry.type === "LineString") {
+      coords = feature.geometry.coordinates;
+    }
 
-    setPolygonsData(allFeatures.filter(f => f.geometry.type === "Polygon"));
-    setLinesData(allFeatures.filter(f => f.geometry.type === "LineString"));
+    for (let i = 0; i < coords.length - 1; i++) {
+      edgeFeatures.push({
+        type: "Feature",
+        properties: { color },
+        geometry: { type: "LineString", coordinates: [coords[i], coords[i + 1]] },
+      });
+    }
+  });
 
-    // Save to projects array instead of measurementData
-    saveShapesToProjects(allFeatures);
-  }, []);
+  const source = mapRef.current?.getSource("polygon-edges") as any;
+  if (source) {
+    source.setData({ type: "FeatureCollection", features: edgeFeatures });
+  }
 
-
+  setPolygonsData(allFeatures.filter(f => f.geometry?.type === "Polygon"));
+  setLinesData(allFeatures.filter(f => f.geometry?.type === "LineString"));
+}, []);
 
   const updateLabelPositions = useCallback(() => {
     if (!mapRef.current) return;
@@ -259,9 +240,7 @@ const saveShapesToProjects = (features: any[]) => {
     updateLabelPositions();
   }, [toFeetInches, updateLabelPositions]);
 
-  // --------------------------states
-  // 2) history/actions hook
-  // --------------------------
+  // --------------------------states / history-actions
   const {
     undo,
     redo,
@@ -275,7 +254,6 @@ const saveShapesToProjects = (features: any[]) => {
 
   const handleDrawChange = useCallback((e: any) => {
     if (!drawRef.current) return;
-
     e.features.forEach((feature: any) => {
       const currentColor = feature.properties?.customColor || "#FFD700";
       drawRef.current?.setFeatureProperty(feature.id, "customColor", currentColor);
@@ -291,176 +269,223 @@ const saveShapesToProjects = (features: any[]) => {
 
       // Remove grid after drawing
       if (mapRef.current?.getLayer("grid-layer")) {
-        mapRef.current.removeLayer("grid-layer");
-        mapRef.current.removeSource("grid-layer");
+        try {
+          mapRef.current.removeLayer("grid-layer");
+          mapRef.current.removeSource("grid-layer");
+        } catch (err) { /* ignore */ }
       }
       setGridVisible(false);
     }
   }, [pushHistory, updateShapesData, updateEdgeLabels]);
 
-
-
-
-
-
-
-
-
-
   // --------------------------
-  // 4) initialize map + draw
+  // Initialize map + draw
   // --------------------------
-  let center: [number, number]; // fallback default
-
-  if (savedLocation) {
+  let center: [number, number] = [0, 0]; // fallback
+  if (savedLocationRaw) {
     try {
-      const coords = JSON.parse(savedLocation);
+      const coords = JSON.parse(savedLocationRaw);
       if (coords && typeof coords.lat === "number" && typeof coords.lng === "number") {
-        center = [coords.lng, coords.lat]; // mapbox expects [lng, lat]
+        center = [coords.lng, coords.lat];
       }
     } catch (err) {
       console.warn("Invalid projectLocation in localStorage", err);
     }
   }
 
-  const createPinElement = () => {
-    const el = document.createElement("div");
-    el.className = "custom-pin-marker";
-    el.style.width = "36px";
-    el.style.height = "36px";
-    // el.style.backgroundImage = "url('/pin-icon.svg')";
-    el.style.backgroundSize = "contain";
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.transform = "translate(-50%, -100%)";
-    return el;
-  };
+const createPinElement = () => {
+  const el = document.createElement("div");
+  el.className = "custom-pin-marker";
+  el.style.width = "36px";
+  el.style.height = "36px";
+  el.style.backgroundImage = "url('https://maps.google.com/mapfiles/ms/icons/red-dot.png')";
+  el.style.backgroundSize = "contain";
+  el.style.backgroundRepeat = "no-repeat";
+  el.style.transform = "translate(-50%, -100%)";
+  return el;
+};
+
+useEffect(() => {
+  if (!mapRef.current || !tempLocation) return;
+  if (!pinMarkerRef.current) {
+    const el = createPinElement();
+    pinMarkerRef.current = new mapboxgl.Marker({ element: el, draggable: !isLocationConfirmed })
+      .setLngLat(tempLocation)
+      .addTo(mapRef.current);
+  } else {
+    pinMarkerRef.current.setLngLat(tempLocation);
+    pinMarkerRef.current.setDraggable(!isLocationConfirmed);
+  }
+}, [tempLocation, isLocationConfirmed]);
 
 
-  const handleConfirmLocation = () => {
+  // ---------- Confirm / Change handlers (fixed)
+  // ---------- Confirm / Change handlers (fixed)
+  const handleConfirmLocation = useCallback(() => {
     if (!tempLocation) return;
 
-    localStorage.setItem(
-      "projectLocation",
-      JSON.stringify({ lat: tempLocation[1], lng: tempLocation[0] })
-    );
-
-    setShowLocationCard(false);
-    setIsLocationConfirmed(true); // ✅ mark as confirmed
-    setPinLocation(tempLocation);
-
-    if (mapRef.current) {
-      mapRef.current.flyTo({
-        center: tempLocation,
-        zoom: 20,
-        essential: true,
-      });
+    // Save to localStorage
+    if (typeof window !== "undefined") {
+      localStorage.setItem("projectLocation", JSON.stringify({ lat: tempLocation[1], lng: tempLocation[0] }));
     }
-  };
+
+    setIsLocationConfirmed(true);
+    setShowLocationCard(false);
+
+    // Lock marker drag
+    if (pinMarkerRef.current) {
+      pinMarkerRef.current.setLngLat(tempLocation);
+      pinMarkerRef.current.setDraggable(false);
+    }
+
+    // Fly to location
+    mapRef.current?.flyTo({ center: tempLocation, zoom: 20, essential: true });
+  }, [tempLocation]);
+
+  // handleChangeLocation
+  const handleChangeLocation = useCallback(() => {
+    setIsLocationConfirmed(false);
+    setShowLocationCard(true);
+    // tempLocation ko null na karo, marker wahi location pe rahe
+    // setTempLocation(null); <-- REMOVE this
+
+    // Unlock marker drag
+    if (pinMarkerRef.current) {
+      pinMarkerRef.current.setDraggable(true);
+    }
+
+    // Add map click listener to move marker
+    if (mapRef.current) {
+      const map = mapRef.current;
+
+      const onClickMoveMarker = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
+        const { lng, lat } = e.lngLat;
+        setTempLocation([lng, lat]);
+      };
+
+      map.on("click", onClickMoveMarker);
+
+      // Clean up old listener if user confirms again
+      const cleanup = () => {
+        map.off("click", onClickMoveMarker);
+      };
+      return cleanup;
+    }
+  }, []);
 
 
-
-
-
-
-
+  // Sync pin marker when tempLocation changes
   useEffect(() => {
-    if (!mapRef.current) return;
-    const map = mapRef.current;
+    if (!mapRef.current || !tempLocation) return;
 
-    const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
-      if (isLocationConfirmed) return; // ✅ don't show card if confirmed
+    if (!pinMarkerRef.current) {
+      const el = createPinElement();
+      pinMarkerRef.current = new mapboxgl.Marker({ element: el, draggable: !isLocationConfirmed })
+        .setLngLat(tempLocation)
+        .addTo(mapRef.current);
 
-      const { lng, lat } = e.lngLat;
-      setTempLocation([lng, lat]);
-
-      // Show the marker
-      if (!pinMarkerRef.current) {
-        pinMarkerRef.current = new mapboxgl.Marker({ color: "#e63946" })
-          .setLngLat([lng, lat])
-          .addTo(map);
-      } else {
-        pinMarkerRef.current.setLngLat([lng, lat]);
+      if (!isLocationConfirmed) {
+        pinMarkerRef.current.on("drag", (ev) => {
+          const p = (ev.target as any).getLngLat();
+          setTempLocation([p.lng, p.lat]);
+        });
       }
+    } else {
+      pinMarkerRef.current.setLngLat(tempLocation);
+      pinMarkerRef.current.setDraggable(!isLocationConfirmed);
+    }
+  }, [tempLocation, isLocationConfirmed]);
 
-      // Only show card if not confirmed
-      setShowLocationCard(true);
-    };
-
-    map.on("click", handleMapClick);
-    return () => map.off("click", handleMapClick);
-  }, [isLocationConfirmed]);
-
-
-
+  // Initialize map once
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
+
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/satellite-streets-v12",
+      style: "mapbox://styles/mapbox/empty-v9", // Empty style
       center,
       zoom: 19,
       preserveDrawingBuffer: true,
-
     });
 
     mapRef.current = map;
 
-    const draw = new MapboxDraw({
-      displayControlsDefault: false,
-      userProperties: true,
-      modes: {
-        ...MapboxDraw.modes,
-        draw_polygon: SnapPolygonMode,
-        draw_line_string: SnapLineMode,
-      },
-      styles: [
-        {
-          id: "gl-draw-polygon-fill",
-          type: "fill",
-          filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
-          paint: { "fill-color": "transparent", "fill-opacity": 0 },
-        },
-        {
-          id: "gl-draw-polygon-stroke",
-          type: "line",
-          filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
-          paint: { "line-color": "#FFD700", "line-width": 3 },
-        },
-        {
-          id: "gl-draw-line",
-          type: "line",
-          filter: ["all", ["==", "$type", "LineString"], ["!=", "mode", "static"]],
-          paint: { "line-color": "#FFD700", "line-width": 3 },
-        },
-        {
-          id: "gl-draw-polygon-midpoint",
-          type: "circle",
-          filter: ["all", ["==", "$type", "Point"], ["==", "meta", "midpoint"]],
-          paint: { "circle-radius": 5, "circle-color": ["coalesce", ["get", "customColor"], "#FFD700"], "circle-opacity": 1 },
-        },
-        {
-          id: "gl-draw-polygon-vertex-active",
-          type: "circle",
-          filter: ["all", ["==", "$type", "Point"], ["==", "meta", "vertex"]],
-          paint: {
-            "circle-radius": 4,
-            "circle-color": ["coalesce", ["get", "customColor"], "white"],
-            "circle-stroke-color": ["coalesce", ["get", "customColor"], "white"],
-            "circle-stroke-width": 0.1,
-          },
-        },
-      ],
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      snap: true,
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    map.on("load", () => {
+      // Google Satellite tiles
+      if (!map.getSource("google-satellite")) {
+        map.addSource("google-satellite", {
+          type: "raster",
+          tiles: [
+            `https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&key=AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao`
+          ],
+          tileSize: 256,
+        });
+      }
 
-      snapOptions: { snapPx: 15, snapToMidPoints: true },
+      if (!map.getLayer("google-satellite-layer")) {
+        map.addLayer({
+          id: "google-satellite-layer",
+          type: "raster",
+          source: "google-satellite",
+          minzoom: 0,
+          maxzoom: 24,
+        });
+      }
+
+      // Add MapboxDraw
+      const draw = new MapboxDraw({
+        displayControlsDefault: false,
+        userProperties: true,
+        modes: {
+          ...MapboxDraw.modes,
+          draw_polygon: SnapPolygonMode,
+          draw_line_string: SnapLineMode,
+        },
+        styles: [
+          {
+            id: "gl-draw-polygon-fill",
+            type: "fill",
+            filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
+            paint: { "fill-color": "transparent", "fill-opacity": 0 },
+          },
+          {
+            id: "gl-draw-polygon-stroke",
+            type: "line",
+            filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
+            paint: { "line-color": "#FFD700", "line-width": 3 },
+          },
+          {
+            id: "gl-draw-line",
+            type: "line",
+            filter: ["all", ["==", "$type", "LineString"], ["!=", "mode", "static"]],
+            paint: { "line-color": "#FFD700", "line-width": 3 },
+          },
+          {
+            id: "gl-draw-polygon-midpoint",
+            type: "circle",
+            filter: ["all", ["==", "$type", "Point"], ["==", "meta", "midpoint"]],
+            paint: { "circle-radius": 5, "circle-color": ["coalesce", ["get", "customColor"], "#FFD700"], "circle-opacity": 1 },
+          },
+          {
+            id: "gl-draw-polygon-vertex-active",
+            type: "circle",
+            filter: ["all", ["==", "$type", "Point"], ["==", "meta", "vertex"]],
+            paint: {
+              "circle-radius": 4,
+              "circle-color": ["coalesce", ["get", "customColor"], "white"],
+              "circle-stroke-color": ["coalesce", ["get", "customColor"], "white"],
+              "circle-stroke-width": 0.1,
+            },
+          },
+        ],
+          snap: true,
+          snapOptions: { snapPx: 15, snapToMidPoints: true },
     } as any);
 
-    drawRef.current = draw;
-    map.addControl(draw);
+      drawRef.current = draw;
+      map.addControl(draw);
 
-    map.on("load", () => {
+      // Polygon edges source + layer
       if (!map.getSource("polygon-edges")) {
         map.addSource("polygon-edges", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       }
@@ -474,9 +499,12 @@ const saveShapesToProjects = (features: any[]) => {
         });
       }
     });
-    const mapCenter = map.getCenter();
-    const lngLat: [number, number] = [mapCenter.lng, mapCenter.lat];
 
+
+      // Map events
+         // initial map center -> set temp/pin
+    const mapCenter = map.getCenter();
+    const lngLat: [number, number] = (center[0] === 0 && center[1] === 0) ? [mapCenter.lng, mapCenter.lat] : center;
     setTempLocation(lngLat);
     setPinLocation(lngLat);
     setShowLocationCard(true);
@@ -495,137 +523,17 @@ const saveShapesToProjects = (features: any[]) => {
       map.off("render", updateLabelPositions);
       map.off("draw.create", handleDrawChange);
       map.off("draw.update", handleDrawChange);
-      map.remove();
+      try {
+        map.remove();
+      } catch (err) {}
       mapRef.current = null;
       drawRef.current = null;
     };
   }, [handleDrawChange, updateLabelPositions, pushHistory, updateEdgeLabels, updateShapesData]);
 
-  // Add marker for pin location
-
-  useEffect(() => {
-    const saved = localStorage.getItem("projectLocation");
-
-    if (saved) {
-      setShowLocationCard(true);  // <-- problem: saved hone par bhi true set ho raha
-      const coords = JSON.parse(saved);
-      const lngLat: [number, number] = [coords.lng, coords.lat];
-      setTempLocation(lngLat);
-      setPinLocation(lngLat);
-    } else {
-      setShowLocationCard(true);
-    }
-  }, []);
+  // Sync pin marker when tempLocation changes (single source of truth)
 
 
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const map = mapRef.current;
-
-    // remove old marker element (if any)
-    pinMarkerRef.current?.remove();
-    pinMarkerRef.current = null;
-
-    if (!tempLocation) return;
-
-    // create custom DOM element so CSS/position won't push it to bottom
-    const el = document.createElement("div");
-    el.className = "custom-pin-marker";
-    el.style.width = "36px";
-    el.style.height = "36px";
-    // el.style.backgroundImage = "url('/pin-icon.svg')"; // use your icon in public/
-    el.style.backgroundSize = "contain";
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.transform = "translate(-50%, -100%)"; // center bottom of icon on coordinates
-    el.style.pointerEvents = "auto";
-
-    // draggable only until user confirms
-    const draggable = !isLocationConfirmed;
-
-    const marker = new mapboxgl.Marker({ element: el, anchor: "bottom", draggable })
-      .setLngLat(tempLocation)
-      .addTo(map);
-
-    // update tempLocation while dragging (live)
-    if (draggable) {
-      marker.on("drag", (ev) => {
-        const lngLat = (ev.target as any).getLngLat();
-        setTempLocation([lngLat.lng, lngLat.lat]);
-      });
-    }
-
-    pinMarkerRef.current = marker;
-
-    return () => {
-      marker.remove();
-    };
-  }, [tempLocation, isLocationConfirmed]);
-
-
-useEffect(() => {
-  if (!mapRef.current) return;
-  const map = mapRef.current;
-
-    const handleClick = (e: mapboxgl.MapMouseEvent) => {
-
-    // Agar location already confirm ho gayi hai to ignore
-    if (isLocationConfirmed) return;
-
-    const lngLat: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-    setTempLocation(lngLat);
-
-    // Optional: Pin marker update agar required ho
-    if (pinMarkerRef.current) {
-      pinMarkerRef.current.setLngLat(lngLat);
-    }
-  };
-
-  map.on("click", handleClick);
-  return () => {
-    map.off("click", handleClick);
-  };
-}, [isLocationConfirmed]);
-
-
-
-
-
-
-  // --------------------------
-  // 3) applyColor, draw modes, draw event handler
-  // --------------------------
-const applyColorToSelectedFeature = useCallback(
-  (label: { name: string; color: string }) => {
-    if (!drawRef.current || !selectedFeature) return;
-    const feature = drawRef.current.get(selectedFeature);
-    if (!feature) return;
-
-    // Update both color & label for the feature
-    feature.properties = {
-      ...feature.properties,
-      customColor: label.color,
-      label: label.name, // ✅ Add this line
-    };
-
-    // Re-add feature to force MapboxDraw repaint
-    drawRef.current.add(feature);
-
-    // Update edges and labels
-    updateShapesData();
-    updateEdgeLabels(labelsVisible);
-
-    // Optional: deselect to apply color cleanly
-    if (drawRef.current.getMode() === "simple_select") {
-      drawRef.current.changeMode("simple_select");
-      setGridVisible(false);
-    }
-  },
-  [selectedFeature, updateShapesData, updateEdgeLabels, labelsVisible]
-);
-
-
-
-  // selection change -> setSelectedFeature
   useEffect(() => {
     if (!mapRef.current) return;
     const handleSelectionChange = (e: any) => {
@@ -649,100 +557,64 @@ const applyColorToSelectedFeature = useCallback(
   }, [labelsVisible, updateShapesData, updateEdgeLabels]);
 
 
-
-  const createGridLayer = useCallback(() => {
+  useEffect(() => {
     if (!mapRef.current) return;
     const map = mapRef.current;
 
-    const updateGrid = () => {
-      const bounds = map.getBounds();
-      if (!bounds) return;
+    // remove old marker only if we'll recreate (avoid flicker)
+    if (!tempLocation) return;
 
-      const features: Feature<LineString, GeoJsonProperties>[] = [];
-
-      const latStep = 0.00005; // grid spacing
-      const lngStep = 0.00005;
-
-      // vertical lines
-      for (let x = bounds.getWest(); x <= bounds.getEast(); x += lngStep) {
-        features.push({
-          type: "Feature",
-          geometry: { type: "LineString", coordinates: [[x, bounds.getSouth()], [x, bounds.getNorth()]] },
-          properties: {},
+    if (!pinMarkerRef.current) {
+      const el = createPinElement();
+      const marker = new mapboxgl.Marker({ element: el, draggable: !isLocationConfirmed })
+        .setLngLat(tempLocation)
+        .addTo(map);
+      if (!isLocationConfirmed) {
+        marker.on("drag", (ev) => {
+          const p = (ev.target as any).getLngLat();
+          setTempLocation([p.lng, p.lat]);
         });
       }
-
-      // horizontal lines
-      for (let y = bounds.getSouth(); y <= bounds.getNorth(); y += latStep) {
-        features.push({
-          type: "Feature",
-          geometry: { type: "LineString", coordinates: [[bounds.getWest(), y], [bounds.getEast(), y]] },
-          properties: {},
-        });
-      }
-
-      if (!map.getSource("grid-layer")) {
-        map.addSource("grid-layer", { type: "geojson", data: { type: "FeatureCollection", features } });
-        map.addLayer({
-          id: "grid-layer",
-          type: "line",
-          source: "grid-layer",
-          paint: {
-            "line-color": "#333333",  // dark gray
-            "line-width": 1.5,
-            "line-opacity": 0.7,
-          },
-        });
-      } else {
-        (map.getSource("grid-layer") as any).setData({ type: "FeatureCollection", features });
-      }
-    };
-
-    // Initial grid draw
-    updateGrid();
-
-    // Update grid on rotate/move
-    // map.on("rotate", updateGrid);
-    // map.on("move", updateGrid);
-
-    // Cleanup
-    return () => {
-      // map.off("rotate", updateGrid);
-      // map.off("move", updateGrid);
-    };
-  }, []);
+      pinMarkerRef.current = marker;
+    } else {
+      pinMarkerRef.current.setLngLat(tempLocation);
+      pinMarkerRef.current.setDraggable(!isLocationConfirmed);
+    }
+  }, [tempLocation, isLocationConfirmed]);
 
   const drawPolygon = useCallback(() => {
     if (!drawRef.current) return;
     drawRef.current.changeMode("draw_polygon");
-    setGridVisible(true);
-
-    // Map aur bounds check karke grid create karo
-    if (mapRef.current && mapRef.current.getBounds()) {
-      // createGridLayer();
-    }
-  }, [createGridLayer]);
+  }, []);
 
   const drawLine = useCallback(() => {
     if (!drawRef.current) return;
     drawRef.current.changeMode("draw_line_string");
-    setGridVisible(true);
 
-    if (mapRef.current && mapRef.current.getBounds()) {
-      createGridLayer();
-    }
-  }, [createGridLayer]);
-
+  }, []);
   return {
     mapRef,
     mapContainerRef,
     drawRef,
-    drawPolygon,
-    drawLine,
     selectedFeature,
     setSelectedFeature,
-    applyColorToSelectedFeature,
+    // color apply etc.
+    applyColorToSelectedFeature: (label: { name: string; color: string }) => {
+      if (!drawRef.current || !selectedFeature) return;
+      const feature = drawRef.current.get(selectedFeature);
+      if (!feature) return;
+      feature.properties = { ...feature.properties, customColor: label.color, label: label.name };
+      drawRef.current.add(feature);
+      updateShapesData();
+      updateEdgeLabels(labelsVisible);
+      if (drawRef.current.getMode() === "simple_select") {
+        drawRef.current.changeMode("simple_select");
+        setGridVisible(false);
+      }
+    },
     polygonsData,
+    drawPolygon,
+    drawLine,
     linesData,
     updateEdgeLabels,
     updateShapesData,
@@ -755,9 +627,12 @@ const applyColorToSelectedFeature = useCallback(
     toggleLabels,
     pushHistory,
     labelsVisible,
-    createGridLayer,
+    createGridLayer: () => { }, // already defined above if needed
     handleConfirmLocation,
+    handleChangeLocation,
     showLocationCard,
     tempLocation,
+    isLocationConfirmed,
+    pinLocation,
   };
 }

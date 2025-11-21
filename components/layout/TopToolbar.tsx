@@ -5,7 +5,7 @@ import { generatePDF } from "./pdf/pdfGenerator";
 import mapboxgl from "mapbox-gl";
 
 interface HeaderToolbarProps {
-  mapRef: React.RefObject<mapboxgl.Map>;
+  mapRef: React.RefObject<mapboxgl.Map | null>;
 }
 
 export default function HeaderToolbar({ mapRef }: HeaderToolbarProps) {
