@@ -1,28 +1,25 @@
-// utils/mapboxSnapshot.ts
 import mapboxgl from "mapbox-gl";
 
 interface SnapshotOptions {
   center: [number, number]; // [lng, lat] of house
   zoom?: number; // default 20
-  width?: number; // in px, default 800
-  height?: number; // in px, default 600
-  style?: string; // mapbox style URL, default Mapbox streets
-  accessToken: string; // your Mapbox token
+  width?: number; // px
+  height?: number; // px
+  style?: string; // Mapbox style URL
+  accessToken: string;
 }
 
 /**
- * Generates a base64 PNG snapshot of a map at a given center and zoom.
- * Does NOT include drawn polygons or lines.
+ * Generates a base64 PNG snapshot of a map (top view)
  */
 export const generateTopViewSnapshot = async ({
   center,
   zoom = 20,
   width = 800,
   height = 600,
-  style = "mapbox://styles/mapbox/streets-v12",
+  style = "https://maps.googleapis.com/maps/api/staticmap?center=${center.lat},${center.lng}&zoom=${zoom}&size=${width}x${height}&maptype=${mapType}&key=${API_KEY}`;",
   accessToken,
 }: SnapshotOptions): Promise<string> => {
-  // Create a hidden div for offscreen map
   const container = document.createElement("div");
   container.style.width = `${width}px`;
   container.style.height = `${height}px`;
@@ -38,20 +35,18 @@ export const generateTopViewSnapshot = async ({
     center,
     zoom,
     interactive: false,
-    preserveDrawingBuffer: true, // needed for canvas capture
+    preserveDrawingBuffer: true,
   });
 
-  // Wait for map to fully load
   await new Promise<void>((resolve) => {
     map.on("load", () => resolve());
   });
 
-  // Grab canvas and convert to data URL
   const canvas = container.querySelector("canvas") as HTMLCanvasElement;
   const dataUrl = canvas.toDataURL("image/png");
 
   map.remove();
   document.body.removeChild(container);
 
-  return dataUrl; // you can pass this as `topViewImage` to PDF
+  return dataUrl;
 };

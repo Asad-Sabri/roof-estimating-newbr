@@ -3,7 +3,8 @@
 import React, { useEffect } from "react";
 import { generatePDF } from "./pdf/pdfGenerator";
 import mapboxgl from "mapbox-gl";
-
+import logoSrc from '../../public/logo-latest.png'
+import Image from "next/image";
 interface HeaderToolbarProps {
   mapRef: React.RefObject<mapboxgl.Map | null>;
 }
@@ -21,16 +22,21 @@ export default function HeaderToolbar({ mapRef }: HeaderToolbarProps) {
 
     const canvas = mapRef.current.getCanvas();
     generatePDF({ mapImage: canvas.toDataURL("image/png") });
+    
   };
 
   return (
-    <div className="absolute top-0 left-0 w-full bg-[#0a1f44]/95 text-white flex justify-between items-center px-6 py-3 shadow-lg z-50 border-b border-gray-700">
-      <h1 className="font-semibold text-lg tracking-wide">
-        Superior Pro Roof Measurement Tool
-      </h1>
+    <div className="absolute top-0 left-0 px-20 w-full bg-[#0a1f44]/95 text-white flex justify-between items-center px-6 py-3 shadow-lg z-50 border-b border-gray-700">
+      {/* Logo instead of heading */}
+      <div className="flex items-center">
+        <Image src={logoSrc} alt="Logo" height={130} width={130} />
+        {/* Agar chaho to thoda text bhi left me rakh sakte ho */}
+        {/* <span className="ml-2 font-semibold text-lg tracking-wide">Superior Pro Roof Measurement Tool</span> */}
+      </div>
+
       <div className="flex items-center gap-4">
         <button
-          className="bg-blue-900 px-3 py-1.5 rounded text-sm hover:bg-blue-700 transition"
+          className="bg-blue-900 px-3 py-3 rounded text-sm hover:bg-blue-800 transition"
           onClick={handleDownloadPDF}
           disabled={!mapRef?.current} // map ready hone tak disable
         >

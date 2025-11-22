@@ -34,13 +34,13 @@ export function useMapboxFunctions() {
   const [showLocationCard, setShowLocationCard] = useState<boolean>(!initialLocationConfirmed);
   const [isLocationConfirmed, setIsLocationConfirmed] = useState<boolean>(initialLocationConfirmed);
 
-  const defaultPolygonLabels = ["Ridge","Hip","Valley","Rake", "Eave", "Flashing", "Step Flashing"];
-  const defaultLineLabels = ["Ridge","Hip","Valley","Rake", "Eave", "Flashing", "Step Flashing"];
+  const defaultPolygonLabels = ["Ridge", "Hip", "Valley", "Rake", "Eave", "Flashing", "Step Flashing"];
+  const defaultLineLabels = ["Ridge", "Hip", "Valley", "Rake", "Eave", "Flashing", "Step Flashing"];
 
   // --------------------------
-  // Save shapes to projects (unchanged logic)
+  // Save shapes to projects (UNCHANGED LOGIC, now called by updateShapesData)
   // --------------------------
-  const saveShapesToProjects = useCallback((features: any[]) => {
+  const saveShapesToProjects = useCallback((features: any[], totalAreaFeet: number, totalLengthFeet: number) => {
     if (typeof window === "undefined") return;
 
     const projectsRaw = localStorage.getItem("projects");
@@ -50,24 +50,19 @@ export function useMapboxFunctions() {
     const latestProject = projects[projects.length - 1];
     const polygons: any[] = [];
     const lines: any[] = [];
-    let totalAreaFeet = 0;
-    let totalLengthFeet = 0;
+    
+    // NOTE: Area and Length calculation is now done in updateShapesData, 
+    // and totalAreaFeet/totalLengthFeet are passed as arguments for consistency.
 
     features.forEach((feature: any, idx: number) => {
       if (!feature || !feature.geometry) return;
       const coords = feature.geometry.coordinates;
-      const edges: any[] = [];
+      
+      // We rely on properties added by updateShapesData for area/length/edges
+      const areaSqFeet = feature.properties?.area || 0;
+      const edges = feature.properties?.edges || [];
 
       if (feature.geometry.type === "Polygon") {
-        const polyCoords = coords[0];
-        for (let i = 0; i < polyCoords.length - 1; i++) {
-          const lenMeters = turf.length(turf.lineString([polyCoords[i], polyCoords[i + 1]]), { units: "meters" });
-          const lenFeet = lenMeters * 3.28084;
-          totalLengthFeet += lenFeet;
-          edges.push({ start: polyCoords[i], end: polyCoords[i + 1], lengthFeet: lenFeet });
-        }
-        const areaSqFeet = turf.area(feature) * 10.7639;
-        totalAreaFeet += areaSqFeet;
         polygons.push({
           id: feature.id,
           coordinates: coords,
@@ -79,12 +74,6 @@ export function useMapboxFunctions() {
       }
 
       if (feature.geometry.type === "LineString") {
-        for (let i = 0; i < coords.length - 1; i++) {
-          const lenMeters = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: "meters" });
-          const lenFeet = lenMeters * 3.28084;
-          totalLengthFeet += lenFeet;
-          edges.push({ start: coords[i], end: coords[i + 1], lengthFeet: lenFeet });
-        }
         lines.push({
           id: feature.id,
           coordinates: coords,
@@ -104,40 +93,81 @@ export function useMapboxFunctions() {
   }, []);
 
   // --------------------------
-  // Update shapes & save to new structure
+  // Update shapes & save to new structure (REFACTORED - now contains measurement logic)
   // --------------------------
- const updateShapesData = useCallback(() => {
-  if (!drawRef.current) return;
-  const allFeatures = drawRef.current.getAll().features;
+  const updateShapesData = useCallback(() => {
+    if (!drawRef.current) return;
+    const allFeatures = drawRef.current.getAll().features;
 
-  const edgeFeatures: any[] = [];
-  allFeatures.forEach((feature) => {
-    const color = feature.properties?.customColor || "#FFD700"; // always use feature color
-    let coords: any[] = [];
+    const edgeFeatures: any[] = [];
+    let totalAreaFeet = 0;
+    let totalLengthFeet = 0;
 
-    if (feature.geometry.type === "Polygon") {
-      coords = feature.geometry.coordinates[0];
-    } else if (feature.geometry.type === "LineString") {
-      coords = feature.geometry.coordinates;
+    // **STEP 1: Calculate measurements and update features' properties**
+    const updatedFeatures = allFeatures.map((feature: any) => {
+      if (!feature || !feature.geometry) return feature;
+
+      const coords = feature.geometry.type === "Polygon" ? feature.geometry.coordinates[0] : feature.geometry.coordinates;
+      const edges: any[] = [];
+      
+      let featureLengthFeet = 0;
+      let areaSqFeet = 0;
+      const color = feature.properties?.customColor || "#FFD700";
+
+      // Calculate edges length and create edge features for the map
+      for (let i = 0; i < coords.length - 1; i++) {
+        const lenMeters = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: "meters" });
+        const lenFeet = lenMeters * 3.28084;
+        
+        featureLengthFeet += lenFeet;
+        totalLengthFeet += lenFeet;
+        
+        edges.push({ start: coords[i], end: coords[i + 1], lengthFeet: lenFeet });
+        
+        edgeFeatures.push({
+          type: "Feature",
+          properties: { color },
+          geometry: { type: "LineString", coordinates: [coords[i], coords[i + 1]] },
+        });
+      }
+
+      // Calculate Area for Polygons
+      if (feature.geometry.type === "Polygon") {
+        areaSqFeet = turf.area(feature) * 10.7639;
+        totalAreaFeet += areaSqFeet;
+      }
+      
+      // Update feature properties in drawRef for persistence and easy access
+      drawRef.current?.setFeatureProperty(feature.id, "edges", edges);
+      if (feature.geometry.type === "Polygon") {
+        drawRef.current?.setFeatureProperty(feature.id, "area", areaSqFeet);
+      }
+      
+      // Return the updated feature object (though drawRef updates the source of truth)
+      return {
+        ...feature,
+        properties: { 
+          ...feature.properties, 
+          edges, 
+          area: areaSqFeet 
+        }
+      };
+    });
+
+    // **STEP 2: Update Mapbox layers (Visuals)**
+    const source = mapRef.current?.getSource("polygon-edges") as any;
+    if (source) {
+      source.setData({ type: "FeatureCollection", features: edgeFeatures });
     }
 
-    for (let i = 0; i < coords.length - 1; i++) {
-      edgeFeatures.push({
-        type: "Feature",
-        properties: { color },
-        geometry: { type: "LineString", coordinates: [coords[i], coords[i + 1]] },
-      });
-    }
-  });
+    // **STEP 3: Update React state for UI components**
+    setPolygonsData(updatedFeatures.filter(f => f.geometry?.type === "Polygon"));
+    setLinesData(updatedFeatures.filter(f => f.geometry?.type === "LineString"));
+    
+    // **STEP 4: Save to Local Storage (Called here once)**
+    saveShapesToProjects(updatedFeatures, totalAreaFeet, totalLengthFeet);
 
-  const source = mapRef.current?.getSource("polygon-edges") as any;
-  if (source) {
-    source.setData({ type: "FeatureCollection", features: edgeFeatures });
-  }
-
-  setPolygonsData(allFeatures.filter(f => f.geometry?.type === "Polygon"));
-  setLinesData(allFeatures.filter(f => f.geometry?.type === "LineString"));
-}, []);
+  }, [saveShapesToProjects]);
 
   const updateLabelPositions = useCallback(() => {
     if (!mapRef.current) return;
@@ -190,18 +220,14 @@ export function useMapboxFunctions() {
     const currentLabelKeys = new Set<string>();
 
     features.forEach((feature: any) => {
-      const coords =
-        feature.geometry?.type === "Polygon"
-          ? feature.geometry.coordinates[0]
-          : feature.geometry?.type === "LineString"
-            ? feature.geometry.coordinates
-            : [];
-      const numSegments = Math.max(0, coords.length - 1);
-      for (let i = 0; i < numSegments; i++) {
-        const start = coords[i];
-        const end = coords[i + 1];
-        const lenMeters = turf.length(turf.lineString([start, end]), { units: "meters" });
-        if (lenMeters < 0.01) continue;
+      // **REFACTORING: Get edges data from feature properties (calculated in updateShapesData)**
+      const edges = feature.properties?.edges || []; 
+      
+      edges.forEach((edge: any, i: number) => {
+        const lenMeters = edge.lengthFeet / 3.28084; // Convert feet back to meters for turf length comparison (optional but keeps logic clean)
+        
+        if (lenMeters < 0.01) return;
+        
         const key = `${feature.id}-${i}`;
         currentLabelKeys.add(key);
         let el = labelElementsRef.current[key];
@@ -227,7 +253,7 @@ export function useMapboxFunctions() {
         }
 
         el.innerText = toFeetInches(lenMeters);
-      }
+      });
     });
 
     Object.keys(labelElementsRef.current).forEach(key => {
@@ -252,6 +278,65 @@ export function useMapboxFunctions() {
     labelsVisible,
   } = useMapHistoryActions(drawRef, updateEdgeLabels, updateShapesData);
 
+  // useMapboxFunctions.ts
+
+  // ... (Around line 335)
+  const toggleGrid = useCallback((show: boolean) => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    const layerExists = map.getLayer("grid-layer");
+
+    if (show) {
+      // ✅ FIX 1: Check if layer exists before checking its visibility
+      if (layerExists && map.getLayoutProperty('grid-layer', 'visibility') === 'visible') {
+        return; // Already visible
+      }
+
+      // Map extent ke hisaab se grid generate karna
+      const bounds = map.getBounds();
+      const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+      const cellSide = 10;
+      const options = { units: 'meters' } as any;
+      const grid = turf.squareGrid(bbox, cellSide, options);
+
+      // Source and Layer creation logic remains the same (as it handles creation if it doesn't exist)
+      if (!map.getSource("grid-layer")) {
+        map.addSource("grid-layer", {
+          type: "geojson",
+          data: grid,
+        });
+      }
+
+      if (!layerExists) { // Agar layer exist nahi karti toh add karein
+        map.addLayer({
+          id: "grid-layer",
+          type: "line",
+          source: "grid-layer",
+          layout: {
+            "visibility": "visible"
+          },
+          paint: {
+            "line-color": "rgba(255, 255, 255, 0.5)",
+            "line-width": 1,
+            "line-dasharray": [1, 1]
+          },
+        });
+      } else {
+        // Agar layer exist karti hai, sirf visibility on karein
+        map.setLayoutProperty('grid-layer', 'visibility', 'visible');
+        (map.getSource("grid-layer") as mapboxgl.GeoJSONSource).setData(grid);
+      }
+      setGridVisible(true);
+    } else {
+      // ✅ FIX 2: Check if layer exists before attempting to change layout property
+      if (layerExists) {
+        map.setLayoutProperty('grid-layer', 'visibility', 'none');
+      }
+      setGridVisible(false);
+    }
+  }, []);
+
   const handleDrawChange = useCallback((e: any) => {
     if (!drawRef.current) return;
     e.features.forEach((feature: any) => {
@@ -268,16 +353,12 @@ export function useMapboxFunctions() {
       updateEdgeLabels(true);
 
       // Remove grid after drawing
-      if (mapRef.current?.getLayer("grid-layer")) {
-        try {
-          mapRef.current.removeLayer("grid-layer");
-          mapRef.current.removeSource("grid-layer");
-        } catch (err) { /* ignore */ }
+      if (e.type !== "draw.update") {
+        toggleGrid(false);
       }
-      setGridVisible(false);
     }
-  }, [pushHistory, updateShapesData, updateEdgeLabels]);
-
+  }, [pushHistory, updateShapesData, updateEdgeLabels, toggleGrid]);
+  // ...
   // --------------------------
   // Initialize map + draw
   // --------------------------
@@ -293,33 +374,27 @@ export function useMapboxFunctions() {
     }
   }
 
-const createPinElement = () => {
-  const el = document.createElement("div");
-  el.className = "custom-pin-marker";
-  el.style.width = "36px";
-  el.style.height = "36px";
-  el.style.backgroundImage = "url('https://maps.google.com/mapfiles/ms/icons/red-dot.png')";
-  el.style.backgroundSize = "contain";
-  el.style.backgroundRepeat = "no-repeat";
-  el.style.transform = "translate(-50%, -100%)";
-  return el;
-};
+  // useMapboxFunctions.ts (Around line 395)
 
-useEffect(() => {
-  if (!mapRef.current || !tempLocation) return;
-  if (!pinMarkerRef.current) {
-    const el = createPinElement();
-    pinMarkerRef.current = new mapboxgl.Marker({ element: el, draggable: !isLocationConfirmed })
-      .setLngLat(tempLocation)
-      .addTo(mapRef.current);
-  } else {
-    pinMarkerRef.current.setLngLat(tempLocation);
-    pinMarkerRef.current.setDraggable(!isLocationConfirmed);
-  }
-}, [tempLocation, isLocationConfirmed]);
+  const createPinElement = () => {
+    const el = document.createElement("div");
+    el.className = "custom-pin-marker-container";
+    const img = document.createElement("img");
+    img.src = "https://maps.google.com/mapfiles/ms/icons/red-dot.png";
+    img.style.width = "40px";
+    img.style.height = "40px";
+    img.style.display = "block"; // Good practice for centering
 
+    // FIX: Translate Y axis ko -100% karein taaki icon upar shift ho
+    // -50% X: Icon ko horizontally center karein.
+    // -100% Y: Icon ki bottom-most tip ko exact coordinate par laaye.
+    el.style.transform = "translate(-50%, -100%)"; // <-- CORRECTED
+    el.style.zIndex = "10"; // Custom marker ko map ke upar rakhne ke liye
 
-  // ---------- Confirm / Change handlers (fixed)
+    el.appendChild(img);
+    return el;
+  };
+
   // ---------- Confirm / Change handlers (fixed)
   const handleConfirmLocation = useCallback(() => {
     if (!tempLocation) return;
@@ -346,54 +421,51 @@ useEffect(() => {
   const handleChangeLocation = useCallback(() => {
     setIsLocationConfirmed(false);
     setShowLocationCard(true);
-    // tempLocation ko null na karo, marker wahi location pe rahe
-    // setTempLocation(null); <-- REMOVE this
 
-    // Unlock marker drag
-    if (pinMarkerRef.current) {
-      pinMarkerRef.current.setDraggable(true);
-    }
-
-    // Add map click listener to move marker
     if (mapRef.current) {
       const map = mapRef.current;
 
-      const onClickMoveMarker = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
+      const onClickMoveMap = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
         const { lng, lat } = e.lngLat;
         setTempLocation([lng, lat]);
       };
 
-      map.on("click", onClickMoveMarker);
+      map.on("click", onClickMoveMap);
 
-      // Clean up old listener if user confirms again
       const cleanup = () => {
-        map.off("click", onClickMoveMarker);
+        map.off("click", onClickMoveMap);
       };
       return cleanup;
     }
   }, []);
 
-
-  // Sync pin marker when tempLocation changes
   useEffect(() => {
     if (!mapRef.current || !tempLocation) return;
 
+    // 1. Agar Marker abhi tak nahi bana hai, toh naya banao
     if (!pinMarkerRef.current) {
       const el = createPinElement();
-      pinMarkerRef.current = new mapboxgl.Marker({ element: el, draggable: !isLocationConfirmed })
+      const marker = new mapboxgl.Marker({
+        element: el,
+        draggable: !isLocationConfirmed,
+        anchor: 'bottom'
+      })
         .setLngLat(tempLocation)
         .addTo(mapRef.current);
 
       if (!isLocationConfirmed) {
-        pinMarkerRef.current.on("drag", (ev) => {
+        marker.on("drag", (ev) => {
           const p = (ev.target as any).getLngLat();
           setTempLocation([p.lng, p.lat]);
         });
       }
-    } else {
+      pinMarkerRef.current = marker;
+    }
+    else {
       pinMarkerRef.current.setLngLat(tempLocation);
       pinMarkerRef.current.setDraggable(!isLocationConfirmed);
     }
+
   }, [tempLocation, isLocationConfirmed]);
 
   // Initialize map once
@@ -478,9 +550,9 @@ useEffect(() => {
             },
           },
         ],
-          snap: true,
-          snapOptions: { snapPx: 15, snapToMidPoints: true },
-    } as any);
+        snap: true,
+        snapOptions: { snapPx: 15, snapToMidPoints: true },
+      } as any);
 
       drawRef.current = draw;
       map.addControl(draw);
@@ -501,8 +573,8 @@ useEffect(() => {
     });
 
 
-      // Map events
-         // initial map center -> set temp/pin
+    // Map events
+    // initial map center -> set temp/pin
     const mapCenter = map.getCenter();
     const lngLat: [number, number] = (center[0] === 0 && center[1] === 0) ? [mapCenter.lng, mapCenter.lat] : center;
     setTempLocation(lngLat);
@@ -513,23 +585,38 @@ useEffect(() => {
     map.on("draw.update", handleDrawChange);
     map.on("draw.delete", () => {
       pushHistory("delete");
+      
+      // **FIX/REFACTOR: saveShapesToProjects call moved inside updateShapesData**
+      // const allFeatures = drawRef.current?.getAll().features || [];
+      // saveShapesToProjects(allFeatures); // <-- Call here
+
       updateShapesData();
       updateEdgeLabels();
     });
-
     map.on("render", updateLabelPositions);
+    map.on("draw.modechange", (e) => {
+      if (e.mode !== 'draw_polygon' && e.mode !== 'draw_line_string') {
+        toggleGrid(false);
+      }
+    });
 
     return () => {
       map.off("render", updateLabelPositions);
       map.off("draw.create", handleDrawChange);
       map.off("draw.update", handleDrawChange);
+      map.off("draw.delete", () => { }); // Dummy off to match event signature
+      map.off("draw.modechange", (e) => {
+        if (e.mode !== 'draw_polygon' && e.mode !== 'draw_line_string') {
+          toggleGrid(false);
+        }
+      });
       try {
         map.remove();
-      } catch (err) {}
+      } catch (err) { }
       mapRef.current = null;
       drawRef.current = null;
     };
-  }, [handleDrawChange, updateLabelPositions, pushHistory, updateEdgeLabels, updateShapesData]);
+  }, [handleDrawChange, updateLabelPositions, pushHistory, updateEdgeLabels, updateShapesData, setTempLocation, setShowLocationCard, toggleGrid]);
 
   // Sync pin marker when tempLocation changes (single source of truth)
 
@@ -557,30 +644,7 @@ useEffect(() => {
   }, [labelsVisible, updateShapesData, updateEdgeLabels]);
 
 
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const map = mapRef.current;
 
-    // remove old marker only if we'll recreate (avoid flicker)
-    if (!tempLocation) return;
-
-    if (!pinMarkerRef.current) {
-      const el = createPinElement();
-      const marker = new mapboxgl.Marker({ element: el, draggable: !isLocationConfirmed })
-        .setLngLat(tempLocation)
-        .addTo(map);
-      if (!isLocationConfirmed) {
-        marker.on("drag", (ev) => {
-          const p = (ev.target as any).getLngLat();
-          setTempLocation([p.lng, p.lat]);
-        });
-      }
-      pinMarkerRef.current = marker;
-    } else {
-      pinMarkerRef.current.setLngLat(tempLocation);
-      pinMarkerRef.current.setDraggable(!isLocationConfirmed);
-    }
-  }, [tempLocation, isLocationConfirmed]);
 
   const drawPolygon = useCallback(() => {
     if (!drawRef.current) return;
@@ -592,6 +656,37 @@ useEffect(() => {
     drawRef.current.changeMode("draw_line_string");
 
   }, []);
+
+
+  // useMapboxFunctions.ts
+
+  // ... (Around line 802)
+
+  const applyColorToSelectedFeature = useCallback((label: { name: string; color: string }) => { 
+    if (!drawRef.current || !selectedFeature) return;
+
+    // Set properties
+    drawRef.current.setFeatureProperty(selectedFeature, "customColor", label.color);
+    drawRef.current.setFeatureProperty(selectedFeature, "label", label.name);
+
+    // Explicitly trigger update for history and visual refresh
+    const updatedFeature = drawRef.current.get(selectedFeature);
+    if (updatedFeature) {
+      // Manually call pushHistory to capture the feature properties change
+      pushHistory("update");
+      
+      // Update data and save to localStorage (via updateShapesData)
+      updateShapesData();
+    }
+    
+    // Update labels UI
+    updateEdgeLabels(labelsVisible);
+
+    if (drawRef.current.getMode() === "simple_select" || drawRef.current.getMode() === "direct_select") {
+      setGridVisible(false);
+    }
+  }, [selectedFeature, updateShapesData, updateEdgeLabels, labelsVisible, pushHistory]); // Dependency list cleaned up
+
   return {
     mapRef,
     mapContainerRef,
@@ -599,19 +694,7 @@ useEffect(() => {
     selectedFeature,
     setSelectedFeature,
     // color apply etc.
-    applyColorToSelectedFeature: (label: { name: string; color: string }) => {
-      if (!drawRef.current || !selectedFeature) return;
-      const feature = drawRef.current.get(selectedFeature);
-      if (!feature) return;
-      feature.properties = { ...feature.properties, customColor: label.color, label: label.name };
-      drawRef.current.add(feature);
-      updateShapesData();
-      updateEdgeLabels(labelsVisible);
-      if (drawRef.current.getMode() === "simple_select") {
-        drawRef.current.changeMode("simple_select");
-        setGridVisible(false);
-      }
-    },
+    applyColorToSelectedFeature,
     polygonsData,
     drawPolygon,
     drawLine,
@@ -627,7 +710,9 @@ useEffect(() => {
     toggleLabels,
     pushHistory,
     labelsVisible,
-    createGridLayer: () => { }, // already defined above if needed
+    createGridLayer: () => { }, // already defined above if  // Note: createGridLayer removed, using toggleGrid
+    toggleGrid,
+    gridVisible, // Grid state bhi return karein
     handleConfirmLocation,
     handleChangeLocation,
     showLocationCard,

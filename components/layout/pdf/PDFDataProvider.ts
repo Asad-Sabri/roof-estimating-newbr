@@ -1,4 +1,3 @@
-// layout/pdf/PDFDataProvider.ts
 export const getPDFData = () => {
   const mapFeaturesData = JSON.parse(localStorage.getItem("mapFeaturesData") || "{}");
   const projectLocation = JSON.parse(localStorage.getItem("projectLocation") || "{}");

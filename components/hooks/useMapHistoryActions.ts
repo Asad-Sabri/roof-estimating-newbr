@@ -81,9 +81,9 @@ export function useMapHistoryActions(
         });
     }, [updateEdgeLabels]);
 
-const toggleGrid = () => {
-  setShowGrid(v => !v);
-};
+    const toggleGrid = () => {
+    setShowGrid(v => !v);
+    };
     return {
         history,
         redoStack,

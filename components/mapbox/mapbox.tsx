@@ -7,18 +7,18 @@ import HeaderToolbar from "../layout/TopToolbar";
 
 export default function Mapbox() {
   const {
-     mapRef,
+    mapRef,
     mapContainerRef,
     tempLocation,
     showLocationCard,
     isLocationConfirmed,
     handleConfirmLocation,
-    handleChangeLocation
+    handleChangeLocation,
   } = useMapContext();
 
   return (
-     <div className="w-full h-full relative">
-          <HeaderToolbar mapRef={mapRef || { current: null }} />
+    <div className="w-full h-full">
+      <HeaderToolbar mapRef={mapRef || { current: null }} />
       <div ref={mapContainerRef} className="w-full h-full" />
       {showLocationCard && tempLocation && (
         <LocationCard

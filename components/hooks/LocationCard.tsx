@@ -45,7 +45,7 @@ export default function LocationCard({
   if (!tempLocation) return null;
 
   return (
-    <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50 bg-white p-3 rounded-xl shadow-2xl border-2 border-blue-800 w-80 text-center transition-all duration-300 pointer-events-auto">
+    <div className="absolute top-30 left-1/2 -translate-x-1/2 z-50 bg-white p-3 rounded-xl shadow-2xl border-2 border-blue-800 w-80 text-center transition-all duration-300 pointer-events-auto">
       <h2 className="mb-2 text-lg font-semibold text-blue-700">
         Is this your accurate location?
       </h2>

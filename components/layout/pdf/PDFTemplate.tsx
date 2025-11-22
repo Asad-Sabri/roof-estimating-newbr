@@ -1,20 +1,19 @@
-// layout/pdf/PDFTemplate.tsx
 import React from "react";
 import logoSrc from "../../../public/logo-latest.png";
 import Image from "next/image";
-import { useCallback } from "react";
 import * as turf from "@turf/turf";
 
 interface PolygonData {
   id: string;
   coordinates: number[][];
-  color?: string; // agar pehle se hai
-  customColor?: string; // ye add karo
+  color?: string;
+  customColor?: string;
   edges?: { start: number[]; end: number[]; lengthFeet: number }[];
-  label?: string; // ye add karo
+  label?: string;
 }
+
 interface LineData {
-  label: any;
+  label?: string;
   id: string;
   coordinates: [number, number][];
   edges?: {
@@ -22,7 +21,7 @@ interface LineData {
     end: [number, number];
     lengthFeet: number;
   }[];
-  customColor?: string; // ye add karo
+  customColor?: string;
 }
 
 interface ProjectLocation {
@@ -33,6 +32,7 @@ interface ProjectLocation {
 interface PDFTemplateProps {
   mapImage?: string;
   topViewImage?: string;
+  polygonDiagramImage?: string;
   data: {
     polygons?: PolygonData[];
     lines?: LineData[];
@@ -41,10 +41,20 @@ interface PDFTemplateProps {
     userName?: string;
     projectName?: string;
     summary?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    mobile?: string;
+    propertyType?: string;
+    roofType?: string;
+    address?: string;
+    totalArea?: string;
+    totalLength?: string;
+    createdAt?: string;
   };
 }
 
-// Helper function to convert meters to feet and inches
+// Helper function to convert meters to feet & inches
 const toFeetInches = (meters: number) => {
   const ft = meters * 3.28084;
   const feet = Math.floor(ft);
@@ -62,31 +72,22 @@ const ACCENT_COLOR = "BLACK";
 const PDFTemplate: React.FC<PDFTemplateProps> = ({
   mapImage,
   topViewImage,
+  polygonDiagramImage,
   data,
 }) => {
   const polygons = data.polygons || [];
   const lines = data.lines || [];
 
-  // Get latest project from localStorage
-  let latestProject: any = {};
-  if (typeof window !== "undefined") {
-    const projectsRaw = localStorage.getItem("projects");
-    if (projectsRaw) {
-      const projects = JSON.parse(projectsRaw);
-      if (Array.isArray(projects) && projects.length > 0) {
-        latestProject = projects[projects.length - 1];
-      }
-    }
-  }
+  // Use data directly instead of localStorage & createRoot
+  const latestProject = data;
 
   const pageStyle = (pageNumber: number): React.CSSProperties => ({
     pageBreakAfter: "always",
-    padding: "20px 40px",
+    padding: "20px 0px",
     fontFamily: "Arial, sans-serif",
     position: "relative",
     minHeight: "1000px",
     color: "#111",
-    backgroundColor: PAGE_BG_COLOR,
   });
 
   const headerCardStyle: React.CSSProperties = {
@@ -126,11 +127,12 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
     borderBottom: "1px solid #ccc",
     borderTopLeftRadius: "6px",
     borderTopRightRadius: "6px",
+    color: "#fff",
   };
 
   const cardContentStyle: React.CSSProperties = {
     padding: "15px",
-    fontFamily: "arial",
+    fontFamily: "Arial",
   };
 
   const headingStyle: React.CSSProperties = {
@@ -152,7 +154,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
 
   return (
     <>
-      {/* Page 1: Cover + Project Details + Summary */}
+      {/* Page 1: Cover + Project Details */}
       <PageWrapper page={1}>
         <div
           style={{
@@ -261,6 +263,10 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               <p>{latestProject?.totalArea || "0"} sq ft</p>
             </div>
             <div style={{ minWidth: 200, textAlign: "center" }}>
+              <p style={{ margin: 0, fontWeight: "bold" }}>Parapet Area</p>
+              <p>98.77 sq ft</p>
+            </div>
+            <div style={{ minWidth: 200, textAlign: "center" }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Total Length</p>
               <p>{latestProject?.totalLength || "0"} ft</p>
             </div>
@@ -269,28 +275,36 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
       </PageWrapper>
 
       {/* Page 2: Map */}
-      {mapImage && (
+       {mapImage && (
         <PageWrapper page={2}>
-          <div style={cardContainerStyle}>
-            <div style={cardHeaderStyle}>
-              <h3 style={headingStyle}>Top View</h3>
-            </div>
+          <div style={{ border: `1px solid ${ACCENT_COLOR}`, borderRadius: 6 }}>
+            <div style={cardHeaderStyle}>Top View</div>
             <div style={cardContentStyle}>
               <img
                 src={mapImage}
                 alt="Map Screenshot"
                 style={{ width: "100%", borderRadius: 6 }}
+                crossOrigin="anonymous"   // ✅ correct use
               />
             </div>
           </div>
         </PageWrapper>
       )}
+
+      {/* Page 3: Polygons & Lines */}
       <PageWrapper page={3}>
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
           {/* Polygons */}
-          <div style={{ ...cardContainerStyle, flex: 1, minWidth: 300 }}>
+          <div
+            style={{
+              flex: 1,
+              minWidth: 300,
+              border: `1px solid ${ACCENT_COLOR}`,
+              borderRadius: 6,
+            }}
+          >
             <div style={cardHeaderStyle}>
-              <h3 style={headingStyle}>Polygons (Roof Facets)</h3>
+              <h3>Polygons (Roof Facets)</h3>
             </div>
             <div style={cardContentStyle}>
               {polygons.length === 0 ? (
@@ -298,9 +312,9 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               ) : (
                 polygons.map((p, idx) => {
                   const edges =
-                    (p.coordinates?.[0] || [])
-                      .map((coord, i, arr) => {
-                        if (i === arr.length - 1) return null; // skip last point
+                    p.coordinates?.[0]
+                      ?.map((coord, i, arr) => {
+                        if (i === arr.length - 1) return null;
                         const start = coord as unknown as [number, number];
                         const end = arr[i + 1] as unknown as [number, number];
                         return turf.length(turf.lineString([start, end]), {
@@ -342,9 +356,16 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
 
           {/* Lines */}
-          <div style={{ ...cardContainerStyle, flex: 1, minWidth: 300 }}>
+          <div
+            style={{
+              flex: 1,
+              minWidth: 300,
+              border: `1px solid ${ACCENT_COLOR}`,
+              borderRadius: 6,
+            }}
+          >
             <div style={cardHeaderStyle}>
-              <h3 style={headingStyle}>Lines (Measurements)</h3>
+              <h3>Lines (Measurements)</h3>
             </div>
             <div style={cardContentStyle}>
               {lines.length === 0 ? (
@@ -352,13 +373,14 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               ) : (
                 lines.map((l, idx) => {
                   const edges: number[] = [];
-                  if (l.coordinates && l.coordinates.length > 1) {
-                    for (let i = 0; i < l.coordinates.length - 1; i++) {
-                      const start = l.coordinates[i];
-                      const end = l.coordinates[i + 1];
-                      const line = turf.lineString([start, end]);
-                      edges.push(turf.length(line, { units: "meters" }));
-                    }
+                  for (let i = 0; i < l.coordinates.length - 1; i++) {
+                    const start = l.coordinates[i];
+                    const end = l.coordinates[i + 1];
+                    edges.push(
+                      turf.length(turf.lineString([start, end]), {
+                        units: "meters",
+                      })
+                    );
                   }
 
                   return (
@@ -394,6 +416,24 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         </div>
       </PageWrapper>
+
+      {/* Page 4: Polygon Diagram */}
+      {polygonDiagramImage && (
+        <PageWrapper page={4}>
+          <div style={{ border: `1px solid ${ACCENT_COLOR}`, borderRadius: 6 }}>
+            <div style={cardHeaderStyle}>
+              <h3>Roof Polygon Diagram</h3>
+            </div>
+            <div style={cardContentStyle}>
+              <img
+                src={polygonDiagramImage}
+                alt="Polygon Diagram"
+                style={{ width: "100%", borderRadius: 6 }}
+              />
+            </div>
+          </div>
+        </PageWrapper>
+      )}
     </>
   );
 };
