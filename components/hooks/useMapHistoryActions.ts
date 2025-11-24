@@ -10,6 +10,7 @@ interface HistoryState {
 }
 
 export function useMapHistoryActions(
+    mapRef: React.MutableRefObject<mapboxgl.Map | null>, 
     drawRef: React.MutableRefObject<MapboxDraw | null>,
     updateEdgeLabels: (show?: boolean) => void,
     updateShapesData: () => void

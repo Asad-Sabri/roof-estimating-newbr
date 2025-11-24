@@ -1,4 +1,3 @@
-// useMapboxFunctions.ts
 "use client";
 
 import { useRef, useCallback, useState, useEffect } from "react";
@@ -10,7 +9,37 @@ import { useMapHistoryActions } from "./useMapHistoryActions";
 import { Feature, Polygon, GeoJsonProperties, LineString } from "geojson";
 import { SnapPolygonMode, SnapLineMode } from "mapbox-gl-draw-snap-mode";
 
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+// ⭐️ FIX 1: Mapbox access token ko set karein
+// Isse Mapbox library fonts, sprites aur internal services ke liye authenticate kar payegi.
+// Make sure NEXT_PUBLIC_MAPBOX_TOKEN is set in your environment variables.
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ""; 
+
+// --- GOOGLE TILE CONFIGURATION (SAME AS BEFORE) ---
+const GOOGLE_SATELLITE_KEY = "AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao";
+const GOOGLE_TILE_URL = `https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&key=${GOOGLE_SATELLITE_KEY}`;
+
+const customGoogleStyle = {
+  version: 8,
+  name: "Google Satellite Tiles",
+  sources: {
+    "google-satellite-tiles": {
+      type: "raster", 
+      tiles: [GOOGLE_TILE_URL], 
+      tileSize: 256,
+      minzoom: 0,
+      maxzoom: 22,
+    },
+  },
+  layers: [
+    {
+      id: "google-satellite",
+      type: "raster",
+      source: "google-satellite-tiles",
+    },
+  ],
+};
+// --- END GOOGLE TILE CONFIGURATION ---
+
 
 export function useMapboxFunctions() {
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -242,7 +271,7 @@ export function useMapboxFunctions() {
         return;
       }
       const bounds = map.getBounds();
-      const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+      const bbox = [bounds?.getWest(), bounds?.getSouth(), bounds?.getEast(), bounds?.getNorth()];
       const cellSide = 10;
       const options = { units: 'meters' } as any;
       const grid = turf.squareGrid(bbox, cellSide, options);
@@ -382,90 +411,77 @@ export function useMapboxFunctions() {
     }
   }, [tempLocation, isLocationConfirmed]);
 
+  // --- MAP INITIALIZATION USE EFFECT (YAHAN CHANGE HUA HAI) ---
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
+    
+    // ⭐️ CHANGE: Mapbox style ko custom Google Tiles style se replace kiya gaya.
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/empty-v9",
+      style: customGoogleStyle as mapboxgl.Style, // <--- GOOGLE TILES INTEGRATED
       center,
       zoom: 19,
       preserveDrawingBuffer: true,
     });
+    
     mapRef.current = map;
+    
+    // --- MAPBOX DRAW INITIALIZATION (SAME AS BEFORE) ---
+    const draw = new MapboxDraw({
+      displayControlsDefault: false,
+      userProperties: true,
+      modes: {
+        ...MapboxDraw.modes,
+        draw_polygon: SnapPolygonMode,
+        draw_line_string: SnapLineMode,
+      },
+      styles: [
+        {
+          id: "gl-draw-polygon-fill",
+          type: "fill",
+          filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
+          paint: { "fill-color": "transparent", "fill-opacity": 0 },
+        },
+        {
+          id: "gl-draw-polygon-stroke",
+          type: "line",
+          filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
+          paint: { "line-color": "#FFD700", "line-width": 3 },
+        },
+        {
+          id: "gl-draw-line",
+          type: "line",
+          filter: ["all", ["==", "$type", "LineString"], ["!=", "mode", "static"]],
+          paint: { "line-color": "#FFD700", "line-width": 3 },
+        },
+        {
+          id: "gl-draw-polygon-midpoint",
+          type: "circle",
+          filter: ["all", ["==", "$type", "Point"], ["==", "meta", "midpoint"]],
+          paint: { "circle-radius": 5, "circle-color": ["coalesce", ["get", "customColor"], "#FFD700"], "circle-opacity": 1 },
+        },
+        {
+          id: "gl-draw-polygon-vertex-active",
+          type: "circle",
+          filter: ["all", ["==", "$type", "Point"], ["==", "meta", "vertex"]],
+          paint: {
+            "circle-radius": 4,
+            "circle-color": ["coalesce", ["get", "customColor"], "white"],
+            "circle-stroke-color": ["coalesce", ["get", "customColor"], "white"],
+            "circle-stroke-width": 0.1,
+          },
+        },
+      ],
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      snap: true,
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      snapOptions: { snapPx: 15, snapToMidPoints: true },
+    } as any);
+    drawRef.current = draw;
+    map.addControl(draw);
+    // --- END MAPBOX DRAW INITIALIZATION ---
 
     map.on("load", () => {
-      if (!map.getSource("google-satellite")) {
-        map.addSource("google-satellite", {
-          type: "raster",
-          tiles: [
-            `https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&key=AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao`
-          ],
-          tileSize: 256,
-        });
-      }
-
-      if (!map.getLayer("google-satellite-layer")) {
-        map.addLayer({
-          id: "google-satellite-layer",
-          type: "raster",
-          source: "google-satellite",
-          minzoom: 0,
-          maxzoom: 24,
-        });
-      }
-
-      const draw = new MapboxDraw({
-        displayControlsDefault: false,
-        userProperties: true,
-        modes: {
-          ...MapboxDraw.modes,
-          draw_polygon: SnapPolygonMode,
-          draw_line_string: SnapLineMode,
-        },
-        styles: [
-          {
-            id: "gl-draw-polygon-fill",
-            type: "fill",
-            filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
-            paint: { "fill-color": "transparent", "fill-opacity": 0 },
-          },
-          {
-            id: "gl-draw-polygon-stroke",
-            type: "line",
-            filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
-            paint: { "line-color": "#FFD700", "line-width": 3 },
-          },
-          {
-            id: "gl-draw-line",
-            type: "line",
-            filter: ["all", ["==", "$type", "LineString"], ["!=", "mode", "static"]],
-            paint: { "line-color": "#FFD700", "line-width": 3 },
-          },
-          {
-            id: "gl-draw-polygon-midpoint",
-            type: "circle",
-            filter: ["all", ["==", "$type", "Point"], ["==", "meta", "midpoint"]],
-            paint: { "circle-radius": 5, "circle-color": ["coalesce", ["get", "customColor"], "#FFD700"], "circle-opacity": 1 },
-          },
-          {
-            id: "gl-draw-polygon-vertex-active",
-            type: "circle",
-            filter: ["all", ["==", "$type", "Point"], ["==", "meta", "vertex"]],
-            paint: {
-              "circle-radius": 4,
-              "circle-color": ["coalesce", ["get", "customColor"], "white"],
-              "circle-stroke-color": ["coalesce", ["get", "customColor"], "white"],
-              "circle-stroke-width": 0.1,
-            },
-          },
-        ],
-        snap: true,
-        snapOptions: { snapPx: 15, snapToMidPoints: true },
-      } as any);
-
-      drawRef.current = draw;
-      map.addControl(draw);
-
       if (!map.getSource("polygon-edges")) {
         map.addSource("polygon-edges", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       }
@@ -479,13 +495,12 @@ export function useMapboxFunctions() {
         });
       }
     });
-
     const mapCenter = map.getCenter();
-    const lngLat: [number, number] = (center[0] === 0 && center[1] === 0) ? [mapCenter.lng, mapCenter.lat] : center;
+    const lngLat: [number, number] = [mapCenter.lng, mapCenter.lat];
+
     setTempLocation(lngLat);
     setPinLocation(lngLat);
     setShowLocationCard(true);
-
     map.on("draw.create", handleDrawChange);
     map.on("draw.update", handleDrawChange);
     map.on("draw.delete", () => {
@@ -494,30 +509,18 @@ export function useMapboxFunctions() {
       updateEdgeLabels();
     });
     map.on("render", updateLabelPositions);
-    map.on("draw.modechange", (e) => {
-      if (e.mode !== 'draw_polygon' && e.mode !== 'draw_line_string') {
-        toggleGrid(false);
-      }
-    });
 
     return () => {
       map.off("render", updateLabelPositions);
       map.off("draw.create", handleDrawChange);
       map.off("draw.update", handleDrawChange);
-      map.off("draw.delete", () => { });
-      map.off("draw.modechange", (e) => {
-        if (e.mode !== 'draw_polygon' && e.mode !== 'draw_line_string') {
-          toggleGrid(false);
-        }
-      });
-      try {
-        map.remove();
-      } catch (err) { }
+      map.remove();
       mapRef.current = null;
       drawRef.current = null;
     };
   }, [handleDrawChange, updateLabelPositions, pushHistory, updateEdgeLabels, updateShapesData, setTempLocation, setShowLocationCard, toggleGrid]);
-
+  // --- END MAP INITIALIZATION USE EFFECT ---
+  
   useEffect(() => {
     if (!mapRef.current) return;
     const handleSelectionChange = (e: any) => {
