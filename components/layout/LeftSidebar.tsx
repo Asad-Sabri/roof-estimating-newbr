@@ -10,8 +10,9 @@ import {
   RotateCw,
   Eye,
   EyeOff,
-  Check,
+  XOctagon, 
   Grid,
+  Check,
 } from "lucide-react";
 import React, { JSX, useState, useCallback } from "react";
 import { useMapContext } from "../hooks/mapContext";
@@ -26,91 +27,100 @@ export default function LeftSidebar() {
     rotateLeft,
     rotateRight,
     toggleLabels,
-    labelsVisible,
+    labelsVisible, // ⭐ FIX 5: labelsVisible state ab available hai
     toggleGrid,
-    gridVisible: contextGridVisible, 
+    gridVisible: contextGridVisible,
     drawRef,
+    drawDeductionPolygon,
   } = useMapContext();
 
   const [activeButton, setActiveButton] = useState<string | null>(null);
 
   const handleDrawToggle = useCallback(
-    (name: "Draw" | "Line") => {
+    (name: "Draw" | "Line" | "Deduction") => {
       const isActive = activeButton === name;
 
       if (isActive) {
-        // 1. Drawing band karna
         setActiveButton(null);
         if (drawRef.current) {
-            drawRef.current.changeMode('simple_select');
+          drawRef.current.changeMode("simple_select");
         }
-        // ❌ REMOVED: Grid toggle here (Grid state ko maintain rakhega)
-
       } else {
-        // 1. Drawing shuru karna
         setActiveButton(name);
         if (name === "Draw") {
           drawPolygon();
-        } else {
+        } else if (name === "Line") {
           drawLine();
+        } else if (name === "Deduction") {
+          drawDeductionPolygon();
         }
-        // ❌ REMOVED: Grid toggle here (Grid state ko maintain rakhega)
       }
     },
-    [activeButton, drawPolygon, drawLine, drawRef] // ✅ toggleGrid removed from dependencies
+    [activeButton, drawPolygon, drawLine, drawDeductionPolygon, drawRef] 
   );
-
+  
   const handleGridToggle = useCallback(() => {
-      // ✅ Grid ko sirf yeh button control karega
-      toggleGrid(!contextGridVisible);
+    toggleGrid(!contextGridVisible);
   }, [toggleGrid, contextGridVisible]);
-
 
   const handleClick = (name: string, action?: () => void) => {
     
-    if (name === "Draw" || name === "Line") {
-      handleDrawToggle(name);
+    if (name === "Draw") {
+      handleDrawToggle("Draw");
       return;
     }
-    
-    if (name === "Toggle Grid") {
-        handleGridToggle();
-        return;
+    if (name === "Line") {
+      handleDrawToggle("Line");
+      return;
+    }
+    if (name === "Deduction Area") {
+      handleDrawToggle("Deduction");
+      return;
     }
 
     if (typeof action === "function") {
-      action();
-      
-      // Doosre actions par Draw mode se bahar nikalna
+      action(); 
       if (drawRef.current) {
-          drawRef.current.changeMode('simple_select');
+        drawRef.current.changeMode("simple_select");
+      } 
+      if (["Draw", "Line", "Deduction"].includes(activeButton || "")) {
+        setActiveButton(null);
       }
-      
-      // Draw/Line button ka active state remove karein agar koi aur action chala hai
-      if (activeButton === "Draw" || activeButton === "Line") {
-         setActiveButton(null);
-      }
-      
-      // ... (other active button logic unchanged)
     } else {
       console.warn(`⚠ Action not found for button: ${name}`);
     }
   };
-
+  
   const buttons: { name: string; icon: JSX.Element; action?: () => void }[] = [
     { name: "Draw", icon: <Pencil className="w-5 h-5" /> },
     { name: "Line", icon: <Minus className="w-5 h-5" /> },
     {
-        name: "Toggle Grid",
-        icon: <Grid className={`w-5 h-5 ${contextGridVisible ? 'text-green-400' : 'text-white'}`} />,
-        action: handleGridToggle,
-    }, 
+      name: "Deduction Area", 
+      icon: <XOctagon className="w-5 h-5" />, 
+    },
+    {
+      name: "Toggle Grid",
+      icon: (
+        <Grid
+          className={`w-5 h-5 ${
+            contextGridVisible ? "text-green-400" : "text-white"
+          }`}
+        />
+      ),
+      action: handleGridToggle,
+    },
     {
       name: "Delete",
       icon: <Trash2 className="w-5 h-5" />,
-      action: deleteFeature,
+      action: () => {
+        deleteFeature(); 
+        if (drawRef.current) {
+          drawRef.current.changeMode("simple_select");
+        }
+        setActiveButton(null);
+      },
     },
-    
+
     { name: "Undo", icon: <RotateCcw className="w-5 h-5" />, action: undo },
     { name: "Redo", icon: <RotateCw className="w-5 h-5" />, action: redo },
     {
@@ -132,39 +142,39 @@ export default function LeftSidebar() {
       ),
       action: toggleLabels,
     },
-    {
-      name: "Parapet Wall",
-      icon: <Check className="w-5 h-5" />,
-      action: rotateRight, 
-    },
   ];
 
   return (
     <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-3 bg-[#0a1f44]/90 p-3 rounded-2xl shadow-xl border border-white/10 z-30">
       {buttons.map((btn, idx) => {
-          const isToggableButton = ["Draw", "Line"].includes(btn.name);
-          const isCurrentlyActive = isToggableButton && activeButton === btn.name;
+        const isToggableButton = ["Draw", "Line", "Deduction Area"].includes(
+          btn.name
+        ); 
+        const modeName = btn.name === "Deduction Area" ? "Deduction" : btn.name; 
+        const isCurrentlyActive = isToggableButton && activeButton === modeName;
 
-          return (
-            <React.Fragment key={btn.name}>
-              <button
-                type="button"
-                onClick={() => handleClick(btn.name, btn.action)}
-                className={`flex flex-col items-center transition-all ${
-                    isCurrentlyActive
-                      ? "scale-105 bg-white/20 rounded-lg py-1 text-white"
-                      : "text-white"
-                }`}
-              >
-                {btn.icon}
-                <span className="text-xs text-gray-200">{btn.name}</span>
-              </button>
+        return (
+          <React.Fragment key={btn.name}>
+            <button
+              type="button"
+              onClick={() => handleClick(btn.name, btn.action)}
+              className={`flex flex-col items-center transition-all ${
+                isCurrentlyActive
+                  ? "scale-105 bg-white/20 rounded-lg py-1 text-white"
+                  : "text-white"
+              }`}
+            >
+              {btn.icon}
+              <span className="text-xs text-gray-200">{btn.name}</span>
+            </button>
 
-              {(idx === 3 || idx === 5 || idx === 7) && ( 
-                <div className="h-px bg-gray-600 my-1"></div>
-              )}
-            </React.Fragment>
-          );
+            {(idx === 4 ||
+              idx === 6 ||
+              idx === 8) && (
+              <div className="h-px bg-gray-600 my-1"></div>
+            )}
+          </React.Fragment>
+        );
       })}
     </div>
   );

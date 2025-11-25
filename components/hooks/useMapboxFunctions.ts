@@ -1,3 +1,5 @@
+// useMapboxFunctions.ts
+
 "use client";
 
 import { useRef, useCallback, useState, useEffect } from "react";
@@ -9,12 +11,9 @@ import { useMapHistoryActions } from "./useMapHistoryActions";
 import { Feature, Polygon, GeoJsonProperties, LineString } from "geojson";
 import { SnapPolygonMode, SnapLineMode } from "mapbox-gl-draw-snap-mode";
 
-// ⭐️ FIX 1: Mapbox access token ko set karein
-// Isse Mapbox library fonts, sprites aur internal services ke liye authenticate kar payegi.
-// Make sure NEXT_PUBLIC_MAPBOX_TOKEN is set in your environment variables.
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ""; 
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
-// --- GOOGLE TILE CONFIGURATION (SAME AS BEFORE) ---
+// --- GOOGLE TILE CONFIGURATION ---
 const GOOGLE_SATELLITE_KEY = "AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao";
 const GOOGLE_TILE_URL = `https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&key=${GOOGLE_SATELLITE_KEY}`;
 
@@ -47,11 +46,15 @@ export function useMapboxFunctions() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const drawRef = useRef<MapboxDraw | null>(null);
 
+  const isDeductionModeActive = useRef(false);
+
   const labelElementsRef = useRef<{ [key: string]: HTMLDivElement }>({});
   const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
   const [polygonsData, setPolygonsData] = useState<any[]>([]);
   const [linesData, setLinesData] = useState<any[]>([]);
   const [gridVisible, setGridVisible] = useState(false);
+  // ⭐ FIX 1: labelsVisible state ko yahan define kiya
+  const [labelsVisible, setLabelsVisible] = useState(true); 
 
   const [tempLocation, setTempLocation] = useState<[number, number] | null>(null);
   const [pinLocation, setPinLocation] = useState<[number, number] | null>(null);
@@ -72,6 +75,9 @@ export function useMapboxFunctions() {
     let projects = projectsRaw ? JSON.parse(projectsRaw) : [];
     if (projects.length === 0) return;
 
+    let netTotalAreaFeet = 0;
+    let totalDeductionAreaFeet = 0;
+
     const latestProject = projects[projects.length - 1];
     const polygons: any[] = [];
     const lines: any[] = [];
@@ -81,15 +87,23 @@ export function useMapboxFunctions() {
       const coords = feature.geometry.coordinates;
       const areaSqFeet = feature.properties?.area || 0;
       const edges = feature.properties?.edges || [];
+      const isDeduction = feature.properties?.isDeduction === true; 
 
       if (feature.geometry.type === "Polygon") {
+        if (!isDeduction) {
+            netTotalAreaFeet += areaSqFeet; 
+        } else {
+            totalDeductionAreaFeet += areaSqFeet; 
+        }
+        
         polygons.push({
           id: feature.id,
           coordinates: coords,
           edges,
           area: areaSqFeet,
-          customColor: feature.properties?.customColor || "#FFD700",
-          label: feature.properties?.label || defaultPolygonLabels[idx] || `Polygon #${idx + 1}`,
+          customColor: feature.properties?.customColor || (isDeduction ? "#808080" : "#FFD700"), 
+          label: feature.properties?.label || (isDeduction ? "Deduction Area" : defaultPolygonLabels[idx] || `Polygon #${idx + 1}`),
+          isDeduction, 
         });
       }
 
@@ -106,7 +120,7 @@ export function useMapboxFunctions() {
 
     latestProject.polygons = polygons;
     latestProject.lines = lines;
-    latestProject.totalArea = totalAreaFeet.toFixed(2);
+    latestProject.totalArea = (netTotalAreaFeet - totalDeductionAreaFeet).toFixed(2);
     latestProject.totalLength = totalLengthFeet.toFixed(2);
     localStorage.setItem("projects", JSON.stringify(projects));
   }, []);
@@ -124,7 +138,9 @@ export function useMapboxFunctions() {
       const edges: any[] = [];
       let featureLengthFeet = 0;
       let areaSqFeet = 0;
-      const color = feature.properties?.customColor || "#FFD700";
+      const isDeduction = feature.properties?.isDeduction === true; 
+      const color = feature.properties?.customColor || (isDeduction ? "#808080" : "#FFD700"); 
+
       for (let i = 0; i < coords.length - 1; i++) {
         const lenMeters = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: "meters" });
         const lenFeet = lenMeters * 3.28084;
@@ -133,13 +149,13 @@ export function useMapboxFunctions() {
         edges.push({ start: coords[i], end: coords[i + 1], lengthFeet: lenFeet });
         edgeFeatures.push({
           type: "Feature",
-          properties: { color },
+          properties: { color, isDeduction: isDeduction }, // isDeduction property added for edge layer styling
           geometry: { type: "LineString", coordinates: [coords[i], coords[i + 1]] },
         });
       }
       if (feature.geometry.type === "Polygon") {
         areaSqFeet = turf.area(feature) * 10.7639;
-        totalAreaFeet += areaSqFeet;
+        totalAreaFeet += areaSqFeet; 
       }
       drawRef.current?.setFeatureProperty(feature.id, "edges", edges);
       if (feature.geometry.type === "Polygon") {
@@ -162,6 +178,7 @@ export function useMapboxFunctions() {
     setLinesData(updatedFeatures.filter(f => f.geometry?.type === "LineString"));
     saveShapesToProjects(updatedFeatures, totalAreaFeet, totalLengthFeet);
   }, [saveShapesToProjects]);
+
 
   const updateLabelPositions = useCallback(() => {
     if (!mapRef.current) return;
@@ -200,7 +217,10 @@ export function useMapboxFunctions() {
     if (!mapRef.current || !drawRef.current) return;
     const map = mapRef.current;
     const draw = drawRef.current;
-    const shouldShow = typeof showLabels === "boolean" ? showLabels : true;
+    const shouldShow = typeof showLabels === "boolean" ? showLabels : labelsVisible; 
+    
+    // LabelsVisible state ko use kiya
+
     if (!shouldShow) {
       Object.values(labelElementsRef.current).forEach(el => el.remove());
       labelElementsRef.current = {};
@@ -211,32 +231,42 @@ export function useMapboxFunctions() {
 
     features.forEach((feature: any) => {
       const edges = feature.properties?.edges || [];
+      const isDeduction = feature.properties?.isDeduction === true; 
+
       edges.forEach((edge: any, i: number) => {
         const lenMeters = edge.lengthFeet / 3.28084;
         if (lenMeters < 0.01) return;
         const key = `${feature.id}-${i}`;
         currentLabelKeys.add(key);
         let el = labelElementsRef.current[key];
+        
+        const background = isDeduction ? "rgba(128, 128, 128, 0.9)" : "rgba(255,255,255,0.9)";
+        const color = isDeduction ? "white" : "#000";
+        const border = isDeduction ? "1px solid #333" : "1px solid #333";
+        
         if (!el) {
           el = document.createElement("div");
           el.style.cssText = `
             position: absolute;
-            background: rgba(255,255,255,0.9);
+            background: ${background};
             padding: 2px 4px;
             border-radius: 3px;
             font-size: 10px;
             font-weight: 600;
-            color: #000;
+            color: ${color};
             text-align: center;
             pointer-events: none;
             transform: translate(-50%, -50%);
             z-index: 1000;
-            border: 1px solid #333;
+            border: ${border};
           `;
           map.getContainer().appendChild(el);
           labelElementsRef.current[key] = el;
         }
         el.innerText = toFeetInches(lenMeters);
+        el.style.background = background;
+        el.style.color = color;
+        el.style.border = border;
       });
     });
 
@@ -247,7 +277,7 @@ export function useMapboxFunctions() {
       }
     });
     updateLabelPositions();
-  }, [toFeetInches, updateLabelPositions]);
+  }, [toFeetInches, updateLabelPositions, labelsVisible]); // labelsVisible dependency add kiya
 
   const {
     undo,
@@ -257,8 +287,14 @@ export function useMapboxFunctions() {
     rotateRight,
     toggleLabels,
     pushHistory,
-    labelsVisible,
-  } = useMapHistoryActions(drawRef, updateEdgeLabels, updateShapesData);
+  } = useMapHistoryActions(
+    mapRef, // ⭐ FIX 2: mapRef pass kiya
+    drawRef, 
+    updateEdgeLabels, 
+    updateShapesData,
+    labelsVisible, // Current labels state pass kiya
+    setLabelsVisible // Set state function pass kiya
+  );
 
   const toggleGrid = useCallback((show: boolean) => {
     if (!mapRef.current) return;
@@ -309,10 +345,27 @@ export function useMapboxFunctions() {
 
   const handleDrawChange = useCallback((e: any) => {
     if (!drawRef.current) return;
+    
     e.features.forEach((feature: any) => {
-      const currentColor = feature.properties?.customColor || "#FFD700";
-      drawRef.current?.setFeatureProperty(feature.id, "customColor", currentColor);
+        if (e.type === "draw.create" && feature.geometry.type === "Polygon") {
+            const isDeduction = isDeductionModeActive.current;
+
+            if (isDeduction) {
+                drawRef.current?.setFeatureProperty(feature.id, "isDeduction", true);
+                drawRef.current?.setFeatureProperty(feature.id, "customColor", "#808080"); 
+                drawRef.current?.setFeatureProperty(feature.id, "label", "Deduction Area");
+                isDeductionModeActive.current = false; 
+            } else {
+                const currentColor = feature.properties?.customColor || "#FFD700";
+                drawRef.current?.setFeatureProperty(feature.id, "customColor", currentColor);
+            }
+        }
+        
+        if (e.type === "draw.update" && feature.properties?.isDeduction === true) {
+             drawRef.current?.setFeatureProperty(feature.id, "customColor", "#808080");
+        }
     });
+
 
     if (["draw.create", "draw.update", "draw.delete"].includes(e.type)) {
       pushHistory(
@@ -320,13 +373,14 @@ export function useMapboxFunctions() {
           e.type === "draw.update" ? "update" : "delete"
       );
       updateShapesData();
-      updateEdgeLabels(true);
+      updateEdgeLabels(labelsVisible); 
 
       if (e.type !== "draw.update") {
         toggleGrid(false);
       }
     }
-  }, [pushHistory, updateShapesData, updateEdgeLabels, toggleGrid]);
+  }, [pushHistory, updateShapesData, updateEdgeLabels, toggleGrid, labelsVisible]);
+
 
   let center: [number, number] = [0, 0];
   if (savedLocationRaw) {
@@ -411,14 +465,13 @@ export function useMapboxFunctions() {
     }
   }, [tempLocation, isLocationConfirmed]);
 
-  // --- MAP INITIALIZATION USE EFFECT (YAHAN CHANGE HUA HAI) ---
+  // --- MAP INITIALIZATION USE EFFECT ---
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
     
-    // ⭐️ CHANGE: Mapbox style ko custom Google Tiles style se replace kiya gaya.
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: customGoogleStyle as mapboxgl.Style, // <--- GOOGLE TILES INTEGRATED
+      style: customGoogleStyle as mapboxgl.Style, 
       center,
       zoom: 19,
       preserveDrawingBuffer: true,
@@ -426,7 +479,7 @@ export function useMapboxFunctions() {
     
     mapRef.current = map;
     
-    // --- MAPBOX DRAW INITIALIZATION (SAME AS BEFORE) ---
+    // --- MAPBOX DRAW INITIALIZATION ---
     const draw = new MapboxDraw({
       displayControlsDefault: false,
       userProperties: true,
@@ -439,20 +492,26 @@ export function useMapboxFunctions() {
         {
           id: "gl-draw-polygon-fill",
           type: "fill",
-          filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
+          filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"], ["!=", "isDeduction", true]],
           paint: { "fill-color": "transparent", "fill-opacity": 0 },
+        },
+        {
+            id: "gl-draw-deduction-polygon-fill",
+            type: "fill",
+            filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"], ["==", "isDeduction", true]],
+            paint: { "fill-color": "#808080", "fill-opacity": 0.3 }, 
         },
         {
           id: "gl-draw-polygon-stroke",
           type: "line",
           filter: ["all", ["==", "$type", "Polygon"], ["!=", "mode", "static"]],
-          paint: { "line-color": "#FFD700", "line-width": 3 },
+          paint: { "line-color": ["coalesce", ["get", "customColor"], "#FFD700"], "line-width": 3, "line-dasharray": ["case", ["==", ["get", "isDeduction"], true], ["literal", [3, 2]], ["literal", [1]]]},
         },
         {
           id: "gl-draw-line",
           type: "line",
           filter: ["all", ["==", "$type", "LineString"], ["!=", "mode", "static"]],
-          paint: { "line-color": "#FFD700", "line-width": 3 },
+          paint: { "line-color": ["coalesce", ["get", "customColor"], "#FFD700"], "line-width": 3 },
         },
         {
           id: "gl-draw-polygon-midpoint",
@@ -472,14 +531,13 @@ export function useMapboxFunctions() {
           },
         },
       ],
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       snap: true,
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       snapOptions: { snapPx: 15, snapToMidPoints: true },
     } as any);
     drawRef.current = draw;
     map.addControl(draw);
     // --- END MAPBOX DRAW INITIALIZATION ---
+
 
     map.on("load", () => {
       if (!map.getSource("polygon-edges")) {
@@ -491,10 +549,15 @@ export function useMapboxFunctions() {
           type: "line",
           source: "polygon-edges",
           layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-width": 3, "line-color": ["get", "color"] },
+          paint: { 
+            "line-width": 3, 
+            "line-color": ["get", "color"],
+            "line-dasharray": ["case", ["==", ["get", "isDeduction"], true], ["literal", [3, 2]], ["literal", [1]]],
+          },
         });
       }
     });
+
     const mapCenter = map.getCenter();
     const lngLat: [number, number] = [mapCenter.lng, mapCenter.lat];
 
@@ -503,10 +566,12 @@ export function useMapboxFunctions() {
     setShowLocationCard(true);
     map.on("draw.create", handleDrawChange);
     map.on("draw.update", handleDrawChange);
+    
+    // ⭐ FIX 3: delete event listener ko theek kiya
     map.on("draw.delete", () => {
       pushHistory("delete");
       updateShapesData();
-      updateEdgeLabels();
+      updateEdgeLabels(labelsVisible); 
     });
     map.on("render", updateLabelPositions);
 
@@ -514,13 +579,14 @@ export function useMapboxFunctions() {
       map.off("render", updateLabelPositions);
       map.off("draw.create", handleDrawChange);
       map.off("draw.update", handleDrawChange);
+      map.off("draw.delete", handleDrawChange); // Delete event bhi off kiya
       map.remove();
       mapRef.current = null;
       drawRef.current = null;
     };
-  }, [handleDrawChange, updateLabelPositions, pushHistory, updateEdgeLabels, updateShapesData, setTempLocation, setShowLocationCard, toggleGrid]);
+  }, [handleDrawChange, updateLabelPositions, pushHistory, updateEdgeLabels, updateShapesData, setTempLocation, setShowLocationCard, toggleGrid, labelsVisible]); 
   // --- END MAP INITIALIZATION USE EFFECT ---
-  
+  
   useEffect(() => {
     if (!mapRef.current) return;
     const handleSelectionChange = (e: any) => {
@@ -543,7 +609,8 @@ export function useMapboxFunctions() {
   }, [labelsVisible, updateShapesData, updateEdgeLabels]);
 
   const drawPolygon = useCallback(() => {
-    if (!drawRef.current) return;
+    if (!drawRef.current) return; 
+    isDeductionModeActive.current = false; 
     drawRef.current.changeMode("draw_polygon");
   }, []);
 
@@ -552,8 +619,23 @@ export function useMapboxFunctions() {
     drawRef.current.changeMode("draw_line_string");
   }, []);
 
+  const drawDeductionPolygon = useCallback(() => {
+    if (!drawRef.current) return;
+    isDeductionModeActive.current = true; 
+    drawRef.current.changeMode("draw_polygon");
+  }, []);
+
+
   const applyColorToSelectedFeature = useCallback((label: { name: string; color: string }) => {
     if (!drawRef.current || !selectedFeature) return;
+    
+    const isDeduction = drawRef.current.get(selectedFeature)?.properties?.isDeduction === true;
+
+    if (isDeduction) {
+        alert("Deduction areas cannot have their color or label changed.");
+        return; 
+    }
+    
     drawRef.current.setFeatureProperty(selectedFeature, "customColor", label.color);
     drawRef.current.setFeatureProperty(selectedFeature, "label", label.name);
 
@@ -579,6 +661,7 @@ export function useMapboxFunctions() {
     polygonsData,
     drawPolygon,
     drawLine,
+    drawDeductionPolygon, 
     linesData,
     updateEdgeLabels,
     updateShapesData,
@@ -590,7 +673,7 @@ export function useMapboxFunctions() {
     rotateRight,
     toggleLabels,
     pushHistory,
-    labelsVisible,
+    labelsVisible, // ⭐ FIX 4: labelsVisible ko return kiya
     createGridLayer: () => { },
     toggleGrid,
     gridVisible,
