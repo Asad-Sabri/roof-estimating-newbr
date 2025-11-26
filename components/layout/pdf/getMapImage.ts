@@ -1,3 +1,4 @@
+//getMapImage.ts
 export interface MapOptions {
   zoom?: number;
   width?: number;

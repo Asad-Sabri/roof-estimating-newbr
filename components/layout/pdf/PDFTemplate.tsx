@@ -1,73 +1,37 @@
+// PDFTemplate.tsx
+
 import React from "react";
 import logoSrc from "../../../public/logo-latest.png";
 import Image from "next/image";
 import * as turf from "@turf/turf";
-
-interface PolygonData {
-  id: string;
-  coordinates: number[][];
-  color?: string;
-  customColor?: string;
-  edges?: { start: number[]; end: number[]; lengthFeet: number }[];
-  label?: string;
-}
-
-interface LineData {
-  label?: string;
-  id: string;
-  coordinates: [number, number][];
-  edges?: {
-    start: [number, number];
-    end: [number, number];
-    lengthFeet: number;
-  }[];
-  customColor?: string;
-}
+import { GAFSummary } from "./processRoofData";
+import ReportPageHeader from "./ReportPageHeader";
+import CardTitleHeader from "./CardTitleHeader";
+import { RoofMeasurementsDiagram } from "./RoofMeasurementsDiagram";
+import { LineData, PolygonData } from "./constants";
 
 interface ProjectLocation {
-  lat: number;
-  lng: number;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  mobile?: string;
+  propertyType?: string;
+  roofType?: string;
+  address?: string;
+  totalArea?: string;
+  totalLength?: string;
+  gafSummary: GAFSummary;
+  polygons: PolygonData[];
+  lines: LineData[];
 }
 
 interface PDFTemplateProps {
-  mapImage?: string;
-  topViewImage?: string;
-  polygonDiagramImage?: string;
-  data: {
-    polygons?: PolygonData[];
-    lines?: LineData[];
-    projectLocation?: ProjectLocation;
-    date?: string;
-    userName?: string;
-    projectName?: string;
-    summary?: string;
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    mobile?: string;
-    propertyType?: string;
-    roofType?: string;
-    address?: string;
-    totalArea?: string;
-    totalLength?: string;
-    createdAt?: string;
-  };
+  mapImage: string;
+  topViewImage: string;
+  polygonDiagramImage: string;
+  data: ProjectLocation;
+  preparedFor?: string;
 }
-
-// Helper function to convert meters to feet & inches
-const toFeetInches = (meters: number) => {
-  const ft = meters * 3.28084;
-  const feet = Math.floor(ft);
-  const inches = Math.round((ft - feet) * 12);
-  if (inches >= 12) return `${feet + 1}'0"`;
-  return `${feet}'${inches}"`;
-};
-
-const PAGE_BG_COLOR = "#f3f3f3";
-const CARD_BG_COLOR = "#f3f3f3";
-const CARD_HEADER_BG_COLOR = "#0f2346";
-const HEADER_ACCENT_COLOR = "#f3f3f3";
-const ACCENT_COLOR = "BLACK";
 
 const PDFTemplate: React.FC<PDFTemplateProps> = ({
   mapImage,
@@ -78,8 +42,73 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
   const polygons = data.polygons || [];
   const lines = data.lines || [];
 
-  // Use data directly instead of localStorage & createRoot
   const latestProject = data;
+
+  const toFeetInches = (meters: number) => {
+    const ft = meters * 3.28084;
+    const feet = Math.floor(ft);
+    const inches = Math.round((ft - feet) * 12);
+    if (inches >= 12) return `${feet + 1}'0"`;
+    return `${feet}'${inches}"`;
+  };
+
+  const PAGE_BG_COLOR = "#f3f3f3";
+  const CARD_BG_COLOR = "#f3f3f3";
+  const CARD_HEADER_BG_COLOR = "#0f2346";
+  const HEADER_ACCENT_COLOR = "#f3f3f3";
+  const ACCENT_COLOR = "#f3f3f3";
+
+  const CustomReportPageHeader: React.FC<{
+    title: string;
+    isCoverPage: boolean;
+    titleFontSize?: string;
+  }> = ({ title, isCoverPage, titleFontSize = "16px" }) => {
+    const finalHeaderStyle = {
+      backgroundColor: CARD_HEADER_BG_COLOR,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "20px 25px",
+      borderRadius: "8px",
+      marginBottom: "20px",
+    };
+
+    return (
+      <div style={finalHeaderStyle}>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <img
+            src={logoSrc.src}
+            alt="Logo"
+            style={{ height: 100, width: 150 }}
+          />
+        </div>
+
+        <div style={{ textAlign: "right", color: "#fff" }}>
+          <p
+            style={{
+              margin: 0,
+              fontSize: titleFontSize,
+              fontWeight: "bold",
+              marginBottom: isCoverPage ? "5px" : "0",
+            }}
+          >
+            {title}
+          </p>
+
+          {isCoverPage && (
+            <>
+              <p style={{ margin: 0, fontSize: "14px" }}>
+                Prepared For: <strong>Superior Pro Roofs</strong>
+              </p>
+              <p style={{ margin: 0, fontSize: "14px" }}>
+                Date: <strong>{new Date().toLocaleDateString()}</strong>
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const pageStyle = (pageNumber: number): React.CSSProperties => ({
     pageBreakAfter: "always",
@@ -97,7 +126,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
     backgroundColor: CARD_HEADER_BG_COLOR,
     padding: "10px 20px",
     borderRadius: "6px",
-    marginBottom: "20px",
+    marginBottom: "60px",
     border: "1px solid #ccc",
   };
 
@@ -123,7 +152,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
 
   const cardHeaderStyle: React.CSSProperties = {
     backgroundColor: CARD_HEADER_BG_COLOR,
-    padding: "10px 15px",
+    padding: "10px 20px 30px 20px",
     borderBottom: "1px solid #ccc",
     borderTopLeftRadius: "6px",
     borderTopRightRadius: "6px",
@@ -139,7 +168,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
     color: HEADER_ACCENT_COLOR,
     fontWeight: 700,
     fontSize: "18px",
-    margin: "0 0 20px 0",
+    margin: "0",
   };
 
   const PageWrapper: React.FC<{ page: number; children: React.ReactNode }> = ({
@@ -156,40 +185,16 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
     <>
       {/* Page 1: Cover + Project Details */}
       <PageWrapper page={1}>
-        <div
-          style={{
-            ...headerCardStyle,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "20px 16px",
-            borderRadius: "8px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <Image src={logoSrc} alt="Logo" height={150} width={150} />
-          </div>
-
-          <div style={{ textAlign: "right", color: "#fff" }}>
-            <p style={{ margin: 0, fontSize: "14px" }}>
-              Prepared For: <strong>Superior Pro Roofs</strong>
-            </p>
-            <p style={{ margin: 0, fontSize: "14px" }}>
-              Date:{" "}
-              <strong>
-                {latestProject.createdAt
-                  ? new Date(latestProject.createdAt).toLocaleDateString()
-                  : "N/A"}
-              </strong>
-            </p>
-          </div>
-        </div>
+        <CustomReportPageHeader
+          title="ROOF MEASUREMENT REPORT"
+          isCoverPage={true}
+        />
 
         <h2
           style={{
             textAlign: "center",
             marginBottom: "30px",
-            color: ACCENT_COLOR,
+            color: "black",
             fontSize: "28px",
             fontWeight: "bold",
           }}
@@ -199,7 +204,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
 
         {/* Project Details */}
         <div
-          style={{ ...cardContainerStyle, border: `1px solid ${ACCENT_COLOR}` }}
+          style={{ ...cardContainerStyle, border: `2px solid ${ACCENT_COLOR}` }}
         >
           <div style={cardHeaderStyle}>
             <h3 style={headingStyle}>Project Details</h3>
@@ -274,25 +279,79 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
         </div>
       </PageWrapper>
 
-      {/* Page 2: Map */}
-       {mapImage && (
-        <PageWrapper page={2}>
+      {/* Page 2: Map/Top View */}
+      <PageWrapper page={2}>
+        <CustomReportPageHeader
+          title="Top View"
+          isCoverPage={false}
+          titleFontSize="20px"
+        />
+        {mapImage && (
           <div style={{ border: `1px solid ${ACCENT_COLOR}`, borderRadius: 6 }}>
-            <div style={cardHeaderStyle}>Top View</div>
             <div style={cardContentStyle}>
               <img
                 src={mapImage}
                 alt="Map Screenshot"
                 style={{ width: "100%", borderRadius: 6 }}
-                crossOrigin="anonymous"   // ✅ correct use
+                crossOrigin="anonymous"
               />
             </div>
           </div>
-        </PageWrapper>
-      )}
-
+        )}
+      </PageWrapper>
       {/* Page 3: Polygons & Lines */}
+
       <PageWrapper page={3}>
+        <CustomReportPageHeader
+          title="Measurement Diagram"
+          isCoverPage={false}
+          titleFontSize="20px"
+        />
+        {polygonDiagramImage && (
+          <div
+            style={{
+              backgroundColor: `${ACCENT_COLOR}`,
+              borderRadius: 6,
+              margin: "80px 0",
+            }}
+          >
+            <CardTitleHeader title="Diagram" />
+            <div style={cardContentStyle}>
+              <img
+                src={polygonDiagramImage}
+                alt="Polygon Diagram"
+                style={{ width: "100%", borderRadius: 6 }}
+              />
+            </div>
+          </div>
+        )}
+      </PageWrapper>
+      
+      <PageWrapper page={4}>
+        <CustomReportPageHeader
+          title="Roof Measurements Diagram"
+          isCoverPage={false}
+          titleFontSize="20px"
+        />
+
+        <h1 style={{ marginBottom: "10px", textAlign: "center" }}>
+          Roof Measurements
+        </h1>
+
+        <RoofMeasurementsDiagram
+          linesData={data.lines}
+          polygonsData={data.polygons}
+          summary={data.gafSummary}
+        />
+      </PageWrapper>
+
+      <PageWrapper page={5}>
+        <CustomReportPageHeader
+          title="Measurements Overview"
+          isCoverPage={false}
+          titleFontSize="20px"
+        />
+
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
           {/* Polygons */}
           <div
@@ -303,9 +362,8 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               borderRadius: 6,
             }}
           >
-            <div style={cardHeaderStyle}>
-              <h3>Polygons (Roof Facets)</h3>
-            </div>
+            <CardTitleHeader title="Polygons (Roof Facets)" />
+
             <div style={cardContentStyle}>
               {polygons.length === 0 ? (
                 <p>No polygons drawn.</p>
@@ -332,7 +390,9 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                         paddingBottom: 8,
                       }}
                     >
-                      <strong style={{ color: p.customColor || ACCENT_COLOR }}>
+                      <strong
+                        style={{ color: p.customColor || CARD_HEADER_BG_COLOR }}
+                      >
                         Polygon #{idx + 1} {p.label ? `(${p.label})` : ""}
                       </strong>
                       <ul
@@ -364,9 +424,8 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               borderRadius: 6,
             }}
           >
-            <div style={cardHeaderStyle}>
-              <h3>Lines (Measurements)</h3>
-            </div>
+            <CardTitleHeader title="Lines (Measurements)" />
+
             <div style={cardContentStyle}>
               {lines.length === 0 ? (
                 <p>No lines drawn.</p>
@@ -392,7 +451,9 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                         paddingBottom: 8,
                       }}
                     >
-                      <strong style={{ color: l.customColor || ACCENT_COLOR }}>
+                      <strong
+                        style={{ color: l.customColor || CARD_HEADER_BG_COLOR }}
+                      >
                         Line #{idx + 1} {l.label ? `(${l.label})` : ""}
                       </strong>
                       <ul
@@ -416,24 +477,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         </div>
       </PageWrapper>
-
-      {/* Page 4: Polygon Diagram */}
-      {polygonDiagramImage && (
-        <PageWrapper page={4}>
-          <div style={{ border: `1px solid ${ACCENT_COLOR}`, borderRadius: 6 }}>
-            <div style={cardHeaderStyle}>
-              <h3>Roof Polygon Diagram</h3>
-            </div>
-            <div style={cardContentStyle}>
-              <img
-                src={polygonDiagramImage}
-                alt="Polygon Diagram"
-                style={{ width: "100%", borderRadius: 6 }}
-              />
-            </div>
-          </div>
-        </PageWrapper>
-      )}
     </>
   );
 };

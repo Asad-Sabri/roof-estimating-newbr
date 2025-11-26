@@ -1,3 +1,4 @@
+//MapCaptureUtil.ts
 import mapboxgl from "mapbox-gl";
 
 export const captureMapImage = (mapRef: React.RefObject<mapboxgl.Map>) => {

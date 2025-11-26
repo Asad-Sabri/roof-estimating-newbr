@@ -1,3 +1,4 @@
+//mapboxSnapshot.ts
 import mapboxgl from "mapbox-gl";
 
 interface SnapshotOptions {
