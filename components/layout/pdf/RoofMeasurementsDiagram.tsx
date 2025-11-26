@@ -29,14 +29,14 @@ export const RoofMeasurementsDiagram: React.FC<RoofMeasurementsDiagramProps> = (
 
     return (
         <div className="roof-diagram-container" style={{ padding: '20px' }}>
-            <div style={{ textAlign: 'right', fontSize: '12px', marginBottom: '10px' }}>
+            {/* <div style={{ textAlign: 'right', fontSize: '12px', marginBottom: '10px' }}>
                 <span style={{ fontWeight: 'bold' }}>Lengths in feet</span>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '20px' }}>
                     <div>Flash: {summary.valleys.toFixed(0)}</div>
                     <div>Step: {summary.hips.toFixed(0)}</div>
                     <div>Drip: {(summary.eaves + summary.rakes).toFixed(0)}</div>
                 </div>
-            </div>
+            </div> */}
 
             <div style={{ border: '1px solid #ccc', margin: '0 auto', width: SVG_WIDTH }}>
                 <svg width={SVG_WIDTH} height={SVG_HEIGHT} viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}>

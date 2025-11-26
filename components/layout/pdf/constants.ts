@@ -1,13 +1,15 @@
 // /constants.ts
 
 export const LINE_COLORS: Record<string, string> = {
-    'bend': '#940062',
-    'eave': '#808080',
-    'hip': '#FFFF00',
-    'rake': '#008000',
     'ridge': '#FF0000',
-    'valley': '#4B0082',
-    'parapet': '#000000',
+    'hip': '#FFA500',
+    'valley': '#800080',
+    'rake': '#0000FF',
+    'eave': '#008000',
+    'flashing': '#008080',
+    'stepFlashing': '#393939ff',
+    'bend': '#940062',
+    'deduction': '#000000',
 };
 
 interface Edge {

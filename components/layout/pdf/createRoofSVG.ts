@@ -32,6 +32,7 @@ const COLOR_MAP: { [key: string]: string } = {
     Eave: "#800080",
     Rake: "#FFC0CB",
     Flashing: "#FF00FF",
+    StepFlashing: "#FF00FF",
     Parapet: "#666666",
     Step: "#FF00FF",
     Polygon: "#333333",

@@ -25,7 +25,7 @@ export default function RightSidebar() {
   { name: "Rake", color: "#0000FF", icon: <Triangle /> },       // Blue
   { name: "Eave", color: "#008000", icon: <Square /> },         // Green
   { name: "Flashing", color: "#008080", icon: <Zap /> },        // Teal
-  { name: "Step Flashing", color: "#FF8C00", icon: <Circle /> } // Dark Orange
+  { name: "Step Flashing", color: "#393939ff", icon: <Circle /> } // Dark Orange
 ];
 
 

@@ -9,6 +9,8 @@ import ReportPageHeader from "./ReportPageHeader";
 import CardTitleHeader from "./CardTitleHeader";
 import { RoofMeasurementsDiagram } from "./RoofMeasurementsDiagram";
 import { LineData, PolygonData } from "./constants";
+import { LINE_COLORS } from "./constants";
+import { calculateCombinedSummary } from "./calculateCombinedSummary";
 
 interface ProjectLocation {
   firstName?: string;
@@ -43,7 +45,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
   const lines = data.lines || [];
 
   const latestProject = data;
-
+  const combinedSummary = calculateCombinedSummary(data.lines, data.polygons);
   const toFeetInches = (meters: number) => {
     const ft = meters * 3.28084;
     const feet = Math.floor(ft);
@@ -267,10 +269,18 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               <p style={{ margin: 0, fontWeight: "bold" }}>Total Area</p>
               <p>{latestProject?.totalArea || "0"} sq ft</p>
             </div>
+
             <div style={{ minWidth: 200, textAlign: "center" }}>
-              <p style={{ margin: 0, fontWeight: "bold" }}>Parapet Area</p>
-              <p>98.77 sq ft</p>
+              <p style={{ margin: 0, fontWeight: "bold" }}>Deduction Area</p>
+              <p>
+                {latestProject?.polygons
+                  ?.filter((p: any) => p.isDeduction)
+                  .reduce((sum: number, p: any) => sum + (p.area || 0), 0)
+                  .toFixed(2) || "0"}{" "}
+                sq ft
+              </p>
             </div>
+
             <div style={{ minWidth: 200, textAlign: "center" }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Total Length</p>
               <p>{latestProject?.totalLength || "0"} ft</p>
@@ -326,7 +336,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         )}
       </PageWrapper>
-      
+
       <PageWrapper page={4}>
         <CustomReportPageHeader
           title="Roof Measurements Diagram"
@@ -334,15 +344,67 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           titleFontSize="20px"
         />
 
-        <h1 style={{ marginBottom: "10px", textAlign: "center" }}>
-          Roof Measurements
-        </h1>
-
         <RoofMeasurementsDiagram
           linesData={data.lines}
           polygonsData={data.polygons}
+          // summary={combinedSummary}
           summary={data.gafSummary}
         />
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-around",
+            marginBottom: "20px",
+            padding: "10px",
+            border: "1px solid #ccc",
+            backgroundColor: "#f8f8f8",
+          }}
+        >
+          {[
+            { label: "Ridge", value: combinedSummary.ridges },
+            { label: "Hip", value: combinedSummary.hips },
+            { label: "Valley", value: combinedSummary.valleys },
+            { label: "Rake", value: combinedSummary.rakes },
+            { label: "Eave", value: combinedSummary.eaves },
+            { label: "Flashing", value: combinedSummary.flashings },
+            { label: "Step Flashing", value: combinedSummary.stepFlashings },
+            {
+              label: "Deduction Area",
+              value:
+                data.polygons
+                  ?.filter((p) => p && p.isDeduction) // optional chaining + check
+                  .reduce((sum, p) => {
+                    if (!p.edges) return sum;
+                    return (
+                      sum +
+                      p.edges.reduce((lSum, e) => lSum + (e.lengthFeet ?? 0), 0)
+                    );
+                  }, 0) ?? 0, // fallback 0
+            },
+          ].map((item) => (
+            <div
+              key={item.label}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                fontSize: "12px",
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: "bold",
+                  marginBottom: "3px",
+                  color: LINE_COLORS[item.label.toLowerCase()] || "#000",
+                }}
+              >
+                {item.label}
+              </div>
+              <div>{item.value?.toFixed(0) || 0} ft</div>
+            </div>
+          ))}
+        </div>
       </PageWrapper>
 
       <PageWrapper page={5}>
