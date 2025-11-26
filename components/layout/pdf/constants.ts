@@ -12,6 +12,8 @@ export const LINE_COLORS: Record<string, string> = {
 
 interface Edge {
     lengthFeet: number;
+    start?: [number, number];
+    end?: [number, number];
 }
 
 export interface LineData {
@@ -27,7 +29,7 @@ export interface PolygonData {
     label?: string;
     customColor?: string;
     edges?: Edge[];
-    coordinates: [number, number][][]; // polygon rings
+    coordinates: [number, number][][];
 }
 
 interface BoundingBox {
@@ -69,7 +71,6 @@ export const scaleCoordinatesToSVG = (
     }
 
     const allGeometries = [...lines, ...polygons];
-
     if (allGeometries.length === 0) {
         return {
             scaledLines: [],
@@ -117,11 +118,6 @@ export const scaleCoordinatesToSVG = (
     // SCALE LINES
     // -------------------------
     const scaledLines = lines.map((line) => {
-        const totalLength =
-            line.edges && line.edges.length > 0
-                ? line.edges.reduce((sum, e) => sum + e.lengthFeet, 0)
-                : 0;
-
         const points = projectCoordinates(
             line.coordinates,
             dataCenterX,
@@ -131,21 +127,29 @@ export const scaleCoordinatesToSVG = (
             svgCenterY
         );
 
-        const [p1, p2] = [line.coordinates[0], line.coordinates[1] || line.coordinates[0]];
-        const midLng = (p1[0] + p2[0]) / 2;
-        const midLat = (p1[1] + p2[1]) / 2;
-        const midX = (midLng - dataCenterX) * scaleFactor + svgCenterX;
-        const midY = svgCenterY - (midLat - dataCenterY) * scaleFactor;
-
         const key = (line.customColor || line.label || 'unknown').toLowerCase();
         const strokeColor = line.customColor || LINE_COLORS[key] || '#444';
+
+        // Generate edge labels
+        const edgeLabels = (line.edges || []).map((edge) => {
+            const start = edge.start || line.coordinates[0];
+            const end = edge.end || line.coordinates[1] || start;
+
+            const midX = ((start[0] + end[0]) / 2 - dataCenterX) * scaleFactor + svgCenterX;
+            const midY = svgCenterY - ((start[1] + end[1]) / 2 - dataCenterY) * scaleFactor;
+
+            return {
+                x: midX,
+                y: midY,
+                length: edge.lengthFeet.toFixed(0) + ' ft',
+            };
+        });
 
         return {
             points,
             label: line.label?.toLowerCase() || 'unknown',
-            length: totalLength > 0 ? totalLength.toFixed(0) + ' ft' : 'N/A',
-            midPoint: { x: midX, y: midY },
             color: strokeColor,
+            edgeLabels,
         };
     });
 
@@ -165,12 +169,27 @@ export const scaleCoordinatesToSVG = (
 
         const strokeColor = polygon.customColor || LINE_COLORS[polygon.label?.toLowerCase() || 'unknown'] || '#000';
 
+        const edgeLabels = (polygon.edges || []).map((edge) => {
+            const start = edge.start || ring[0];
+            const end = edge.end || ring[1] || start;
+
+            const midX = ((start[0] + end[0]) / 2 - dataCenterX) * scaleFactor + svgCenterX;
+            const midY = svgCenterY - ((start[1] + end[1]) / 2 - dataCenterY) * scaleFactor;
+
+            return {
+                x: midX,
+                y: midY,
+                length: edge.lengthFeet.toFixed(0) + ' ft',
+            };
+        });
+
         return {
             points,
             fill: 'white',
             stroke: strokeColor,
             strokeWidth: 2,
             label: polygon.label?.toLowerCase() || 'unknown',
+            edgeLabels,
         };
     });
 

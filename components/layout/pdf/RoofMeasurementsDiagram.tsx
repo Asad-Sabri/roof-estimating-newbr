@@ -1,5 +1,3 @@
-// components/layout/pdf/RoofMeasurementsDiagram.tsx
-
 import * as React from 'react';
 import { LINE_COLORS, LineData, PolygonData, scaleCoordinatesToSVG } from './constants';
 import { GAFSummary } from './processRoofData';
@@ -31,7 +29,6 @@ export const RoofMeasurementsDiagram: React.FC<RoofMeasurementsDiagramProps> = (
 
     return (
         <div className="roof-diagram-container" style={{ padding: '20px' }}>
-            {/* Header */}
             <div style={{ textAlign: 'right', fontSize: '12px', marginBottom: '10px' }}>
                 <span style={{ fontWeight: 'bold' }}>Lengths in feet</span>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '20px' }}>
@@ -41,39 +38,56 @@ export const RoofMeasurementsDiagram: React.FC<RoofMeasurementsDiagramProps> = (
                 </div>
             </div>
 
-            {/* SVG */}
             <div style={{ border: '1px solid #ccc', margin: '0 auto', width: SVG_WIDTH }}>
                 <svg width={SVG_WIDTH} height={SVG_HEIGHT} viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}>
                     {/* Polygons */}
-                    {scaledPolygons.map((polygon, index) => (
-                        <polygon
-                            key={`poly-${index}`}
-                            points={polygon.points}
-                            stroke={polygon.stroke}
-                            strokeWidth={polygon.strokeWidth || 2}
-                            fill={polygon.fill}
-                        />
+                    {scaledPolygons.map((polygon, idx) => (
+                        <g key={`poly-${idx}`}>
+                            <polygon
+                                points={polygon.points}
+                                stroke={polygon.stroke}
+                                strokeWidth={polygon.strokeWidth}
+                                fill={polygon.fill}
+                            />
+                            {/* Polygon edge labels */}
+                            {polygon.edgeLabels.map((edge, i) => (
+                                <text
+                                    key={`poly-edge-${i}`}
+                                    x={edge.x}
+                                    y={edge.y - 5}
+                                    fill="black"
+                                    fontSize="12"
+                                    fontWeight="bold"
+                                    textAnchor="middle"
+                                >
+                                    {edge.length}
+                                </text>
+                            ))}
+                        </g>
                     ))}
 
                     {/* Lines */}
-                    {scaledLines.map((line, index) => (
-                        <g key={`line-${index}`}>
+                    {scaledLines.map((line, idx) => (
+                        <g key={`line-${idx}`}>
                             <polyline
                                 points={line.points}
-                                stroke={line.color} // ✅ use scaled color
-                                strokeWidth="3"
+                                stroke={line.color}
+                                strokeWidth={3}
                                 fill="none"
                             />
-                            <text
-                                x={line.midPoint.x}
-                                y={line.midPoint.y - 5}
-                                fill="black"
-                                fontSize="12"
-                                fontWeight="bold"
-                                textAnchor="middle"
-                            >
-                                {line.length}
-                            </text>
+                            {line.edgeLabels.map((edge, i) => (
+                                <text
+                                    key={`line-edge-${i}`}
+                                    x={edge.x}
+                                    y={edge.y - 5}
+                                    fill="black"
+                                    fontSize="12"
+                                    fontWeight="bold"
+                                    textAnchor="middle"
+                                >
+                                    {edge.length}
+                                </text>
+                            ))}
                         </g>
                     ))}
                 </svg>

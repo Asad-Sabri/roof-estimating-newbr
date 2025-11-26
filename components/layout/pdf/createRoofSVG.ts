@@ -124,7 +124,7 @@ export const createRoofSVG = (
             style="
                 fill:none;
                 stroke:${strokeColor};
-                stroke-width:3;
+                stroke-width:1;
                 stroke-linejoin:round;
                 stroke-linecap:round;
             "
@@ -153,7 +153,7 @@ export const createRoofSVG = (
         svg += `
         <polyline 
             points="${points}"
-            style="fill:none;stroke:${strokeColor};stroke-width:4;stroke-linecap:round;"
+            style="fill:none;stroke:${strokeColor};stroke-width:1;stroke-linecap:round;"
         />`;
 
         if (line.properties?.lengthFeet && line.coordinates.length > 1) {
