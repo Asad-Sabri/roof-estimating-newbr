@@ -1,5 +1,3 @@
-// PDFTemplate.tsx
-
 import React from "react";
 import logoSrc from "../../../public/logo-latest.png";
 import Image from "next/image";
@@ -33,6 +31,8 @@ interface PDFTemplateProps {
   polygonDiagramImage: string;
   data: ProjectLocation;
   preparedFor?: string;
+  // --- NEW PROP ADDED ---
+  reportType: 'full' | 'owner'; 
 }
 
 const PDFTemplate: React.FC<PDFTemplateProps> = ({
@@ -40,7 +40,10 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
   topViewImage,
   polygonDiagramImage,
   data,
+  reportType, // <-- Destructure the new prop
 }) => {
+  const isFullReport = reportType === 'full';
+  
   const polygons = data.polygons || [];
   const lines = data.lines || [];
 
@@ -75,6 +78,11 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
       marginBottom: "20px",
     };
 
+    // Determine the main title based on report type
+    const mainTitle = isFullReport 
+        ? "FULL ROOF MEASUREMENT REPORT" 
+        : "PROPERTY OWNER REPORT";
+
     return (
       <div style={finalHeaderStyle}>
         <div style={{ display: "flex", alignItems: "center" }}>
@@ -94,7 +102,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               marginBottom: isCoverPage ? "5px" : "0",
             }}
           >
-            {title}
+            {mainTitle}
           </p>
 
           {isCoverPage && (
@@ -105,6 +113,13 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               <p style={{ margin: 0, fontSize: "14px" }}>
                 Date: <strong>{new Date().toLocaleDateString()}</strong>
               </p>
+              
+              {/* Conditional Disclaimer for Owner Report */}
+              {!isFullReport && (
+                 <p style={{ margin: "5px 0 0 0", fontSize: "12px", color: '#FFDDDD', fontStyle: 'italic' }}>
+                    * For informational purposes only
+                 </p>
+              )}
             </>
           )}
         </div>
@@ -176,12 +191,18 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
   const PageWrapper: React.FC<{ page: number; children: React.ReactNode }> = ({
     page,
     children,
+    
   }) => (
     <div style={pageStyle(page)}>
       {children}
       <div style={footerCardStyle}>{page}</div>
     </div>
   );
+  
+  // NOTE: This array is used to determine which pages to render based on reportType
+  // Page 1-3 are common (Cover, Map, Diagram)
+  // Page 4+ are technical (Measurements, Materials, etc.)
+  const totalPages = isFullReport ? 5 : 3; 
 
   return (
     <>
@@ -201,7 +222,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             fontWeight: "bold",
           }}
         >
-          Roof Measurement Report
+          {isFullReport ? "Full Roof Measurement Report" : "Property Owner Report"}
         </h2>
 
         {/* Project Details */}
@@ -227,6 +248,8 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               <p style={{ margin: 0, fontWeight: "bold" }}>Last Name:</p>
               <p>{latestProject.lastName || "N/A"}</p>
             </div>
+            {/* Owner Report will likely not need Email/Mobile, but keeping it for now
+                If you want to hide these, add: {isFullReport && (<div>...</div>)} */}
             <div style={{ minWidth: 200 }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Email:</p>
               <p>{latestProject.email || "N/A"}</p>
@@ -289,7 +312,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
         </div>
       </PageWrapper>
 
-      {/* Page 2: Map/Top View */}
+      {/* Page 2: Map/Top View (Always visible) */}
       <PageWrapper page={2}>
         <CustomReportPageHeader
           title="Top View"
@@ -309,8 +332,8 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         )}
       </PageWrapper>
-      {/* Page 3: Polygons & Lines */}
-
+      
+      {/* Page 3: Polygons & Lines Diagram (Always visible) */}
       <PageWrapper page={3}>
         <CustomReportPageHeader
           title="Measurement Diagram"
@@ -336,209 +359,205 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         )}
       </PageWrapper>
+      
+      {/* Page 4: Roof Measurements Diagram (Only in Full Report) */}
+      {isFullReport && (
+        <PageWrapper page={4}>
+          <CustomReportPageHeader
+            title="Roof Measurements Diagram"
+            isCoverPage={false}
+            titleFontSize="20px"
+          />
 
-      <PageWrapper page={4}>
-        <CustomReportPageHeader
-          title="Roof Measurements Diagram"
-          isCoverPage={false}
-          titleFontSize="20px"
-        />
+          <RoofMeasurementsDiagram
+            linesData={data.lines}
+            polygonsData={data.polygons}
+            summary={data.gafSummary}
+          />
 
-        <RoofMeasurementsDiagram
-          linesData={data.lines}
-          polygonsData={data.polygons}
-          // summary={combinedSummary}
-          summary={data.gafSummary}
-        />
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-around",
-            marginBottom: "20px",
-            padding: "10px",
-            border: "1px solid #ccc",
-            backgroundColor: "#f8f8f8",
-          }}
-        >
-          {[
-            { label: "Ridge", value: combinedSummary.ridges },
-            { label: "Hip", value: combinedSummary.hips },
-            { label: "Valley", value: combinedSummary.valleys },
-            { label: "Rake", value: combinedSummary.rakes },
-            { label: "Eave", value: combinedSummary.eaves },
-            { label: "Flashing", value: combinedSummary.flashings },
-            { label: "Step Flashing", value: combinedSummary.stepFlashings },
-            {
-              label: "Deduction Area",
-              value:
-                data.polygons
-                  ?.filter((p) => p && p.isDeduction) // optional chaining + check
-                  .reduce((sum, p) => {
-                    if (!p.edges) return sum;
-                    return (
-                      sum +
-                      p.edges.reduce((lSum, e) => lSum + (e.lengthFeet ?? 0), 0)
-                    );
-                  }, 0) ?? 0, // fallback 0
-            },
-          ].map((item) => (
-            <div
-              key={item.label}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                fontSize: "12px",
-              }}
-            >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-around",
+              marginBottom: "20px",
+              padding: "10px",
+              border: "1px solid #ccc",
+              backgroundColor: "#f8f8f8",
+            }}
+          >
+            {[
+              { label: "Ridge", value: combinedSummary.ridges },
+              { label: "Hip", value: combinedSummary.hips },
+              { label: "Valley", value: combinedSummary.valleys },
+              { label: "Rake", value: combinedSummary.rakes },
+              { label: "Eave", value: combinedSummary.eaves },
+              { label: "Flashing", value: combinedSummary.flashings },
+              { label: "Step Flashing", value: combinedSummary.stepFlashings },
+              {
+                label: "Deduction Area",
+                value:
+                  data.polygons
+                    ?.filter((p) => p && p.isDeduction)
+                    .reduce((sum, p) => {
+                      if (!p.edges) return sum;
+                      return (
+                        sum +
+                        p.edges.reduce((lSum, e) => lSum + (e.lengthFeet ?? 0), 0)
+                      );
+                    }, 0) ?? 0,
+              },
+            ].map((item) => (
               <div
+                key={item.label}
                 style={{
-                  fontWeight: "bold",
-                  marginBottom: "3px",
-                  color: LINE_COLORS[item.label.toLowerCase()] || "#000",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  fontSize: "12px",
                 }}
               >
-                {item.label}
+                <div
+                  style={{
+                    fontWeight: "bold",
+                    marginBottom: "3px",
+                    color: LINE_COLORS[item.label.toLowerCase()] || "#000",
+                  }}
+                >
+                  {item.label}
+                </div>
+                <div>{item.value?.toFixed(0) || 0} ft</div>
               </div>
-              <div>{item.value?.toFixed(0) || 0} ft</div>
-            </div>
-          ))}
-        </div>
-      </PageWrapper>
+            ))}
+          </div>
+        </PageWrapper>
+      )}
 
-      <PageWrapper page={5}>
-        <CustomReportPageHeader
-          title="Measurements Overview"
-          isCoverPage={false}
-          titleFontSize="20px"
-        />
+      {/* Page 5: Measurements Overview (Only in Full Report) */}
+      {isFullReport && (
+        <PageWrapper page={5}>
+          <CustomReportPageHeader
+            title="Measurements Overview"
+            isCoverPage={false}
+            titleFontSize="20px"
+          />
 
-        <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-          {/* Polygons */}
-          <div
-            style={{
-              flex: 1,
-              minWidth: 300,
-              border: `1px solid ${ACCENT_COLOR}`,
-              borderRadius: 6,
-            }}
-          >
-            <CardTitleHeader title="Polygons (Roof Facets)" />
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+            {/* Polygons */}
+            <div
+              style={{
+                flex: 1,
+                minWidth: 300,
+                border: `1px solid ${ACCENT_COLOR}`,
+                borderRadius: 6,
+              }}
+            >
+              <CardTitleHeader title="Polygons (Roof Facets)" />
 
-            <div style={cardContentStyle}>
-              {polygons.length === 0 ? (
-                <p>No polygons drawn.</p>
-              ) : (
-                polygons.map((p, idx) => {
-                  const edges =
-                    p.coordinates?.[0]
-                      ?.map((coord, i, arr) => {
-                        if (i === arr.length - 1) return null;
-                        const start = coord as unknown as [number, number];
-                        const end = arr[i + 1] as unknown as [number, number];
-                        return turf.length(turf.lineString([start, end]), {
-                          units: "meters",
-                        });
-                      })
-                      .filter((e): e is number => e !== null) || [];
+              <div style={cardContentStyle}>
+                {polygons.length === 0 ? (
+                  <p>No polygons drawn.</p>
+                ) : (
+                  polygons.map((p, idx) => {
+                    const edges =
+                      p.coordinates?.[0]
+                        ?.map((coord, i, arr) => {
+                          if (i === arr.length - 1) return null;
+                          const start = coord as unknown as [number, number];
+                          const end = arr[i + 1] as unknown as [number, number];
+                          return turf.length(turf.lineString([start, end]), {
+                            units: "meters",
+                          });
+                        })
+                        .filter((e): e is number => e !== null) || [];
 
-                  return (
-                    <div
-                      key={p.id || idx}
-                      style={{
-                        marginBottom: 12,
-                        borderBottom: "1px dotted #ccc",
-                        paddingBottom: 8,
-                      }}
-                    >
-                      <strong
-                        style={{ color: p.customColor || CARD_HEADER_BG_COLOR }}
-                      >
-                        Polygon #{idx + 1} {p.label ? `(${p.label})` : ""}
-                      </strong>
-                      <ul
+                    return (
+                      <div
+                        key={p.id || idx}
                         style={{
-                          paddingLeft: 20,
-                          margin: "8px 0",
-                          fontSize: 14,
+                          marginBottom: 12,
+                          borderBottom: "1px dotted #ccc",
+                          paddingBottom: 8,
                         }}
                       >
-                        {edges.map((length, i) => (
-                          <li key={i} style={{ color: "black" }}>
-                            Edge {i + 1}: {toFeetInches(length)}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* Lines */}
-          <div
-            style={{
-              flex: 1,
-              minWidth: 300,
-              border: `1px solid ${ACCENT_COLOR}`,
-              borderRadius: 6,
-            }}
-          >
-            <CardTitleHeader title="Lines (Measurements)" />
-
-            <div style={cardContentStyle}>
-              {lines.length === 0 ? (
-                <p>No lines drawn.</p>
-              ) : (
-                lines.map((l, idx) => {
-                  const edges: number[] = [];
-                  for (let i = 0; i < l.coordinates.length - 1; i++) {
-                    const start = l.coordinates[i];
-                    const end = l.coordinates[i + 1];
-                    edges.push(
-                      turf.length(turf.lineString([start, end]), {
-                        units: "meters",
-                      })
+                        <strong
+                          style={{ color: p.customColor || CARD_HEADER_BG_COLOR }}
+                        >
+                          Polygon #{idx + 1} {p.label ? `(${p.label})` : ""}
+                        </strong>
+                        <ul
+                          style={{
+                            paddingLeft: 20,
+                            margin: "8px 0",
+                            fontSize: 14,
+                          }}
+                        >
+                          {edges.map((length, i) => (
+                            <li key={i} style={{ color: "black" }}>
+                              Edge {i + 1}: {toFeetInches(length)}
+                            </li>
+                          ))}
+                        </ul>
+                        {/* Pitches would typically be shown here in a Full Report */}
+                        {p.pitch && (
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 'bold', color: CARD_HEADER_BG_COLOR }}>
+                            Pitch: {p.pitch} / 12
+                          </p>
+                        )}
+                      </div>
                     );
-                  }
+                  })
+                )}
+              </div>
+            </div>
 
-                  return (
-                    <div
-                      key={l.id || idx}
-                      style={{
-                        marginBottom: 12,
-                        borderBottom: "1px dotted #ccc",
-                        paddingBottom: 8,
-                      }}
-                    >
-                      <strong
-                        style={{ color: l.customColor || CARD_HEADER_BG_COLOR }}
-                      >
-                        Line #{idx + 1} {l.label ? `(${l.label})` : ""}
-                      </strong>
-                      <ul
+            {/* Lines */}
+            <div
+              style={{
+                flex: 1,
+                minWidth: 300,
+                border: `1px solid ${ACCENT_COLOR}`,
+                borderRadius: 6,
+              }}
+            >
+              <CardTitleHeader title="Lines (Measurements)" />
+
+              <div style={cardContentStyle}>
+                {lines.length === 0 ? (
+                  <p>No lines drawn.</p>
+                ) : (
+                  lines.map((l, idx) => {
+                    const totalLengthMeters = l.coordinates.reduce((sum, coord, i) => {
+                      if (i === 0) return sum;
+                      const prevCoord = l.coordinates[i - 1];
+                      return sum + turf.length(turf.lineString([prevCoord, coord]), { units: "meters" });
+                    }, 0);
+
+                    return (
+                      <div
+                        key={l.id || idx}
                         style={{
-                          paddingLeft: 20,
-                          margin: "8px 0",
-                          fontSize: 14,
+                          marginBottom: 12,
+                          borderBottom: "1px dotted #ccc",
+                          paddingBottom: 8,
                         }}
                       >
-                        {edges.map((length, i) => (
-                          <li key={i} style={{ color: "black" }}>
-                            Edge {i + 1}: {toFeetInches(length)}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })
-              )}
+                        <strong
+                          style={{ color: l.customColor || CARD_HEADER_BG_COLOR }}
+                        >
+                          Line #{idx + 1} ({l.type || 'Measurement'}) {l.label ? `(${l.label})` : ""}
+                        </strong>
+                        <p style={{ margin: "5px 0 0 0", paddingLeft: 20, fontSize: 14, color: CARD_HEADER_BG_COLOR }}>
+                            Total Length: {toFeetInches(totalLengthMeters)}
+                        </p>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </PageWrapper>
+        </PageWrapper>
+      )}
     </>
   );
 };

@@ -255,7 +255,8 @@ export function useMapboxFunctions() {
         return;
       }
       const bounds = map.getBounds();
-      const bbox = [bounds?.getWest(), bounds?.getSouth(), bounds?.getEast(), bounds?.getNorth()];
+      if (!bounds) return;
+      const bbox: turf.BBox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
       const cellSide = 10;
       const options = { units: 'meters' } as any;
       const grid = turf.squareGrid(bbox, cellSide, options);
