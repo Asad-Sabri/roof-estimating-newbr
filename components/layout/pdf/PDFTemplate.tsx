@@ -1,14 +1,18 @@
 import React from "react";
 import logoSrc from "../../../public/logo-latest.png";
-import Image from "next/image";
 import * as turf from "@turf/turf";
 import { GAFSummary } from "./processRoofData";
-import ReportPageHeader from "./ReportPageHeader";
-import CardTitleHeader from "./CardTitleHeader";
 import { RoofMeasurementsDiagram } from "./RoofMeasurementsDiagram";
 import { LineData, PolygonData } from "./constants";
 import { LINE_COLORS } from "./constants";
 import { calculateCombinedSummary } from "./calculateCombinedSummary";
+
+interface AngledImages {
+  north: string;
+  south: string;
+  east: string;
+  west: string;
+}
 
 interface ProjectLocation {
   firstName?: string;
@@ -31,8 +35,8 @@ interface PDFTemplateProps {
   polygonDiagramImage: string;
   data: ProjectLocation;
   preparedFor?: string;
-  // --- NEW PROP ADDED ---
-  reportType: 'full' | 'owner'; 
+  reportType: "full" | "owner";
+  angledImages: AngledImages;
 }
 
 const PDFTemplate: React.FC<PDFTemplateProps> = ({
@@ -40,10 +44,11 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
   topViewImage,
   polygonDiagramImage,
   data,
-  reportType, // <-- Destructure the new prop
+  reportType,
+  angledImages,
 }) => {
-  const isFullReport = reportType === 'full';
-  
+  const isFullReport = reportType === "full";
+
   const polygons = data.polygons || [];
   const lines = data.lines || [];
 
@@ -78,10 +83,11 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
       marginBottom: "20px",
     };
 
-    // Determine the main title based on report type
-    const mainTitle = isFullReport 
-        ? "FULL ROOF MEASUREMENT REPORT" 
-        : "PROPERTY OWNER REPORT";
+    const reportMainTitle = isFullReport
+      ? "FULL ROOF MEASUREMENT REPORT"
+      : "PROPERTY OWNER REPORT";
+
+    const headerText = isCoverPage ? reportMainTitle : title;
 
     return (
       <div style={finalHeaderStyle}>
@@ -102,7 +108,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               marginBottom: isCoverPage ? "5px" : "0",
             }}
           >
-            {mainTitle}
+            {headerText}
           </p>
 
           {isCoverPage && (
@@ -113,12 +119,18 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               <p style={{ margin: 0, fontSize: "14px" }}>
                 Date: <strong>{new Date().toLocaleDateString()}</strong>
               </p>
-              
-              {/* Conditional Disclaimer for Owner Report */}
+
               {!isFullReport && (
-                 <p style={{ margin: "5px 0 0 0", fontSize: "12px", color: '#FFDDDD', fontStyle: 'italic' }}>
-                    * For informational purposes only
-                 </p>
+                <p
+                  style={{
+                    margin: "5px 0 0 0",
+                    fontSize: "12px",
+                    color: "#FFDDDD",
+                    fontStyle: "italic",
+                  }}
+                >
+                  * For informational purposes only
+                </p>
               )}
             </>
           )}
@@ -126,6 +138,26 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
       </div>
     );
   };
+
+  const cardContentStyle: React.CSSProperties = {
+    padding: "15px",
+    fontFamily: "Arial",
+  };
+
+  const CardTitleHeader: React.FC<{ title: string }> = ({ title }) => (
+    <div
+      style={{
+        padding: "10px 20px",
+        backgroundColor: CARD_HEADER_BG_COLOR,
+        color: "#fff",
+        fontWeight: "bold",
+        borderTopLeftRadius: "6px",
+        borderTopRightRadius: "6px",
+      }}
+    >
+      {title}
+    </div>
+  );
 
   const pageStyle = (pageNumber: number): React.CSSProperties => ({
     pageBreakAfter: "always",
@@ -135,30 +167,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
     minHeight: "1000px",
     color: "#111",
   });
-
-  const headerCardStyle: React.CSSProperties = {
-    display: "flex",
-    justifyContent: "flex-start",
-    alignItems: "center",
-    backgroundColor: CARD_HEADER_BG_COLOR,
-    padding: "10px 20px",
-    borderRadius: "6px",
-    marginBottom: "60px",
-    border: "1px solid #ccc",
-  };
-
-  const footerCardStyle: React.CSSProperties = {
-    position: "absolute",
-    bottom: "20px",
-    left: "50%",
-    transform: "translateX(-50%)",
-    backgroundColor: CARD_HEADER_BG_COLOR,
-    padding: "5px 12px 20px",
-    borderRadius: "4px",
-    fontSize: "12px",
-    color: "#f3f3f3",
-    border: "1px solid #ccc",
-  };
 
   const cardContainerStyle: React.CSSProperties = {
     borderRadius: "6px",
@@ -176,11 +184,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
     color: "#fff",
   };
 
-  const cardContentStyle: React.CSSProperties = {
-    padding: "15px",
-    fontFamily: "Arial",
-  };
-
   const headingStyle: React.CSSProperties = {
     color: HEADER_ACCENT_COLOR,
     fontWeight: 700,
@@ -188,21 +191,30 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
     margin: "0",
   };
 
+  const footerCardStyle: React.CSSProperties = {
+    position: "absolute",
+    bottom: "20px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    backgroundColor: CARD_HEADER_BG_COLOR,
+    padding: "5px 12px 20px",
+    borderRadius: "4px",
+    fontSize: "12px",
+    color: "#f3f3f3",
+    border: "1px solid #ccc",
+  };
+
   const PageWrapper: React.FC<{ page: number; children: React.ReactNode }> = ({
     page,
     children,
-    
   }) => (
     <div style={pageStyle(page)}>
       {children}
       <div style={footerCardStyle}>{page}</div>
     </div>
   );
-  
-  // NOTE: This array is used to determine which pages to render based on reportType
-  // Page 1-3 are common (Cover, Map, Diagram)
-  // Page 4+ are technical (Measurements, Materials, etc.)
-  const totalPages = isFullReport ? 5 : 3; 
+
+  // --- START OF PDF TEMPLATE RETURN ---
 
   return (
     <>
@@ -222,7 +234,9 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             fontWeight: "bold",
           }}
         >
-          {isFullReport ? "Full Roof Measurement Report" : "Property Owner Report"}
+          {isFullReport
+            ? "Full Roof Measurement Report"
+            : "Property Owner Report"}
         </h2>
 
         {/* Project Details */}
@@ -248,8 +262,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               <p style={{ margin: 0, fontWeight: "bold" }}>Last Name:</p>
               <p>{latestProject.lastName || "N/A"}</p>
             </div>
-            {/* Owner Report will likely not need Email/Mobile, but keeping it for now
-                If you want to hide these, add: {isFullReport && (<div>...</div>)} */}
             <div style={{ minWidth: 200 }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Email:</p>
               <p>{latestProject.email || "N/A"}</p>
@@ -332,11 +344,68 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         )}
       </PageWrapper>
-      
-      {/* Page 3: Polygons & Lines Diagram (Always visible) */}
+
+      {/* Page 3: Side Views (Always visible) */}
       <PageWrapper page={3}>
         <CustomReportPageHeader
-          title="Measurement Diagram"
+          title="Side Views"
+          isCoverPage={false}
+          titleFontSize="20px"
+        />
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: 15,
+            marginTop: 15,
+            paddingBottom: "20px",
+          }}
+        >
+          {Object.entries(angledImages).map(([direction, src]) => (
+            <div
+              key={direction}
+              style={{
+                position: "relative",
+                marginBottom: "10px",
+              }}
+            >
+              <img
+                src={src}
+                alt={`${direction} View`}
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  borderRadius: 6,
+                  border: `1px solid #ccc`,
+                }}
+                crossOrigin="anonymous"
+              />
+              <h4
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  margin: 0,
+                  padding: "0 5px 15px 5px",
+                  backgroundColor: "black",
+                  color: "#ffffff",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                  borderTopLeftRadius: 6,
+                }}
+              >
+                {direction}
+              </h4>
+            </div>
+          ))}
+        </div>
+      </PageWrapper>
+
+      {/* Page 4: Diagram (Black Diagram for Owner, Full Diagram for Full Report) */}
+      <PageWrapper page={4}>
+        <CustomReportPageHeader
+          title={isFullReport ? "Measurement Diagram" : "Roof Facet Diagram"}
           isCoverPage={false}
           titleFontSize="20px"
         />
@@ -348,7 +417,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               margin: "80px 0",
             }}
           >
-            <CardTitleHeader title="Diagram" />
+            {isFullReport && <CardTitleHeader title="Diagram" />}
             <div style={cardContentStyle}>
               <img
                 src={polygonDiagramImage}
@@ -359,22 +428,166 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         )}
       </PageWrapper>
-      
-      {/* Page 4: Roof Measurements Diagram (Only in Full Report) */}
+
+      <PageWrapper page={4}>
+        <CustomReportPageHeader
+          title={
+            isFullReport
+              ? "Measurement Diagram & Key"
+              : "Roof Facet Diagram & Key"
+          }
+          isCoverPage={false}
+          titleFontSize="20px"
+        />
+
+        {/* 1. Dynamic Diagram Component (Colors will show now) */}
+        <div
+          style={{
+            backgroundColor: `${ACCENT_COLOR}`,
+            borderRadius: 6,
+            margin: "20px 0",
+          }}
+        >
+          {/* CardTitleHeader removed for a cleaner look, use component directly */}
+          <div style={cardContentStyle}>
+            <RoofMeasurementsDiagram
+              linesData={data.lines}
+              polygonsData={data.polygons}
+              summary={data.gafSummary}
+              showLengths={isFullReport} // Full Report mein lengths dikhenge
+            />
+          </div>
+        </div>
+
+        {/* 2. COMBINED LEGEND (Line + Polygon Labels) - Same as before */}
+        <div
+          style={{
+            marginTop: 20,
+            padding: 10,
+            textAlign: "center",
+            border: "1px solid #ccc",
+            borderRadius: "6px",
+          }}
+        >
+          {/* 					
+					<h3
+						style={{
+							color: CARD_HEADER_BG_COLOR,
+							borderBottom: "1px solid #ccc",
+							paddingBottom: 5,
+							fontSize: "16px",
+							marginBottom: "15px",
+							fontWeight: "bold"
+						}}
+					>
+						Label Key
+					</h3> */}
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              gap: 30,
+              padding: "10px 0",
+            }}
+          >
+            {/* --- Line Labels (Ridge, Valley, etc.) --- */}
+            {[
+              ...new Set(
+                lines
+                  .map((line) => line.label)
+                  .filter((label): label is string => !!label)
+              ),
+            ].map((label) => {
+              const lineItem = lines.find((l) => l.label === label);
+              // Use customColor if available, otherwise default LINE_COLORS
+              const color =
+                lineItem?.customColor ||
+                LINE_COLORS[label.toLowerCase()] ||
+                "#000";
+
+              return (
+                <div
+                  key={`line-${label}`}
+                  style={{ display: "flex", alignItems: "center" }}
+                >
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: "20px",
+                      height: "20px",
+                      backgroundColor: color,
+                      marginRight: "10px",
+                      borderRadius: "4px",
+                      border: `1px solid ${
+                        color === "#000" ? "#ccc" : "transparent"
+                      }`,
+                    }}
+                  ></span>
+                  <span
+                    style={{
+                      fontSize: "14px",
+                      color: "#111",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {label}
+                  </span>
+                </div>
+              );
+            })}
+
+            {/* --- Polygon Labels (Hip, Gable, etc.) --- */}
+            {data.polygons
+              .filter((p) => p.label)
+              .map((p, idx) => (
+                <div
+                  key={`poly-${p.id || idx}`}
+                  style={{ display: "flex", alignItems: "center" }}
+                >
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: "20px",
+                      height: "20px",
+                      backgroundColor: p.customColor || "#000",
+                      marginRight: "10px",
+                      borderRadius: "4px",
+                    }}
+                  ></span>
+                  <span
+                    style={{
+                      fontSize: "14px",
+                      color: "#111",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {p.label}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      </PageWrapper>
+
+      {/* FULL REPORT: Detailed Diagram + Full Legend (Page 5) */}
       {isFullReport && (
-        <PageWrapper page={4}>
+        <PageWrapper page={5}>
           <CustomReportPageHeader
             title="Roof Measurements Diagram"
             isCoverPage={false}
             titleFontSize="20px"
           />
 
+          {/* Component: All data and lengths visible (default) */}
           <RoofMeasurementsDiagram
             linesData={data.lines}
             polygonsData={data.polygons}
             summary={data.gafSummary}
           />
 
+          {/* FULL REPORT LEGEND (Lengths ke saath) */}
           <div
             style={{
               display: "flex",
@@ -402,7 +615,10 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                       if (!p.edges) return sum;
                       return (
                         sum +
-                        p.edges.reduce((lSum, e) => lSum + (e.lengthFeet ?? 0), 0)
+                        p.edges.reduce(
+                          (lSum, e) => lSum + (e.lengthFeet ?? 0),
+                          0
+                        )
                       );
                     }, 0) ?? 0,
               },
@@ -432,9 +648,9 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
         </PageWrapper>
       )}
 
-      {/* Page 5: Measurements Overview (Only in Full Report) */}
+      {/* Page 6: Measurements Overview (Only in Full Report) */}
       {isFullReport && (
-        <PageWrapper page={5}>
+        <PageWrapper page={6}>
           <CustomReportPageHeader
             title="Measurements Overview"
             isCoverPage={false}
@@ -480,7 +696,9 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                         }}
                       >
                         <strong
-                          style={{ color: p.customColor || CARD_HEADER_BG_COLOR }}
+                          style={{
+                            color: p.customColor || CARD_HEADER_BG_COLOR,
+                          }}
                         >
                           Polygon #{idx + 1} {p.label ? `(${p.label})` : ""}
                         </strong>
@@ -497,9 +715,15 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                             </li>
                           ))}
                         </ul>
-                        {/* Pitches would typically be shown here in a Full Report */}
                         {p.pitch && (
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 'bold', color: CARD_HEADER_BG_COLOR }}>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: 14,
+                              fontWeight: "bold",
+                              color: CARD_HEADER_BG_COLOR,
+                            }}
+                          >
                             Pitch: {p.pitch} / 12
                           </p>
                         )}
@@ -526,11 +750,19 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                   <p>No lines drawn.</p>
                 ) : (
                   lines.map((l, idx) => {
-                    const totalLengthMeters = l.coordinates.reduce((sum, coord, i) => {
-                      if (i === 0) return sum;
-                      const prevCoord = l.coordinates[i - 1];
-                      return sum + turf.length(turf.lineString([prevCoord, coord]), { units: "meters" });
-                    }, 0);
+                    const totalLengthMeters = l.coordinates.reduce(
+                      (sum, coord, i) => {
+                        if (i === 0) return sum;
+                        const prevCoord = l.coordinates[i - 1];
+                        return (
+                          sum +
+                          turf.length(turf.lineString([prevCoord, coord]), {
+                            units: "meters",
+                          })
+                        );
+                      },
+                      0
+                    );
 
                     return (
                       <div
@@ -542,12 +774,22 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                         }}
                       >
                         <strong
-                          style={{ color: l.customColor || CARD_HEADER_BG_COLOR }}
+                          style={{
+                            color: l.customColor || CARD_HEADER_BG_COLOR,
+                          }}
                         >
-                          Line #{idx + 1} ({l.type || 'Measurement'}) {l.label ? `(${l.label})` : ""}
+                          Line #{idx + 1} ({l.type || "Measurement"}){" "}
+                          {l.label ? `(${l.label})` : ""}
                         </strong>
-                        <p style={{ margin: "5px 0 0 0", paddingLeft: 20, fontSize: 14, color: CARD_HEADER_BG_COLOR }}>
-                            Total Length: {toFeetInches(totalLengthMeters)}
+                        <p
+                          style={{
+                            margin: "5px 0 0 0",
+                            paddingLeft: 20,
+                            fontSize: 14,
+                            color: CARD_HEADER_BG_COLOR,
+                          }}
+                        >
+                          Total Length: {toFeetInches(totalLengthMeters)}
                         </p>
                       </div>
                     );
