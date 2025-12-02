@@ -52,22 +52,31 @@ export function useMapboxFunctions() {
   const [isLocationConfirmed, setIsLocationConfirmed] = useState<boolean>(initialLocationConfirmed);
   const defaultPolygonLabels = ["Ridge", "Hip", "Valley", "Rake", "Eave", "Flashing", "Step Flashing"];
   const defaultLineLabels = ["Ridge", "Hip", "Valley", "Rake", "Eave", "Flashing", "Step Flashing"];
+
+
+
   const saveShapesToProjects = useCallback((features: any[], totalAreaFeet: number, totalLengthFeet: number) => {
     if (typeof window === "undefined") return;
     const projectsRaw = localStorage.getItem("projects");
     let projects = projectsRaw ? JSON.parse(projectsRaw) : [];
     if (projects.length === 0) return;
+
     let netTotalAreaFeet = 0;
     let totalDeductionAreaFeet = 0;
+
     const latestProject = projects[projects.length - 1];
     const polygons: any[] = [];
     const lines: any[] = [];
+
     features.forEach((feature: any, idx: number) => {
       if (!feature || !feature.geometry) return;
+
       const coords = feature.geometry.coordinates;
       const areaSqFeet = feature.properties?.area || 0;
       const edges = feature.properties?.edges || [];
       const isDeduction = feature.properties?.isDeduction === true;
+
+      // Handle Polygons
       if (feature.geometry.type === "Polygon") {
         if (!isDeduction) {
           netTotalAreaFeet += areaSqFeet;
@@ -84,36 +93,59 @@ export function useMapboxFunctions() {
           isDeduction,
         });
       }
+
+      // Handle Lines (Updated to include Area logic)
       if (feature.geometry.type === "LineString") {
+        // Agar line ka area hai (matlab wo closed/shape hai), to usy total me add karo
+        if (areaSqFeet > 0) {
+          netTotalAreaFeet += areaSqFeet;
+        }
+
         lines.push({
           id: feature.id,
           coordinates: coords,
           edges,
+          area: areaSqFeet, // Saving area in Line object too
           customColor: feature.properties?.customColor || "#FFD700",
           label: feature.properties?.label || defaultLineLabels[idx] || `Line #${idx + 1}`,
         });
       }
     });
+
     latestProject.polygons = polygons;
     latestProject.lines = lines;
+    // Calculation: Total Positive Area (Polygons + Closed Lines) - Deductions
     latestProject.totalArea = (netTotalAreaFeet - totalDeductionAreaFeet).toFixed(2);
     latestProject.totalLength = totalLengthFeet.toFixed(2);
+
     localStorage.setItem("projects", JSON.stringify(projects));
   }, []);
+
+
+
   const updateShapesData = useCallback(() => {
     if (!drawRef.current) return;
     const allFeatures = drawRef.current.getAll().features;
     const edgeFeatures: any[] = [];
     let totalAreaFeet = 0;
     let totalLengthFeet = 0;
+
     const updatedFeatures = allFeatures.map((feature: any) => {
       if (!feature || !feature.geometry) return feature;
-      const coords = feature.geometry.type === "Polygon" ? feature.geometry.coordinates[0] : feature.geometry.coordinates;
+
+      // Coordinate extraction handle for both Polygon and LineString
+      const coords = feature.geometry.type === "Polygon"
+        ? feature.geometry.coordinates[0]
+        : feature.geometry.coordinates;
+
       const edges: any[] = [];
       let featureLengthFeet = 0;
       let areaSqFeet = 0;
+
       const isDeduction = feature.properties?.isDeduction === true;
       const color = feature.properties?.customColor || (isDeduction ? "#808080" : "#FFD700");
+
+      // --- 1. Calculate Edges & Length (Standard Logic) ---
       for (let i = 0; i < coords.length - 1; i++) {
         const lenMeters = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: "meters" });
         const lenFeet = lenMeters * 3.28084;
@@ -126,31 +158,57 @@ export function useMapboxFunctions() {
           geometry: { type: "LineString", coordinates: [coords[i], coords[i + 1]] },
         });
       }
+
+      // --- 2. Calculate Area (Updated Logic for Lines) ---
       if (feature.geometry.type === "Polygon") {
         areaSqFeet = turf.area(feature) * 10.7639;
+      }
+      else if (feature.geometry.type === "LineString" && coords.length >= 3) {
+        // Agar Line ke pass 3+ points hain, to temporary polygon bana kar area nikalo
+        try {
+          const tempPolygon = turf.lineToPolygon(feature);
+          areaSqFeet = turf.area(tempPolygon) * 10.7639;
+        } catch (err) {
+          console.warn("Unable to calculate area for incomplete line", err);
+          areaSqFeet = 0;
+        }
+      }
+
+      // Add to Total Area Calculation
+      if (feature.geometry.type === "Polygon") {
+        if (!isDeduction) totalAreaFeet += areaSqFeet;
+      } else {
+        // Lines are generally not deductions, so just add if it has area
         totalAreaFeet += areaSqFeet;
       }
+
+      // Update Feature Properties
       drawRef.current?.setFeatureProperty(feature.id, "edges", edges);
-      if (feature.geometry.type === "Polygon") {
-        drawRef.current?.setFeatureProperty(feature.id, "area", areaSqFeet);
-      }
+      // Area property set karo taaki LineString me bhi area save rahe
+      drawRef.current?.setFeatureProperty(feature.id, "area", areaSqFeet);
+
       return {
         ...feature,
         properties: {
           ...feature.properties,
           edges,
-          area: areaSqFeet
+          area: areaSqFeet // Return area so it saves in state correctly
         }
       };
     });
+
     const source = mapRef.current?.getSource("polygon-edges") as any;
     if (source) {
       source.setData({ type: "FeatureCollection", features: edgeFeatures });
     }
+
     setPolygonsData(updatedFeatures.filter(f => f.geometry?.type === "Polygon"));
     setLinesData(updatedFeatures.filter(f => f.geometry?.type === "LineString"));
+
+    // Yahan hum calculated total bhej rahe hain
     saveShapesToProjects(updatedFeatures, totalAreaFeet, totalLengthFeet);
   }, [saveShapesToProjects]);
+
   const updateLabelPositions = useCallback(() => {
     if (!mapRef.current) return;
     const map = mapRef.current;
@@ -293,6 +351,25 @@ export function useMapboxFunctions() {
   const handleDrawChange = useCallback((e: any) => {
     if (!drawRef.current) return;
     e.features.forEach((feature: any) => {
+      if (e.type === "draw.create" && feature.geometry.type === "LineString") {
+        const coords = feature.geometry.coordinates;
+        if (coords.length >= 3 && turf.distance(turf.point(coords[0]), turf.point(coords[coords.length - 1]), { units: 'meters' }) < 1) {
+          drawRef.current?.delete(feature.id);
+          drawRef.current?.add({
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [coords]
+            },
+            properties: {
+              customColor: feature.properties?.customColor || "#FFD700",
+              label: feature.properties?.label || "Auto-Closed Area",
+              isDeduction: false,
+            }
+          });
+          return;
+        }
+      }
       if (e.type === "draw.create" && feature.geometry.type === "Polygon") {
         const isDeduction = isDeductionModeActive.current;
         if (isDeduction) {
@@ -462,7 +539,7 @@ export function useMapboxFunctions() {
         },
       ],
       snap: true,
-      snapOptions: { snapPx: 15, snapToMidPoints: true },
+      snapOptions: { snapPx: 5, snapToMidPoints: true },
     } as any);
     drawRef.current = draw;
     map.addControl(draw);
