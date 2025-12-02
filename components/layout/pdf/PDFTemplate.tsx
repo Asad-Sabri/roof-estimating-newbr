@@ -214,11 +214,8 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
     </div>
   );
 
-  // --- START OF PDF TEMPLATE RETURN ---
-
   return (
     <>
-      {/* Page 1: Cover + Project Details */}
       <PageWrapper page={1}>
         <CustomReportPageHeader
           title="ROOF MEASUREMENT REPORT"
@@ -239,7 +236,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             : "Property Owner Report"}
         </h2>
 
-        {/* Project Details */}
         <div
           style={{ ...cardContainerStyle, border: `2px solid ${ACCENT_COLOR}` }}
         >
@@ -285,7 +281,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         </div>
 
-        {/* Project Summary */}
         <div
           style={{ ...cardContainerStyle, border: `1px solid ${ACCENT_COLOR}` }}
         >
@@ -324,7 +319,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
         </div>
       </PageWrapper>
 
-      {/* Page 2: Map/Top View (Always visible) */}
       <PageWrapper page={2}>
         <CustomReportPageHeader
           title="Top View"
@@ -345,7 +339,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
         )}
       </PageWrapper>
 
-      {/* Page 3: Side Views (Always visible) */}
       <PageWrapper page={3}>
         <CustomReportPageHeader
           title="Side Views"
@@ -402,7 +395,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
         </div>
       </PageWrapper>
 
-      {/* Page 4: Diagram (Black Diagram for Owner, Full Diagram for Full Report) */}
       <PageWrapper page={4}>
         <CustomReportPageHeader
           title={isFullReport ? "Measurement Diagram" : "Roof Facet Diagram"}
@@ -428,150 +420,130 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         )}
       </PageWrapper>
-
-      <PageWrapper page={4}>
-        <CustomReportPageHeader
-          title={
-            isFullReport
-              ? "Measurement Diagram & Key"
-              : "Roof Facet Diagram & Key"
-          }
-          isCoverPage={false}
-          titleFontSize="20px"
-        />
-
-        {/* 1. Dynamic Diagram Component (Colors will show now) */}
-        <div
-          style={{
-            backgroundColor: `${ACCENT_COLOR}`,
-            borderRadius: 6,
-            margin: "20px 0",
-          }}
-        >
-          {/* CardTitleHeader removed for a cleaner look, use component directly */}
-          <div style={cardContentStyle}>
-            <RoofMeasurementsDiagram
-              linesData={data.lines}
-              polygonsData={data.polygons}
-              summary={data.gafSummary}
-              showLengths={isFullReport} // Full Report mein lengths dikhenge
-            />
-          </div>
-        </div>
-
-        {/* 2. COMBINED LEGEND (Line + Polygon Labels) - Same as before */}
-        <div
-          style={{
-            marginTop: 20,
-            padding: 10,
-            textAlign: "center",
-            border: "1px solid #ccc",
-            borderRadius: "6px",
-          }}
-        >
-          {/* 					
-					<h3
-						style={{
-							color: CARD_HEADER_BG_COLOR,
-							borderBottom: "1px solid #ccc",
-							paddingBottom: 5,
-							fontSize: "16px",
-							marginBottom: "15px",
-							fontWeight: "bold"
-						}}
-					>
-						Label Key
-					</h3> */}
+      {!isFullReport && (
+        <PageWrapper page={4}>
+          <CustomReportPageHeader
+            title={
+              isFullReport
+                ? "Measurement Diagram & Key"
+                : "Roof Facet Diagram & Key"
+            }
+            isCoverPage={false}
+            titleFontSize="20px"
+          />
 
           <div
             style={{
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              gap: 30,
-              padding: "10px 0",
+              backgroundColor: `${ACCENT_COLOR}`,
+              borderRadius: 6,
+              margin: "20px 0",
+              padding: "5px",
             }}
           >
-            {/* --- Line Labels (Ridge, Valley, etc.) --- */}
-            {[
-              ...new Set(
-                lines
-                  .map((line) => line.label)
-                  .filter((label): label is string => !!label)
-              ),
-            ].map((label) => {
-              const lineItem = lines.find((l) => l.label === label);
-              // Use customColor if available, otherwise default LINE_COLORS
-              const color =
-                lineItem?.customColor ||
-                LINE_COLORS[label.toLowerCase()] ||
-                "#000";
-
-              return (
-                <div
-                  key={`line-${label}`}
-                  style={{ display: "flex", alignItems: "center" }}
-                >
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: "20px",
-                      height: "20px",
-                      backgroundColor: color,
-                      marginRight: "10px",
-                      borderRadius: "4px",
-                      border: `1px solid ${
-                        color === "#000" ? "#ccc" : "transparent"
-                      }`,
-                    }}
-                  ></span>
-                  <span
-                    style={{
-                      fontSize: "14px",
-                      color: "#111",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {label}
-                  </span>
-                </div>
-              );
-            })}
-
-            {/* --- Polygon Labels (Hip, Gable, etc.) --- */}
-            {data.polygons
-              .filter((p) => p.label)
-              .map((p, idx) => (
-                <div
-                  key={`poly-${p.id || idx}`}
-                  style={{ display: "flex", alignItems: "center" }}
-                >
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: "20px",
-                      height: "20px",
-                      backgroundColor: p.customColor || "#000",
-                      marginRight: "10px",
-                      borderRadius: "4px",
-                    }}
-                  ></span>
-                  <span
-                    style={{
-                      fontSize: "14px",
-                      color: "#111",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {p.label}
-                  </span>
-                </div>
-              ))}
+            <div style={cardContentStyle}>
+              <RoofMeasurementsDiagram
+                linesData={data.lines}
+                polygonsData={data.polygons}
+                summary={data.gafSummary}
+                showLengths={isFullReport}
+              />
+            </div>
           </div>
-        </div>
-      </PageWrapper>
+          <div
+            style={{
+              // marginTop: 20,
+              padding: 10,
+              // textAlign: "center",
+              border: "1px solid #ccc",
+              borderRadius: "6px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                justifyContent: "start",
+                gap: 30,
+                padding: "0",
+              }}
+            >
+              {[
+                ...new Set(
+                  lines
+                    .map((line) => line.label)
+                    .filter((label): label is string => !!label)
+                ),
+              ].map((label) => {
+                const lineItem = lines.find((l) => l.label === label);
+                const color =
+                  lineItem?.customColor ||
+                  LINE_COLORS[label.toLowerCase()] ||
+                  "#000";
 
-      {/* FULL REPORT: Detailed Diagram + Full Legend (Page 5) */}
+                return (
+                  <div
+                    key={`line-${label}`}
+                    style={{ display: "flex", alignItems: "center" }}
+                  >
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: "20px",
+                        height: "20px",
+                        backgroundColor: color,
+                        marginRight: "10px",
+                        marginTop: "15px",
+                        borderRadius: "4px",
+                        border: `1px solid ${
+                          color === "#000" ? "#ccc" : "transparent"
+                        }`,
+                      }}
+                    ></span>
+                    <span
+                      style={{
+                        fontSize: "14px",
+                        color: "#111",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {label}
+                    </span>
+                  </div>
+                );
+              })}
+              {data.polygons
+                .filter((p) => p.label)
+                .map((p, idx) => (
+                  <div
+                    key={`poly-${p.id || idx}`}
+                    style={{ display: "flex", alignItems: "center" }}
+                  >
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: "20px",
+                        height: "20px",
+                        backgroundColor: p.customColor || "#000",
+                        marginRight: "10px",
+                        marginTop: "15px",
+                        borderRadius: "4px",
+                      }}
+                    ></span>
+                    <span
+                      style={{
+                        fontSize: "14px",
+                        color: "#111",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {p.label}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </PageWrapper>
+      )}
       {isFullReport && (
         <PageWrapper page={5}>
           <CustomReportPageHeader
@@ -580,14 +552,12 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             titleFontSize="20px"
           />
 
-          {/* Component: All data and lengths visible (default) */}
           <RoofMeasurementsDiagram
             linesData={data.lines}
             polygonsData={data.polygons}
             summary={data.gafSummary}
           />
 
-          {/* FULL REPORT LEGEND (Lengths ke saath) */}
           <div
             style={{
               display: "flex",
@@ -647,159 +617,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         </PageWrapper>
       )}
-
-      {/* Page 6: Measurements Overview (Only in Full Report) */}
-      {isFullReport && (
-        <PageWrapper page={6}>
-          <CustomReportPageHeader
-            title="Measurements Overview"
-            isCoverPage={false}
-            titleFontSize="20px"
-          />
-
-          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-            {/* Polygons */}
-            <div
-              style={{
-                flex: 1,
-                minWidth: 300,
-                border: `1px solid ${ACCENT_COLOR}`,
-                borderRadius: 6,
-              }}
-            >
-              <CardTitleHeader title="Polygons (Roof Facets)" />
-
-              <div style={cardContentStyle}>
-                {polygons.length === 0 ? (
-                  <p>No polygons drawn.</p>
-                ) : (
-                  polygons.map((p, idx) => {
-                    const edges =
-                      p.coordinates?.[0]
-                        ?.map((coord, i, arr) => {
-                          if (i === arr.length - 1) return null;
-                          const start = coord as unknown as [number, number];
-                          const end = arr[i + 1] as unknown as [number, number];
-                          return turf.length(turf.lineString([start, end]), {
-                            units: "meters",
-                          });
-                        })
-                        .filter((e): e is number => e !== null) || [];
-
-                    return (
-                      <div
-                        key={p.id || idx}
-                        style={{
-                          marginBottom: 12,
-                          borderBottom: "1px dotted #ccc",
-                          paddingBottom: 8,
-                        }}
-                      >
-                        <strong
-                          style={{
-                            color: p.customColor || CARD_HEADER_BG_COLOR,
-                          }}
-                        >
-                          Polygon #{idx + 1} {p.label ? `(${p.label})` : ""}
-                        </strong>
-                        <ul
-                          style={{
-                            paddingLeft: 20,
-                            margin: "8px 0",
-                            fontSize: 14,
-                          }}
-                        >
-                          {edges.map((length, i) => (
-                            <li key={i} style={{ color: "black" }}>
-                              Edge {i + 1}: {toFeetInches(length)}
-                            </li>
-                          ))}
-                        </ul>
-                        {p.pitch && (
-                          <p
-                            style={{
-                              margin: 0,
-                              fontSize: 14,
-                              fontWeight: "bold",
-                              color: CARD_HEADER_BG_COLOR,
-                            }}
-                          >
-                            Pitch: {p.pitch} / 12
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* Lines */}
-            <div
-              style={{
-                flex: 1,
-                minWidth: 300,
-                border: `1px solid ${ACCENT_COLOR}`,
-                borderRadius: 6,
-              }}
-            >
-              <CardTitleHeader title="Lines (Measurements)" />
-
-              <div style={cardContentStyle}>
-                {lines.length === 0 ? (
-                  <p>No lines drawn.</p>
-                ) : (
-                  lines.map((l, idx) => {
-                    const totalLengthMeters = l.coordinates.reduce(
-                      (sum, coord, i) => {
-                        if (i === 0) return sum;
-                        const prevCoord = l.coordinates[i - 1];
-                        return (
-                          sum +
-                          turf.length(turf.lineString([prevCoord, coord]), {
-                            units: "meters",
-                          })
-                        );
-                      },
-                      0
-                    );
-
-                    return (
-                      <div
-                        key={l.id || idx}
-                        style={{
-                          marginBottom: 12,
-                          borderBottom: "1px dotted #ccc",
-                          paddingBottom: 8,
-                        }}
-                      >
-                        <strong
-                          style={{
-                            color: l.customColor || CARD_HEADER_BG_COLOR,
-                          }}
-                        >
-                          Line #{idx + 1} ({l.type || "Measurement"}){" "}
-                          {l.label ? `(${l.label})` : ""}
-                        </strong>
-                        <p
-                          style={{
-                            margin: "5px 0 0 0",
-                            paddingLeft: 20,
-                            fontSize: 14,
-                            color: CARD_HEADER_BG_COLOR,
-                          }}
-                        >
-                          Total Length: {toFeetInches(totalLengthMeters)}
-                        </p>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </div>
-        </PageWrapper>
-      )}
+     
     </>
   );
 };

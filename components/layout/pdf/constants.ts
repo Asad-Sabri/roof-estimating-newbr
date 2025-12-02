@@ -143,7 +143,7 @@ export const scaleCoordinatesToSVG = (
             return {
                 x: midX,
                 y: midY,
-                length: edge.lengthFeet.toFixed(0) + ' ft',
+                length: edge.lengthFeet.toFixed(0) + '',
             };
         });
 

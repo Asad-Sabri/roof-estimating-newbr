@@ -39,7 +39,7 @@ const COLOR_MAP: { [key: string]: string } = {
     Default: "#333333",
 };
 
-const formatLength = (length: number): string => `${length.toFixed(2)} ft`;
+const formatLength = (length: number): string => `${length.toFixed(2)}  `;
 
 export const createRoofSVG = (
     polygons: PolygonData[],

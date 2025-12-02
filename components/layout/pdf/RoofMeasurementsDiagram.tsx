@@ -135,7 +135,7 @@ export const RoofMeasurementsDiagram: React.FC<RoofMeasurementsDiagramProps> = (
                                     {key.charAt(0).toUpperCase() + key.slice(1)}
                                 </div>
                                 <div style={{ fontSize: '14px', marginTop: '2px' }}>
-                                    {value.toFixed(0)} ft
+                                    {value.toFixed(0)}
                                 </div>
                             </div>
                         </div>
