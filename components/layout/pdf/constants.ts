@@ -27,6 +27,8 @@ export interface LineData {
 }
 
 export interface PolygonData {
+    area: number;
+    pitch: any;
     id?: string;
     label?: string;
     customColor?: string;

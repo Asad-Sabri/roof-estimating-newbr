@@ -32,7 +32,7 @@ export const RoofMeasurementsDiagram: React.FC<RoofMeasurementsDiagramProps> = (
     ) as [keyof GAFSummary, number][];
 
     return (
-        <div className="roof-diagram-container" style={{ padding: '20px' }}>
+        <div className="roof-diagram-container" >
             
             {/* Lengths in feet header (Optional, only show if showLengths is true) */}
             {/*
@@ -48,7 +48,7 @@ export const RoofMeasurementsDiagram: React.FC<RoofMeasurementsDiagramProps> = (
             )}
             */}
 
-            <div style={{ border: '1px solid #ccc', margin: '0 auto', width: SVG_WIDTH }}>
+            <div style={{   width: SVG_WIDTH }}>
                 <svg width={SVG_WIDTH} height={SVG_HEIGHT} viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}>
                     
                     {/* Polygons */}
@@ -84,7 +84,7 @@ export const RoofMeasurementsDiagram: React.FC<RoofMeasurementsDiagramProps> = (
                             <polyline
                                 points={line.points}
                                 stroke={line.color}
-                                strokeWidth={3}
+                                strokeWidth={1}
                                 fill="none"
                             />
                             
@@ -111,8 +111,8 @@ export const RoofMeasurementsDiagram: React.FC<RoofMeasurementsDiagramProps> = (
             {showLengths && (
                 <div
                     style={{
-                        marginTop: '15px',
-                        borderTop: '1px solid #ccc',
+                        marginTop: '25px',
+                        // borderTop: '1px solid #ccc',
                         paddingTop: '10px',
                         display: 'flex',
                         justifyContent: 'center',

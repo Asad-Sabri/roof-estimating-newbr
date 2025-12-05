@@ -1,11 +1,33 @@
+// components/layout/pdf/PDFTemplate.tsx (Updated)
+
 import React from "react";
 import logoSrc from "../../../public/logo-latest.png";
-import * as turf from "@turf/turf";
 import { GAFSummary } from "./processRoofData";
 import { RoofMeasurementsDiagram } from "./RoofMeasurementsDiagram";
-import { LineData, PolygonData } from "./constants";
-import { LINE_COLORS } from "./constants";
+import { LineData, PolygonData, LINE_COLORS } from "./constants";
 import { calculateCombinedSummary } from "./calculateCombinedSummary";
+import {
+  calculateMaterialQuantities,
+  MaterialQuantities,
+} from "./calculateMaterials";
+import { GAFSummaryPage } from "./GAFSummaryPage";
+import { CustomerSalesEstimatePage } from "./CustomerSalesEstimatePage";
+import {
+  BASE_RATE_PER_SQ_FT,
+  RATE_PER_LINEAR_FOOT_TRIM,
+  MINIMUM_JOB_FEE,
+  CARD_HEADER_BG_COLOR,
+  ACCENT_COLOR,
+  PageWrapper,
+  CardTitleHeader,
+  cardContentStyle,
+  cardContainerStyle,
+  cardHeaderStyle,
+  headingStyle,
+} from "./PDFTemplateStyles";
+// --- NEW IMPORT ---
+// import AreaDiagramPage from "./AreaDiagramPage";
+// ------------------
 
 interface AngledImages {
   north: string;
@@ -39,6 +61,224 @@ interface PDFTemplateProps {
   angledImages: AngledImages;
 }
 
+const CustomReportPageHeader: React.FC<{
+  title: string;
+  isCoverPage: boolean;
+  titleFontSize?: string;
+  isFullReport: boolean;
+}> = ({ title, isCoverPage, titleFontSize = "16px", isFullReport }) => {
+  const finalHeaderStyle: React.CSSProperties = {
+    backgroundColor: CARD_HEADER_BG_COLOR,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "20px 25px",
+    borderRadius: "8px",
+    marginBottom: "20px",
+  };
+
+  const reportMainTitle = isFullReport
+    ? "FULL ROOF MEASUREMENT REPORT"
+    : "PROPERTY OWNER REPORT";
+
+  const headerText = isCoverPage ? reportMainTitle : title;
+
+  return (
+    <div style={finalHeaderStyle}>
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <img src={logoSrc.src} alt="Logo" style={{ height: 100, width: 150 }} />
+      </div>
+
+      <div style={{ textAlign: "right", color: "#fff" }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: titleFontSize,
+            fontWeight: "bold",
+            marginBottom: isCoverPage ? "5px" : "0",
+          }}
+        >
+          {headerText}
+        </p>
+
+        {isCoverPage && (
+          <>
+            <p style={{ margin: 0, fontSize: "14px" }}>
+              Prepared For: <strong>Superior Pro Roofs</strong>
+            </p>
+            <p style={{ margin: 0, fontSize: "14px" }}>
+              Date: <strong>{new Date().toLocaleDateString()}</strong>
+            </p>
+
+            {!isFullReport && (
+              <p
+                style={{
+                  margin: "5px 0 0 0",
+                  fontSize: "12px",
+                  color: "#FFDDDD",
+                  fontStyle: "italic",
+                }}
+              >
+                * For informational purposes only
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const MaterialReportTable: React.FC<{ materials: MaterialQuantities }> = ({
+  materials,
+}) => {
+  const WASTAGES = ["0%", "8%", "13%", "18%"];
+
+  const tableData = [
+    {
+      category: "Suggested Shingle Products",
+      items: [
+        {
+          name: "Shingle Bundles (e.g., Timberline HDZ)",
+          unit: "bundle",
+          quantities: materials.shingles,
+        },
+      ],
+    },
+    {
+      category: "Roof Deck Protection",
+      items: [
+        {
+          name: "Deck Protection (e.g., Deck-Armor)",
+          unit: "roll",
+          quantities: materials.underlayment,
+        },
+      ],
+    },
+    {
+      category: "Starter",
+      items: [
+        {
+          name: "Starter Strip (e.g., WeatherBlocker)",
+          unit: "bundle",
+          quantities: materials.starter,
+        },
+      ],
+    },
+    {
+      category: "Ridge Cap",
+      items: [
+        {
+          name: "Ridge Cap (e.g., Seal-A-Ridge)",
+          unit: "bundle",
+          quantities: materials.ridgeCap,
+        },
+      ],
+    },
+    {
+      category: "Leak Barrier",
+      items: [
+        {
+          name: "Leak Barrier (e.g., StormGuard)",
+          unit: "roll",
+          quantities: materials.leakBarrier,
+        },
+      ],
+    },
+    {
+      category: "Drip Edge",
+      items: [
+        {
+          name: "Drip Edge 10 ft piece",
+          unit: "piece",
+          quantities: materials.dripEdge,
+        },
+      ],
+    },
+  ];
+
+  const tableStyle: React.CSSProperties = {
+    width: "100%",
+    borderCollapse: "collapse",
+    fontSize: "12px",
+    marginTop: "15px",
+    backgroundColor: "#fff",
+  };
+
+  const thStyle: React.CSSProperties = {
+    textAlign: "left",
+    padding: "8px",
+    border: "1px solid #ccc",
+    backgroundColor: CARD_HEADER_BG_COLOR,
+    color: "#fff",
+  };
+
+  const tdStyle: React.CSSProperties = {
+    padding: "8px",
+    border: "1px solid #ccc",
+    verticalAlign: "middle",
+  };
+
+  const categoryHeaderStyle: React.CSSProperties = {
+    ...tdStyle,
+    backgroundColor: "#E0E0E0",
+    color: "#333",
+    fontWeight: "bold",
+    fontSize: "13px",
+  };
+
+  return (
+    <table style={tableStyle}>
+      <thead>
+        <tr>
+          <th style={{ ...thStyle, width: "40%", textAlign: "left" }}>
+            Roofing Materials
+          </th>
+          {WASTAGES.map((w) => (
+            <th
+              key={w}
+              style={{ ...thStyle, width: "15%", textAlign: "center" }}
+            >
+              Waste {w}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {tableData.map((categoryData, catIndex) => (
+          <React.Fragment key={catIndex}>
+            <tr>
+              <td colSpan={5} style={categoryHeaderStyle}>
+                {categoryData.category}
+              </td>
+            </tr>
+            {categoryData.items.map((item) => (
+              <tr key={item.name}>
+                <td style={tdStyle}>
+                  {item.name}{" "}
+                  <span style={{ color: "#777" }}>({item.unit})</span>
+                </td>
+                <td style={{ ...tdStyle, textAlign: "center" }}>
+                  {item.quantities.q0}
+                </td>
+                <td style={{ ...tdStyle, textAlign: "center" }}>
+                  {item.quantities.q8}
+                </td>
+                <td style={{ ...tdStyle, textAlign: "center" }}>
+                  {item.quantities.q13}
+                </td>
+                <td style={{ ...tdStyle, textAlign: "center" }}>
+                  {item.quantities.q18}
+                </td>
+              </tr>
+            ))}
+          </React.Fragment>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
 const PDFTemplate: React.FC<PDFTemplateProps> = ({
   mapImage,
   topViewImage,
@@ -49,179 +289,80 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
 }) => {
   const isFullReport = reportType === "full";
 
-  const polygons = data.polygons || [];
-  const lines = data.lines || [];
-
   const latestProject = data;
   const combinedSummary = calculateCombinedSummary(data.lines, data.polygons);
-  const toFeetInches = (meters: number) => {
-    const ft = meters * 3.28084;
-    const feet = Math.floor(ft);
-    const inches = Math.round((ft - feet) * 12);
-    if (inches >= 12) return `${feet + 1}'0"`;
-    return `${feet}'${inches}"`;
+
+  const totalNetAreaSqFt = parseFloat(latestProject.totalArea || "0");
+  const totalLinealFeet = parseFloat(latestProject.totalLength || "0");
+
+  const facetCount = data.polygons?.length || 0;
+  const dominantPitch = data.polygons.reduce(
+    (max, p) => ((p.area || 0) > (max.area || 0) ? p : max),
+    { area: 0, pitch: "N/A" as any }
+  ).pitch;
+
+  const updatedGAFSummary = {
+    ...data.gafSummary,
+    facetCount: facetCount,
+    dominantPitch: dominantPitch,
   };
 
-  const PAGE_BG_COLOR = "#f3f3f3";
-  const CARD_BG_COLOR = "#f3f3f3";
-  const CARD_HEADER_BG_COLOR = "#0f2346";
-  const HEADER_ACCENT_COLOR = "#f3f3f3";
-  const ACCENT_COLOR = "#f3f3f3";
+  const areaCost = totalNetAreaSqFt * BASE_RATE_PER_SQ_FT;
+  const complexityCost = totalLinealFeet * RATE_PER_LINEAR_FOOT_TRIM;
 
-  const CustomReportPageHeader: React.FC<{
-    title: string;
-    isCoverPage: boolean;
-    titleFontSize?: string;
-  }> = ({ title, isCoverPage, titleFontSize = "16px" }) => {
-    const finalHeaderStyle = {
-      backgroundColor: CARD_HEADER_BG_COLOR,
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "20px 25px",
-      borderRadius: "8px",
-      marginBottom: "20px",
-    };
+  let estimatePrice = areaCost + complexityCost;
 
-    const reportMainTitle = isFullReport
-      ? "FULL ROOF MEASUREMENT REPORT"
-      : "PROPERTY OWNER REPORT";
+  if (estimatePrice < MINIMUM_JOB_FEE) {
+    estimatePrice = MINIMUM_JOB_FEE;
+  }
 
-    const headerText = isCoverPage ? reportMainTitle : title;
-
-    return (
-      <div style={finalHeaderStyle}>
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <img
-            src={logoSrc.src}
-            alt="Logo"
-            style={{ height: 100, width: 150 }}
-          />
-        </div>
-
-        <div style={{ textAlign: "right", color: "#fff" }}>
-          <p
-            style={{
-              margin: 0,
-              fontSize: titleFontSize,
-              fontWeight: "bold",
-              marginBottom: isCoverPage ? "5px" : "0",
-            }}
-          >
-            {headerText}
-          </p>
-
-          {isCoverPage && (
-            <>
-              <p style={{ margin: 0, fontSize: "14px" }}>
-                Prepared For: <strong>Superior Pro Roofs</strong>
-              </p>
-              <p style={{ margin: 0, fontSize: "14px" }}>
-                Date: <strong>{new Date().toLocaleDateString()}</strong>
-              </p>
-
-              {!isFullReport && (
-                <p
-                  style={{
-                    margin: "5px 0 0 0",
-                    fontSize: "12px",
-                    color: "#FFDDDD",
-                    fontStyle: "italic",
-                  }}
-                >
-                  * For informational purposes only
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const cardContentStyle: React.CSSProperties = {
-    padding: "15px",
-    fontFamily: "Arial",
-  };
-
-  const CardTitleHeader: React.FC<{ title: string }> = ({ title }) => (
-    <div
-      style={{
-        padding: "10px 20px",
-        backgroundColor: CARD_HEADER_BG_COLOR,
-        color: "#fff",
-        fontWeight: "bold",
-        borderTopLeftRadius: "6px",
-        borderTopRightRadius: "6px",
-      }}
-    >
-      {title}
-    </div>
+  const materialQuantities: MaterialQuantities = calculateMaterialQuantities(
+    data.gafSummary,
+    totalNetAreaSqFt
   );
 
-  const pageStyle = (pageNumber: number): React.CSSProperties => ({
-    pageBreakAfter: "always",
-    padding: "20px 0px",
-    fontFamily: "Arial, sans-serif",
-    position: "relative",
-    minHeight: "1000px",
-    color: "#111",
-  });
+  let pageCounter = 0;
 
-  const cardContainerStyle: React.CSSProperties = {
-    borderRadius: "6px",
-    marginBottom: "25px",
-    border: "1px solid #ccc",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+  const DYNAMIC_SALES_DATA = {
+    estimatePrice: Math.round(estimatePrice / 10) * 10,
+
+    taxRebatePercentage: 0.2,
+
+    salesPersonName: "Kenny Wilson",
+    salesPersonMobile: "678-846-2809",
+    salesPersonEmail: "kenny@roofrightnow.com",
+
+    pitch: updatedGAFSummary.dominantPitch,
+    complexity: "moderate",
+    stories: "1",
+    style: "GAF Timberline HDZ",
+    color: "Shakewood",
   };
 
-  const cardHeaderStyle: React.CSSProperties = {
-    backgroundColor: CARD_HEADER_BG_COLOR,
-    padding: "10px 20px 30px 20px",
-    borderBottom: "1px solid #ccc",
-    borderTopLeftRadius: "6px",
-    borderTopRightRadius: "6px",
-    color: "#fff",
-  };
-
-  const headingStyle: React.CSSProperties = {
-    color: HEADER_ACCENT_COLOR,
-    fontWeight: 700,
-    fontSize: "18px",
-    margin: "0",
-  };
-
-  const footerCardStyle: React.CSSProperties = {
-    position: "absolute",
-    bottom: "20px",
-    left: "50%",
-    transform: "translateX(-50%)",
-    backgroundColor: CARD_HEADER_BG_COLOR,
-    padding: "5px 12px 20px",
-    borderRadius: "4px",
-    fontSize: "12px",
-    color: "#f3f3f3",
-    border: "1px solid #ccc",
-  };
-
-  const PageWrapper: React.FC<{ page: number; children: React.ReactNode }> = ({
-    page,
-    children,
-  }) => (
-    <div style={pageStyle(page)}>
-      {children}
-      <div style={footerCardStyle}>{page}</div>
-    </div>
-  );
+  const roofArea = data.totalArea
+    ? parseFloat(data.totalArea).toFixed(0)
+    : "N/A";
+  // Total roof facets nikalna
+  const roofFacets = data.polygons?.length || 0;
+  // Predominant Pitch nikalna (Example ke liye pehli pitch ya koi default value)
+  // const predominantPitch = data.pitches?.[0] || "N/A"; // Assuming pitches array hai
+  // Lengths data ko combinedSummary ya gafSummary se nikalna (jaisa aapka structure ho)
+  const summary = data.gafSummary || {};
+  const ridgesHips = ((summary.ridges || 0) + (summary.hips || 0)).toFixed(0);
+  const valleys = (summary.valleys || 0).toFixed(0);
+  const rakes = (summary.rakes || 0).toFixed(0);
+  const eaves = (summary.eaves || 0).toFixed(0);
+  const bends = (summary.bends || 0).toFixed(0);
 
   return (
     <>
-      <PageWrapper page={1}>
+      {/* Page 1: Cover Page / Project Details */}
+      <PageWrapper page={++pageCounter}>
         <CustomReportPageHeader
           title="ROOF MEASUREMENT REPORT"
           isCoverPage={true}
+          isFullReport={isFullReport}
         />
-
         <h2
           style={{
             textAlign: "center",
@@ -285,7 +426,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           style={{ ...cardContainerStyle, border: `1px solid ${ACCENT_COLOR}` }}
         >
           <div style={cardHeaderStyle}>
-            <h3 style={headingStyle}>Project Summary</h3>
+            <h3 style={headingStyle}>Area Summary</h3>
           </div>
           <div
             style={{
@@ -299,18 +440,16 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               <p style={{ margin: 0, fontWeight: "bold" }}>Total Area</p>
               <p>{latestProject?.totalArea || "0"} sq ft</p>
             </div>
-
             <div style={{ minWidth: 200, textAlign: "center" }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Deduction Area</p>
               <p>
-                {latestProject?.polygons
+                {latestProject.polygons
                   ?.filter((p: any) => p.isDeduction)
                   .reduce((sum: number, p: any) => sum + (p.area || 0), 0)
                   .toFixed(2) || "0"}{" "}
                 sq ft
               </p>
             </div>
-
             <div style={{ minWidth: 200, textAlign: "center" }}>
               <p style={{ margin: 0, fontWeight: "bold" }}>Total Length</p>
               <p>{latestProject?.totalLength || "0"} ft</p>
@@ -319,11 +458,13 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
         </div>
       </PageWrapper>
 
-      <PageWrapper page={2}>
+      {/* Page 3: Top View */}
+      <PageWrapper page={++pageCounter}>
         <CustomReportPageHeader
           title="Top View"
           isCoverPage={false}
           titleFontSize="20px"
+          isFullReport={isFullReport}
         />
         {mapImage && (
           <div style={{ border: `1px solid ${ACCENT_COLOR}`, borderRadius: 6 }}>
@@ -339,11 +480,13 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
         )}
       </PageWrapper>
 
-      <PageWrapper page={3}>
+      {/* Page 4: Side Views */}
+      <PageWrapper page={++pageCounter}>
         <CustomReportPageHeader
           title="Side Views"
           isCoverPage={false}
           titleFontSize="20px"
+          isFullReport={isFullReport}
         />
         <div
           style={{
@@ -357,10 +500,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           {Object.entries(angledImages).map(([direction, src]) => (
             <div
               key={direction}
-              style={{
-                position: "relative",
-                marginBottom: "10px",
-              }}
+              style={{ position: "relative", marginBottom: "10px" }}
             >
               <img
                 src={src}
@@ -395,174 +535,213 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
         </div>
       </PageWrapper>
 
-      <PageWrapper page={4}>
+      {/* Page 5: Measurement Diagram Image and Key */}
+      <PageWrapper page={++pageCounter}>
         <CustomReportPageHeader
           title={isFullReport ? "Measurement Diagram" : "Roof Facet Diagram"}
           isCoverPage={false}
           titleFontSize="20px"
+          isFullReport={isFullReport}
         />
+
+        {/* DIAGRAM SECTION (HEIGHT REDUCED) */}
         {polygonDiagramImage && (
           <div
             style={{
               backgroundColor: `${ACCENT_COLOR}`,
               borderRadius: 6,
-              margin: "80px 0",
+              // Full Report mein top margin kam kar rahe hain
+              margin: "10px 0 20px 0",
             }}
           >
-            {isFullReport && <CardTitleHeader title="Diagram" />}
             <div style={cardContentStyle}>
               <img
                 src={polygonDiagramImage}
                 alt="Polygon Diagram"
-                style={{ width: "100%", borderRadius: 6 }}
+                style={{
+                  width: "100%",
+                  // HEIGHT ADJUSTMENT FOR FULL REPORT
+                  height: isFullReport ? "450px" : "auto",
+                  objectFit: "contain", // Diagram ko fit rakhega
+                  borderRadius: 6,
+                }}
               />
             </div>
           </div>
         )}
-      </PageWrapper>
-      {!isFullReport && (
-        <PageWrapper page={4}>
-          <CustomReportPageHeader
-            title={
-              isFullReport
-                ? "Measurement Diagram & Key"
-                : "Roof Facet Diagram & Key"
-            }
-            isCoverPage={false}
-            titleFontSize="20px"
-          />
 
+        {/* -------------------------------------------------- */}
+        {/* --- NEW SECTION: CONTENTS & MEASUREMENTS CARDS --- */}
+        {/* -------------------------------------------------- */}
+
+        {isFullReport && (
+          // Flex Container for two cards in one row
           <div
             style={{
-              backgroundColor: `${ACCENT_COLOR}`,
-              borderRadius: 6,
-              margin: "20px 0",
-              padding: "5px",
+              display: "flex",
+              justifyContent: "space-between",
+              gap: "20px",
+              marginTop: "10px", // Diagram se thoda neeche space
             }}
           >
-            <div style={cardContentStyle}>
-              <RoofMeasurementsDiagram
-                linesData={data.lines}
-                polygonsData={data.polygons}
-                summary={data.gafSummary}
-                showLengths={isFullReport}
-              />
-            </div>
-          </div>
-          <div
-            style={{
-              // marginTop: 20,
-              padding: 10,
-              // textAlign: "center",
-              border: "1px solid #ccc",
-              borderRadius: "6px",
-            }}
-          >
+            {/* CARD 1: Contents */}
             <div
               style={{
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "start",
-                gap: 30,
-                padding: "0",
+                width: "48%", // Width adjust karein
+                border: "1px solid #ccc",
+                borderRadius: "6px",
+                padding: "10px",
+                backgroundColor: "#f9f9f9",
               }}
             >
-              {[
-                ...new Set(
-                  lines
-                    .map((line) => line.label)
-                    .filter((label): label is string => !!label)
-                ),
-              ].map((label) => {
-                const lineItem = lines.find((l) => l.label === label);
-                const color =
-                  lineItem?.customColor ||
-                  LINE_COLORS[label.toLowerCase()] ||
-                  "#000";
+              <CardTitleHeader title="Contents" />
+              <div
+                style={{
+                  ...cardContentStyle,
+                  fontSize: "14px",
+                  lineHeight: "1.8",
+                }}
+              >
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Overview</span> <span>1</span>
+                </div>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Top View</span> <span>2</span>
+                </div>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Side Views</span> <span>3</span>
+                </div>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Lengths</span> <span>4</span>
+                </div>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Pitches</span> <span>5</span>
+                </div>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Areas</span> <span>6</span>
+                </div>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Summary</span> <span>7</span>
+                </div>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Materials</span> <span>8</span>
+                </div>
+              </div>
+            </div>
 
-                return (
-                  <div
-                    key={`line-${label}`}
-                    style={{ display: "flex", alignItems: "center" }}
-                  >
-                    <span
-                      style={{
-                        display: "inline-block",
-                        width: "20px",
-                        height: "20px",
-                        backgroundColor: color,
-                        marginRight: "10px",
-                        marginTop: "15px",
-                        borderRadius: "4px",
-                        border: `1px solid ${
-                          color === "#000" ? "#ccc" : "transparent"
-                        }`,
-                      }}
-                    ></span>
-                    <span
-                      style={{
-                        fontSize: "14px",
-                        color: "#111",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      {label}
-                    </span>
-                  </div>
-                );
-              })}
-              {data.polygons
-                .filter((p) => p.label)
-                .map((p, idx) => (
-                  <div
-                    key={`poly-${p.id || idx}`}
-                    style={{ display: "flex", alignItems: "center" }}
-                  >
-                    <span
-                      style={{
-                        display: "inline-block",
-                        width: "20px",
-                        height: "20px",
-                        backgroundColor: p.customColor || "#000",
-                        marginRight: "10px",
-                        marginTop: "15px",
-                        borderRadius: "4px",
-                      }}
-                    ></span>
-                    <span
-                      style={{
-                        fontSize: "14px",
-                        color: "#111",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      {p.label}
-                    </span>
-                  </div>
-                ))}
+            {/* CARD 2: Measurements (Dynamic Data) */}
+            <div
+              style={{
+                width: "48%", // Width adjust karein
+                border: "1px solid #ccc",
+                borderRadius: "6px",
+                padding: "10px",
+                backgroundColor: "#f9f9f9",
+              }}
+            >
+              <CardTitleHeader title="Measurements" />
+              <div
+                style={{
+                  ...cardContentStyle,
+                  fontSize: "14px",
+                  lineHeight: "1.8",
+                }}
+              >
+                {/* Roof Area */}
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>**Roof Area**</span> <span>**{roofArea} sq ft**</span>
+                </div>
+                {/* Roof Facets */}
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Roof Facets</span> <span>{roofFacets}</span>
+                </div>
+                {/* Predominant Pitch */}
+                {/* <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Predominant Pitch</span> <span>{predominantPitch}</span>
+                </div> */}
+                {/* Ridges/Hips */}
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Ridges/Hips</span> <span>{ridgesHips} ft</span>
+                </div>
+                {/* Valleys */}
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Valleys</span> <span>{valleys} ft</span>
+                </div>
+                {/* Rakes */}
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Rakes</span> <span>{rakes} ft</span>
+                </div>
+                {/* Eaves */}
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Eaves</span> <span>{eaves} ft</span>
+                </div>
+                {/* Bends */}
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Bends</span> <span>{bends} ft</span>
+                </div>
+              </div>
             </div>
           </div>
-        </PageWrapper>
-      )}
+        )}
+
+        {/* ... Baaki ka code (jaise !isFullReport section) yahan continue hoga ... */}
+      </PageWrapper>
+
+      {/* ------------------------------------- */}
+
+      {/* Page 7: Detailed Measurements & Full Summary (Only for Full Report) */}
       {isFullReport && (
-        <PageWrapper page={5}>
+        <PageWrapper page={++pageCounter}>
           <CustomReportPageHeader
-            title="Roof Measurements Diagram"
+            title="Measurement Lenghts Summary"
             isCoverPage={false}
             titleFontSize="20px"
+            isFullReport={isFullReport}
           />
 
+          {/* <CardTitleHeader title="Facet Measurements (Area and Length)" /> */}
           <RoofMeasurementsDiagram
             linesData={data.lines}
             polygonsData={data.polygons}
             summary={data.gafSummary}
+            showLengths={true}
           />
-
           <div
             style={{
               display: "flex",
               justifyContent: "space-around",
-              marginBottom: "20px",
               padding: "10px",
               border: "1px solid #ccc",
               backgroundColor: "#f8f8f8",
@@ -576,22 +755,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               { label: "Eave", value: combinedSummary.eaves },
               { label: "Flashing", value: combinedSummary.flashings },
               { label: "Step Flashing", value: combinedSummary.stepFlashings },
-              {
-                label: "Deduction Area",
-                value:
-                  data.polygons
-                    ?.filter((p) => p && p.isDeduction)
-                    .reduce((sum, p) => {
-                      if (!p.edges) return sum;
-                      return (
-                        sum +
-                        p.edges.reduce(
-                          (lSum, e) => lSum + (e.lengthFeet ?? 0),
-                          0
-                        )
-                      );
-                    }, 0) ?? 0,
-              },
             ].map((item) => (
               <div
                 key={item.label}
@@ -617,7 +780,95 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         </PageWrapper>
       )}
-     
+
+      {/* Page 8: MATERIAL REPORT (NEW PAGE) */}
+      {isFullReport && (
+        <PageWrapper page={++pageCounter}>
+          <CustomReportPageHeader
+            title="Roofing Materials Estimate"
+            isCoverPage={false}
+            titleFontSize="20px"
+            isFullReport={isFullReport}
+          />
+
+          <div
+            style={{
+              ...cardContainerStyle,
+              border: `1px solid ${ACCENT_COLOR}`,
+              marginBottom: "10px",
+            }}
+          >
+            <div style={cardHeaderStyle}>
+              <h3 style={headingStyle}>
+                Material Quantities (Based on Net Area:{" "}
+                {totalNetAreaSqFt.toFixed(2)} sq ft)
+              </h3>
+            </div>
+            <div style={cardContentStyle}>
+              <MaterialReportTable materials={materialQuantities} />
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: "10px",
+              fontSize: "10px",
+              color: "#555",
+              marginTop: "20px",
+            }}
+          >
+            <h4
+              style={{
+                margin: "0 0 5px 0",
+                fontSize: "12px",
+                fontWeight: "bold",
+              }}
+            >
+              Notes:
+            </h4>
+            <p style={{ margin: "5px 0" }}>
+              1. These quantities are estimates based on provided measurements.
+              Always confirm quantities before ordering materials.
+            </p>
+            <p style={{ margin: "5px 0" }}>
+              2. Material coverage assumptions (Shingles, Starter, etc.) can
+              vary by product and manufacturer.
+            </p>
+            <p style={{ margin: "5px 0" }}>
+              3. Waste calculation is applied to the base quantity and rounded
+              up (ceiling function) to ensure sufficient units are ordered.
+            </p>
+          </div>
+        </PageWrapper>
+      )}
+
+      {/* Page 9: GAF SUMMARY PAGE */}
+      {isFullReport && (
+        <GAFSummaryPage
+          data={{
+            ...data,
+            gafSummary: updatedGAFSummary,
+            email: data.email,
+            address: data.address,
+          }}
+          PageWrapper={PageWrapper}
+          CustomReportPageHeader={CustomReportPageHeader}
+          pageCounter={pageCounter}
+        />
+      )}
+
+      {/* Page 2: CUSTOMER SALES ESTIMATE (isFullReport) */}
+      {isFullReport && (
+        <CustomerSalesEstimatePage
+          data={{
+            ...data,
+            ...DYNAMIC_SALES_DATA,
+          }}
+          PageWrapper={PageWrapper}
+          CustomReportPageHeader={CustomReportPageHeader}
+          pageCounter={pageCounter}
+        />
+      )}
     </>
   );
 };
