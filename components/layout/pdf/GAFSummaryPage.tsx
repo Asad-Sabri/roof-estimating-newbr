@@ -262,14 +262,14 @@ export const GAFSummaryPage: React.FC<GAFSummaryPageProps> = ({
 
 
             {/* 1. Pitch and Waste Table */}
-            <h3 style={{ margin: "10px 0", fontSize: HEADER_FONT_SIZE }}>Area Distribution and Waste Calculation</h3>
+            <h3 style={{ margin: "10px 0", fontSize: HEADER_FONT_SIZE, fontWeight:"bold" }}>Area Distribution and Waste Calculation</h3>
             <PitchAndWasteTable 
                 polygons={data.polygons} 
                 totalNetAreaSqFt={totalNetAreaSqFt} 
             />
 
             {/* 2. Measurements Summary */}
-            <h3 style={{ margin: "10px 0", fontSize: HEADER_FONT_SIZE }}>Roof Line and Area Summary</h3>
+            <h3 style={{ margin: "10px 0", fontSize: HEADER_FONT_SIZE, fontWeight:"bold" }}>Roof Line and Area Summary</h3>
             <div style={{ border: "1px solid #ccc", borderRadius: "4px" }}>
                 <div style={cardContentStyle}>
                     <MeasurementsSummary 

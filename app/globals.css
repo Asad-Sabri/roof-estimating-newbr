@@ -75,3 +75,16 @@ body {
   will-change: transform;
   pointer-events: none;
 }
+
+
+@media print {
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    /* Aapke main app wrapper par bhi */
+    #root, .roof-estimate-wrapper { 
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}

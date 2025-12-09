@@ -124,32 +124,44 @@ export const CustomerSalesEstimatePage: React.FC<
                 borderTopRightRadius: 6,
               }}
             >
-              <h3 style={{ margin: 0, fontSize: "16px", fontFamily: "Arial" }}>Roof Details</h3>
+              <h3 style={{ margin: 0, fontSize: "16px", fontFamily: "Arial" }}>
+                Roof Details
+              </h3>
             </div>
             <div style={cardContentStyle}>
+              {/* Heading: Roofing Estimate For */}
               <p style={{ margin: "5px 0" }}>
-                **Roofing Estimate For:** {data.address || "N/A"}
+                <span style={{ fontWeight: 700 }}>Roofing Estimate For:</span>{" "}
+                {data.address || "N/A"}
               </p>
               <hr style={{ border: "1px solid #eee", margin: "10px 0" }} />
+
               {/* Zaroori Details */}
               <p style={{ margin: "5px 0" }}>
-                **Roof Area (Measured):** **{data.totalArea || 0} sq ft**
+                <span style={{ fontWeight: 700 }}>Roof Area (Measured):</span>{" "}
+                {data.totalArea || 0} sq ft
               </p>
               <p style={{ margin: "5px 0" }}>
-                **Steepness (Pitch):** {data.pitch || "N/A"}
+                <span style={{ fontWeight: 700 }}>Steepness (Pitch):</span>{" "}
+                {data.pitch || "N/A"}
               </p>
               <p style={{ margin: "5px 0" }}>
-                **Complexity:** {data.complexity || "N/A"}
+                <span style={{ fontWeight: 700 }}>Complexity:</span>{" "}
+                {data.complexity || "N/A"}
               </p>
+
               {/* Material Details */}
               <p style={{ margin: "5px 0" }}>
-                **Suggested Style:** **{data.style || "GAF Timberline HDZ"}**
+                <span style={{ fontWeight: 700 }}>Suggested Style:</span>{" "}
+                {data.style || "GAF Timberline HDZ"}
               </p>
               <p style={{ margin: "5px 0" }}>
-                **Color:** {data.color || "Shakewood"}
+                <span style={{ fontWeight: 700 }}>Color:</span>{" "}
+                {data.color || "Shakewood"}
               </p>
               <p style={{ margin: "5px 0" }}>
-                **Stories:** {data.stories || "N/A"}
+                <span style={{ fontWeight: 700 }}>Stories:</span>{" "}
+                {data.stories || "N/A"}
               </p>
             </div>
           </div>
@@ -172,7 +184,9 @@ export const CustomerSalesEstimatePage: React.FC<
                 borderTopRightRadius: 6,
               }}
             >
-              <h3 style={{ margin: 0, fontSize: "16px", fontFamily: "Arial" }}>Your Estimate</h3>
+              <h3 style={{ margin: 0, fontSize: "16px", fontFamily: "Arial" }}>
+                Your Estimate
+              </h3>
             </div>
             <div style={{ padding: "20px 15px", textAlign: "center" }}>
               <h1
@@ -265,7 +279,14 @@ export const CustomerSalesEstimatePage: React.FC<
             }}
           >
             {SCOPE_OF_WORK.map((item, index) => (
-              <li key={index} style={{ marginBottom: "8px", fontSize: "14px", fontFamily: "Arial" }}>
+              <li
+                key={index}
+                style={{
+                  marginBottom: "8px",
+                  fontSize: "14px",
+                  fontFamily: "Arial",
+                }}
+              >
                 {item}
               </li>
             ))}
@@ -284,13 +305,20 @@ export const CustomerSalesEstimatePage: React.FC<
             style={{
               padding: "10px 15px",
               // Changed ACCENT_COLOR to CARD_HEADER_BG_COLOR for better contrast
-              backgroundColor: CARD_HEADER_BG_COLOR, 
+              backgroundColor: CARD_HEADER_BG_COLOR,
               color: "#fff", // Text white
               borderTopLeftRadius: 6,
               borderTopRightRadius: 6,
             }}
           >
-            <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold", fontFamily: "Arial" }}>
+            <h3
+              style={{
+                margin: 0,
+                fontSize: "16px",
+                fontWeight: "bold",
+                fontFamily: "Arial",
+              }}
+            >
               Next Steps
             </h3>
           </div>
@@ -304,16 +332,24 @@ export const CustomerSalesEstimatePage: React.FC<
             {/* 🔗 Clickable Links - Task Complete */}
             <p style={{ fontSize: "14px", margin: 0 }}>
               **Contact:**
-              <a 
-                href={`mailto:${data.salesPersonEmail}`} 
-                style={{ color: CARD_HEADER_BG_COLOR, textDecoration: 'none', fontWeight: 'bold' }}
+              <a
+                href={`mailto:${data.salesPersonEmail}`}
+                style={{
+                  color: CARD_HEADER_BG_COLOR,
+                  textDecoration: "none",
+                  fontWeight: "bold",
+                }}
               >
                 {data.salesPersonEmail}
               </a>
-              {' | '}
-              <a 
-                href={`tel:${data.salesPersonMobile}`} 
-                style={{ color: CARD_HEADER_BG_COLOR, textDecoration: 'none', fontWeight: 'bold' }}
+              {" | "}
+              <a
+                href={`tel:${data.salesPersonMobile}`}
+                style={{
+                  color: CARD_HEADER_BG_COLOR,
+                  textDecoration: "none",
+                  fontWeight: "bold",
+                }}
               >
                 {data.salesPersonMobile}
               </a>
