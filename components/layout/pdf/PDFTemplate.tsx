@@ -25,9 +25,6 @@ import {
   cardHeaderStyle,
   headingStyle,
 } from "./PDFTemplateStyles";
-// --- NEW IMPORT ---
-// import AreaDiagramPage from "./AreaDiagramPage";
-// ------------------
 
 interface AngledImages {
   north: string;
@@ -66,7 +63,8 @@ const CustomReportPageHeader: React.FC<{
   isCoverPage: boolean;
   titleFontSize?: string;
   isFullReport: boolean;
-}> = ({ title, isCoverPage, titleFontSize = "16px", isFullReport }) => {
+  customerName: string;
+}> = ({ title, isCoverPage, titleFontSize = "16px", isFullReport, customerName }) => {
   const finalHeaderStyle: React.CSSProperties = {
     backgroundColor: CARD_HEADER_BG_COLOR,
     display: "flex",
@@ -79,7 +77,7 @@ const CustomReportPageHeader: React.FC<{
 
   const reportMainTitle = isFullReport
     ? "FULL ROOF MEASUREMENT REPORT"
-    : "PROPERTY OWNER REPORT";
+    : "CUSTOMER REPORT"; // Client's requested title
 
   const headerText = isCoverPage ? reportMainTitle : title;
 
@@ -104,7 +102,8 @@ const CustomReportPageHeader: React.FC<{
         {isCoverPage && (
           <>
             <p style={{ margin: 0, fontSize: "14px" }}>
-              Prepared For: <strong>Superior Pro Roofs</strong>
+              {/* FIX: Prepared For: Customer Report mein Customer ka Naam, Full Report mein Company ka naam (Default logic) */}
+              Prepared For: <strong>{isFullReport ? "Superior Pro Roofs" : customerName || "Superior Pro Roofs"}</strong>
             </p>
             <p style={{ margin: 0, fontSize: "14px" }}>
               Date: <strong>{new Date().toLocaleDateString()}</strong>
@@ -211,6 +210,8 @@ const MaterialReportTable: React.FC<{ materials: MaterialQuantities }> = ({
     border: "1px solid #ccc",
     backgroundColor: CARD_HEADER_BG_COLOR,
     color: "#fff",
+    borderTopLeftRadius: "6px",
+    borderTopRightRadius: "6px",
   };
 
   const tdStyle: React.CSSProperties = {
@@ -231,13 +232,13 @@ const MaterialReportTable: React.FC<{ materials: MaterialQuantities }> = ({
     <table style={tableStyle}>
       <thead>
         <tr>
-          <th style={{ ...thStyle, width: "40%", textAlign: "left" }}>
+          <th style={{ ...thStyle, width: "40%", textAlign: "left", borderTopRightRadius: 0, borderBottom: "none" }}>
             Roofing Materials
           </th>
-          {WASTAGES.map((w) => (
+          {WASTAGES.map((w, index) => (
             <th
               key={w}
-              style={{ ...thStyle, width: "15%", textAlign: "center" }}
+              style={{ ...thStyle, width: "15%", textAlign: "center", borderTopLeftRadius: index === 0 ? 0 : "6px", borderBottom: "none" }}
             >
               Waste {w}
             </th>
@@ -325,13 +326,10 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
 
   const DYNAMIC_SALES_DATA = {
     estimatePrice: Math.round(estimatePrice / 10) * 10,
-
     taxRebatePercentage: 0.2,
-
     salesPersonName: "Kenny Wilson",
     salesPersonMobile: "678-846-2809",
     salesPersonEmail: "kenny@roofrightnow.com",
-
     pitch: updatedGAFSummary.dominantPitch,
     complexity: "moderate",
     stories: "1",
@@ -342,11 +340,8 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
   const roofArea = data.totalArea
     ? parseFloat(data.totalArea).toFixed(0)
     : "N/A";
-  // Total roof facets nikalna
+
   const roofFacets = data.polygons?.length || 0;
-  // Predominant Pitch nikalna (Example ke liye pehli pitch ya koi default value)
-  // const predominantPitch = data.pitches?.[0] || "N/A"; // Assuming pitches array hai
-  // Lengths data ko combinedSummary ya gafSummary se nikalna (jaisa aapka structure ho)
   const summary = data.gafSummary || {};
   const ridgesHips = ((summary.ridges || 0) + (summary.hips || 0)).toFixed(0);
   const valleys = (summary.valleys || 0).toFixed(0);
@@ -354,15 +349,19 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
   const eaves = (summary.eaves || 0).toFixed(0);
   const bends = (summary.bends || 0).toFixed(0);
 
+  const customerName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
+
   return (
     <>
       {/* Page 1: Cover Page / Project Details */}
       <PageWrapper page={++pageCounter}>
         <CustomReportPageHeader
-          title="ROOF MEASUREMENT REPORT"
+          title={isFullReport ? "Full Roof Measurement Report" : "Customer Report"} // FIX: Title set to Customer Report
           isCoverPage={true}
           isFullReport={isFullReport}
+          customerName={customerName} // FIX: Passing customer name
         />
+
         <h2
           style={{
             textAlign: "center",
@@ -374,7 +373,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
         >
           {isFullReport
             ? "Full Roof Measurement Report"
-            : "Property Owner Report"}
+            : "Customer Report"}
         </h2>
 
         <div
@@ -465,6 +464,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           isCoverPage={false}
           titleFontSize="20px"
           isFullReport={isFullReport}
+          customerName={customerName}
         />
         {mapImage && (
           <div style={{ border: `1px solid ${ACCENT_COLOR}`, borderRadius: 6 }}>
@@ -487,6 +487,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           isCoverPage={false}
           titleFontSize="20px"
           isFullReport={isFullReport}
+          customerName={customerName}
         />
         <div
           style={{
@@ -542,6 +543,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           isCoverPage={false}
           titleFontSize="20px"
           isFullReport={isFullReport}
+          customerName={customerName}
         />
 
         {/* DIAGRAM SECTION (HEIGHT REDUCED) */}
@@ -550,7 +552,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             style={{
               backgroundColor: `${ACCENT_COLOR}`,
               borderRadius: 6,
-              // Full Report mein top margin kam kar rahe hain
               margin: "10px 0 20px 0",
             }}
           >
@@ -560,9 +561,8 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                 alt="Polygon Diagram"
                 style={{
                   width: "100%",
-                  // HEIGHT ADJUSTMENT FOR FULL REPORT
                   height: isFullReport ? "450px" : "auto",
-                  objectFit: "contain", // Diagram ko fit rakhega
+                  objectFit: "contain",
                   borderRadius: 6,
                 }}
               />
@@ -570,24 +570,19 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         )}
 
-        {/* -------------------------------------------------- */}
-        {/* --- NEW SECTION: CONTENTS & MEASUREMENTS CARDS --- */}
-        {/* -------------------------------------------------- */}
-
         {isFullReport && (
-          // Flex Container for two cards in one row
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
               gap: "20px",
-              marginTop: "10px", // Diagram se thoda neeche space
+              marginTop: "10px",
             }}
           >
             {/* CARD 1: Contents */}
             <div
               style={{
-                width: "48%", // Width adjust karein
+                width: "48%",
                 border: "1px solid #ccc",
                 borderRadius: "6px",
                 padding: "10px",
@@ -648,7 +643,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             {/* CARD 2: Measurements (Dynamic Data) */}
             <div
               style={{
-                width: "48%", // Width adjust karein
+                width: "48%",
                 border: "1px solid #ccc",
                 borderRadius: "6px",
                 padding: "10px",
@@ -675,12 +670,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                 >
                   <span>Roof Facets</span> <span>{roofFacets}</span>
                 </div>
-                {/* Predominant Pitch */}
-                {/* <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  <span>Predominant Pitch</span> <span>{predominantPitch}</span>
-                </div> */}
                 {/* Ridges/Hips */}
                 <div
                   style={{ display: "flex", justifyContent: "space-between" }}
@@ -715,23 +704,18 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             </div>
           </div>
         )}
-
-        {/* ... Baaki ka code (jaise !isFullReport section) yahan continue hoga ... */}
       </PageWrapper>
 
-      {/* ------------------------------------- */}
-
       {/* Page 7: Detailed Measurements & Full Summary (Only for Full Report) */}
-      {isFullReport && (
         <PageWrapper page={++pageCounter}>
           <CustomReportPageHeader
             title="Measurement Lenghts Summary"
             isCoverPage={false}
             titleFontSize="20px"
             isFullReport={isFullReport}
+            customerName={customerName}
           />
 
-          {/* <CardTitleHeader title="Facet Measurements (Area and Length)" /> */}
           <RoofMeasurementsDiagram
             linesData={data.lines}
             polygonsData={data.polygons}
@@ -779,7 +763,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             ))}
           </div>
         </PageWrapper>
-      )}
 
       {/* Page 8: MATERIAL REPORT (NEW PAGE) */}
       {isFullReport && (
@@ -789,6 +772,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             isCoverPage={false}
             titleFontSize="20px"
             isFullReport={isFullReport}
+            customerName={customerName}
           />
 
           <div
@@ -852,12 +836,13 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             address: data.address,
           }}
           PageWrapper={PageWrapper}
-          CustomReportPageHeader={CustomReportPageHeader}
+          CustomReportPageHeader={(props) => <CustomReportPageHeader {...props} customerName={customerName} />}
           pageCounter={pageCounter}
         />
       )}
 
       {/* Page 2: CUSTOMER SALES ESTIMATE (isFullReport) */}
+      {/* Note: CustomerSalesEstimatePage ke andar CTA ko clickable banana hoga, agar woh is component ke andar defined hai. */}
       {isFullReport && (
         <CustomerSalesEstimatePage
           data={{
@@ -865,7 +850,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             ...DYNAMIC_SALES_DATA,
           }}
           PageWrapper={PageWrapper}
-          CustomReportPageHeader={CustomReportPageHeader}
+          CustomReportPageHeader={(props) => <CustomReportPageHeader {...props} customerName={customerName} />}
           pageCounter={pageCounter}
         />
       )}

@@ -91,6 +91,7 @@ export const CustomerSalesEstimatePage: React.FC<
               color: RED_DISCLAIMER_COLOR,
               margin: "0 0 10px 0",
               fontSize: "20px",
+              fontFamily: "Arial",
             }}
           >
             🛑 PRELIMINARY ESTIMATE ONLY
@@ -101,6 +102,7 @@ export const CustomerSalesEstimatePage: React.FC<
               color: "#444",
               fontSize: "12px",
               fontStyle: "italic",
+              fontFamily: "Arial",
             }}
           >
             Formal estimate subject to inspection, scope confirmation, and
@@ -122,7 +124,7 @@ export const CustomerSalesEstimatePage: React.FC<
                 borderTopRightRadius: 6,
               }}
             >
-              <h3 style={{ margin: 0, fontSize: "16px" }}>Roof Details</h3>
+              <h3 style={{ margin: 0, fontSize: "16px", fontFamily: "Arial" }}>Roof Details</h3>
             </div>
             <div style={cardContentStyle}>
               <p style={{ margin: "5px 0" }}>
@@ -170,7 +172,7 @@ export const CustomerSalesEstimatePage: React.FC<
                 borderTopRightRadius: 6,
               }}
             >
-              <h3 style={{ margin: 0, fontSize: "16px" }}>Your Estimate</h3>
+              <h3 style={{ margin: 0, fontSize: "16px", fontFamily: "Arial" }}>Your Estimate</h3>
             </div>
             <div style={{ padding: "20px 15px", textAlign: "center" }}>
               <h1
@@ -178,9 +180,10 @@ export const CustomerSalesEstimatePage: React.FC<
                   color: CARD_HEADER_BG_COLOR,
                   fontSize: "36px",
                   margin: "0 0 10px 0",
+                  fontFamily: "Arial",
                 }}
               >
-                {formatCurrency(estimatePrice)}
+                **{formatCurrency(estimatePrice)}**
               </h1>
               <p
                 style={{
@@ -188,9 +191,10 @@ export const CustomerSalesEstimatePage: React.FC<
                   fontSize: "14px",
                   color: "#006400",
                   fontWeight: "bold",
+                  fontFamily: "Arial",
                 }}
               >
-                POTENTIAL TAX REBATES: {formatCurrency(taxRebate)}
+                POTENTIAL TAX REBATES: **{formatCurrency(taxRebate)}**
               </p>
               <div
                 style={{
@@ -204,6 +208,7 @@ export const CustomerSalesEstimatePage: React.FC<
                   margin: "5px 0",
                   fontSize: "18px",
                   fontWeight: "bold",
+                  fontFamily: "Arial",
                 }}
               >
                 POTENTIAL NET PRICE
@@ -214,9 +219,10 @@ export const CustomerSalesEstimatePage: React.FC<
                   fontSize: "24px",
                   fontWeight: "bold",
                   margin: "5px 0",
+                  fontFamily: "Arial",
                 }}
               >
-                {formatCurrency(netPrice)}
+                **{formatCurrency(netPrice)}**
               </p>
             </div>
           </div>
@@ -247,7 +253,7 @@ export const CustomerSalesEstimatePage: React.FC<
               borderTopRightRadius: 6,
             }}
           >
-            <h3 style={{ margin: 0, fontSize: "16px" }}>
+            <h3 style={{ margin: 0, fontSize: "16px", fontFamily: "Arial" }}>
               Whats Included (Scope of Work)
             </h3>
           </div>
@@ -259,7 +265,7 @@ export const CustomerSalesEstimatePage: React.FC<
             }}
           >
             {SCOPE_OF_WORK.map((item, index) => (
-              <li key={index} style={{ marginBottom: "8px", fontSize: "14px" }}>
+              <li key={index} style={{ marginBottom: "8px", fontSize: "14px", fontFamily: "Arial" }}>
                 {item}
               </li>
             ))}
@@ -277,13 +283,14 @@ export const CustomerSalesEstimatePage: React.FC<
           <div
             style={{
               padding: "10px 15px",
-              backgroundColor: ACCENT_COLOR,
-              color: CARD_HEADER_BG_COLOR,
+              // Changed ACCENT_COLOR to CARD_HEADER_BG_COLOR for better contrast
+              backgroundColor: CARD_HEADER_BG_COLOR, 
+              color: "#fff", // Text white
               borderTopLeftRadius: 6,
               borderTopRightRadius: 6,
             }}
           >
-            <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold" }}>
+            <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold", fontFamily: "Arial" }}>
               Next Steps
             </h3>
           </div>
@@ -294,8 +301,22 @@ export const CustomerSalesEstimatePage: React.FC<
               roof inspection and discuss the estimate. We will also assist you
               in reducing the price through tax rebates.
             </p>
+            {/* 🔗 Clickable Links - Task Complete */}
             <p style={{ fontSize: "14px", margin: 0 }}>
-              **Contact:** {data.salesPersonEmail} | {data.salesPersonMobile}
+              **Contact:**
+              <a 
+                href={`mailto:${data.salesPersonEmail}`} 
+                style={{ color: CARD_HEADER_BG_COLOR, textDecoration: 'none', fontWeight: 'bold' }}
+              >
+                {data.salesPersonEmail}
+              </a>
+              {' | '}
+              <a 
+                href={`tel:${data.salesPersonMobile}`} 
+                style={{ color: CARD_HEADER_BG_COLOR, textDecoration: 'none', fontWeight: 'bold' }}
+              >
+                {data.salesPersonMobile}
+              </a>
             </p>
           </div>
         </div>
@@ -306,6 +327,7 @@ export const CustomerSalesEstimatePage: React.FC<
             color: "#777",
             marginTop: "20px",
             textAlign: "center",
+            fontFamily: "Arial",
           }}
         >
           Tax rebates are available on installations that include

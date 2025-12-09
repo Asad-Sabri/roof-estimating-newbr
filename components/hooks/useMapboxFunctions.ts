@@ -539,7 +539,7 @@ export function useMapboxFunctions() {
         },
       ],
       snap: true,
-      snapOptions: { snapPx: 5, snapToMidPoints: true },
+      snapOptions: { snapPx: 2, snapToMidPoints: true },
     } as any);
     drawRef.current = draw;
     map.addControl(draw);

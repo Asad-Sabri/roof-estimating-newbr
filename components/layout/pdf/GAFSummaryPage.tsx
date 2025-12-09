@@ -280,7 +280,7 @@ export const GAFSummaryPage: React.FC<GAFSummaryPageProps> = ({
                 </div>
             </div>
 
-            <div style={{ padding: "10px", fontSize: "10px", color: "#555", marginTop: "20px" }}>
+            <div style={{ padding: "10px", fontSize: "10px", color: "#555" }}>
                 <h4 style={{ margin: "0 0 5px 0", fontSize: "12px", fontWeight: "bold" }}>Note:</h4>
                 <p style={{ margin: "5px 0" }}>* Roof Facets, Bends, and Pitch values require corresponding data to be set correctly in your drawing properties (e.g., each polygon should have a `pitch` property).</p>
                 <p style={{ margin: "5px 0" }}>* Calculated materials (Drip Edge, Leak Barrier, Ridge Cap, Starter) are based on the combined length of relevant components (e.g., Drip Edge = Eaves + Rakes).</p>
