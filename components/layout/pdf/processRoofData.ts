@@ -13,6 +13,8 @@ interface LineData {
 }
 
 export interface GAFSummary {
+  dominantPitch: any;
+  facetCount: number;
   eaves: number;
   rakes: number;
   ridges: number;

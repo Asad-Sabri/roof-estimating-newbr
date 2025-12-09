@@ -83,7 +83,7 @@ export const scaleCoordinatesToSVG = (
         };
     }
 
-    const allCoords: [number, number][] = allGeometries.flatMap((g) => {
+    const allCoords: [number, number][] = allGeometries.flatMap((g: any) => {
         if ("coordinates" in g && Array.isArray(g.coordinates)) {
             if (Array.isArray(g.coordinates[0][0])) {
                 return g.coordinates[0]; // polygon outer ring

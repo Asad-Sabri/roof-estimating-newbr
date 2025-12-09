@@ -80,13 +80,13 @@ const CustomReportPageHeader: React.FC<{
     justifyContent: "space-between",
     alignItems: "center",
     // padding: "15px 25px", // Adjusted padding
-    padding: "5px 25px 15px 25px", // Adjusted padding
+    padding: "15px 10px 10px 10px", // Adjusted padding
     borderRadius: "8px", // Added border radius
-    marginBottom: "30px", // Increased margin bottom
+    margin: "5px 0 20px 0",
   };
 
   const reportMainTitle = isFullReport
-    ? "ADMIN ROOF MEASUREMENT REPORT" // Changed to Admin Report as per instruction
+    ? "FULL ROOF MEASUREMENT REPORT" // Changed to Admin Report as per instruction
     : "CUSTOMER ESTIMATE REPORT";
 
   const headerText = isCoverPage ? reportMainTitle : title;
@@ -488,22 +488,15 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           {/* Page 1: Cover Page / Project Details (Admin Report) */}
           <PageWrapper page={++pageCounter}>
             <CustomReportPageHeader
-              title="Measurement Diagram"
-              isCoverPage={false}
-              titleFontSize="20px"
+              title="Full Roof Measurement Report"
+              isCoverPage={true}
               isFullReport={isFullReport}
               customerName={customerName}
             />
 
             <div style={cardContainerStyle}>
               {/* <CardTitleHeader title="Color-Coded Roof Diagram" /> */}
-              <div
-                style={{
-                  ...cardContentStyle,
-                  padding: "15px", // Inner padding adjusted for image
-                  textAlign: "center",
-                }}
-              >
+              <div>
                 {polygonDiagramImage && (
                   <img
                     src={polygonDiagramImage}
@@ -679,16 +672,16 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                       top: 0,
                       left: 0,
                       margin: 0,
-                      padding: "5px 10px 15px 10px",
+                      padding: "0px 5px 10px 5px",
                       backgroundColor: CARD_HEADER_BG_COLOR,
                       color: "#ffffff",
-                      fontSize: "12px",
+                      fontSize: "8px",
                       fontWeight: "bold",
                       textTransform: "uppercase",
                       borderBottomRightRadius: 6,
                     }}
                   >
-                    {direction} View
+                    {direction}
                   </h4>
                 </div>
               ))}

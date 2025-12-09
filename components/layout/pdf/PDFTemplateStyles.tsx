@@ -52,12 +52,14 @@ export const headingStyle: React.CSSProperties = {
 
 export const footerCardStyle: React.CSSProperties = {
   position: "absolute",
-  bottom: "10px",
+  bottom: "0px",
   right: "30px",
   backgroundColor: CARD_HEADER_BG_COLOR,
-  padding: "5px 12px 18px 12px",
+  padding: "0px 12px 15px 12px",
+  marginTop: "120px",
+  marginBottom: "5px",
   borderRadius: "4px",
-  fontSize: "10px",
+  fontSize: "12px",
   color: "#fff",
 };
 
@@ -83,7 +85,7 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({ page, children }) => (
   <div style={pageStyle(page)}>
     {children}
     {/* Page Number in Footer */}
-    <div style={footerCardStyle}>Page {page}</div>
+    <div style={footerCardStyle}> {page}</div>
   </div>
 );
 

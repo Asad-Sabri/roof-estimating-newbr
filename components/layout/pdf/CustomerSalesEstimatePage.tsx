@@ -1,6 +1,7 @@
 // components/layout/pdf/CustomerSalesEstimatePage.tsx
 
 import React from "react";
+import { cardContainerStyle, CardTitleHeader } from "./PDFTemplateStyles";
 
 // --- STYLE CONSTANTS (PDFTemplate se lenge) ---
 const CARD_HEADER_BG_COLOR = "#0f2346";
@@ -113,56 +114,42 @@ export const CustomerSalesEstimatePage: React.FC<
 
         {/* --- Estimate Summary & Financials --- */}
         <div style={{ display: "flex", gap: "30px" }}>
-          {/* 1. Roof Details Card */}
-          <div style={{ flex: 1, border: "1px solid #ccc", borderRadius: 6 }}>
-            <div
-              style={{
-                padding: "10px 15px",
-                backgroundColor: CARD_HEADER_BG_COLOR,
-                color: "#fff",
-                borderTopLeftRadius: 6,
-                borderTopRightRadius: 6,
-              }}
-            >
-              <h3 style={{ margin: 0, fontSize: "16px", fontFamily: "Arial" }}>
-                Roof Details
-              </h3>
-            </div>
-            <div style={cardContentStyle}>
-              {/* Heading: Roofing Estimate For */}
-              <p style={{ margin: "5px 0" }}>
-                <span style={{ fontWeight: 700 }}>Roofing Estimate For:</span>{" "}
-                {data.address || "N/A"}
-              </p>
-              <hr style={{ border: "1px solid #eee", margin: "10px 0" }} />
+          <div style={cardContainerStyle}>
+            <div style={{ flex: 1, border: "1px solid #ccc", borderRadius: 6 }}>
+              <CardTitleHeader title="Roof Details" />
+              <div style={cardContentStyle}>
+                <p style={{ margin: "5px 0" }}>
+                  <span style={{ fontWeight: 700 }}>Roofing Estimate For:</span>{" "}
+                  {data.address || "N/A"}
+                </p>
+                <hr style={{ border: "1px solid #eee", margin: "10px 0" }} />
 
-              {/* Zaroori Details */}
-              <p style={{ margin: "5px 0" }}>
-                <span style={{ fontWeight: 700 }}>Roof Area (Measured):</span>{" "}
-                {data.totalArea || 0} sq ft
-              </p>
-              <p style={{ margin: "5px 0" }}>
-                <span style={{ fontWeight: 700 }}>Steepness (Pitch):</span>{" "}
-                {data.pitch || "N/A"}
-              </p>
-              <p style={{ margin: "5px 0" }}>
-                <span style={{ fontWeight: 700 }}>Complexity:</span>{" "}
-                {data.complexity || "N/A"}
-              </p>
+                <p style={{ margin: "5px 0" }}>
+                  <span style={{ fontWeight: 700 }}>Roof Area (Measured):</span>{" "}
+                  {data.totalArea || 0} sq ft
+                </p>
+                <p style={{ margin: "5px 0" }}>
+                  <span style={{ fontWeight: 700 }}>Steepness (Pitch):</span>{" "}
+                  {data.pitch || "N/A"}
+                </p>
+                <p style={{ margin: "5px 0" }}>
+                  <span style={{ fontWeight: 700 }}>Complexity:</span>{" "}
+                  {data.complexity || "N/A"}
+                </p>
 
-              {/* Material Details */}
-              <p style={{ margin: "5px 0" }}>
-                <span style={{ fontWeight: 700 }}>Suggested Style:</span>{" "}
-                {data.style || "GAF Timberline HDZ"}
-              </p>
-              <p style={{ margin: "5px 0" }}>
-                <span style={{ fontWeight: 700 }}>Color:</span>{" "}
-                {data.color || "Shakewood"}
-              </p>
-              <p style={{ margin: "5px 0" }}>
-                <span style={{ fontWeight: 700 }}>Stories:</span>{" "}
-                {data.stories || "N/A"}
-              </p>
+                <p style={{ margin: "5px 0" }}>
+                  <span style={{ fontWeight: 700 }}>Suggested Style:</span>{" "}
+                  {data.style || "GAF Timberline HDZ"}
+                </p>
+                <p style={{ margin: "5px 0" }}>
+                  <span style={{ fontWeight: 700 }}>Color:</span>{" "}
+                  {data.color || "Shakewood"}
+                </p>
+                <p style={{ margin: "5px 0" }}>
+                  <span style={{ fontWeight: 700 }}>Stories:</span>{" "}
+                  {data.stories || "N/A"}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -175,74 +162,65 @@ export const CustomerSalesEstimatePage: React.FC<
               backgroundColor: ACCENT_COLOR,
             }}
           >
-            <div
-              style={{
-                padding: "10px 15px",
-                backgroundColor: CARD_HEADER_BG_COLOR,
-                color: "#fff",
-                borderTopLeftRadius: 6,
-                borderTopRightRadius: 6,
-              }}
-            >
-              <h3 style={{ margin: 0, fontSize: "16px", fontFamily: "Arial" }}>
-                Your Estimate
-              </h3>
-            </div>
+            <CardTitleHeader title="Your Estimate" />
+
             <div style={{ padding: "20px 15px", textAlign: "center" }}>
-              <h1
-                style={{
-                  color: CARD_HEADER_BG_COLOR,
-                  fontSize: "36px",
-                  margin: "0 0 10px 0",
-                  fontFamily: "Arial",
-                }}
-              >
-                **{formatCurrency(estimatePrice)}**
-              </h1>
-              <p
-                style={{
-                  margin: "5px 0",
-                  fontSize: "14px",
-                  color: "#006400",
-                  fontWeight: "bold",
-                  fontFamily: "Arial",
-                }}
-              >
-                POTENTIAL TAX REBATES: **{formatCurrency(taxRebate)}**
-              </p>
-              <div
-                style={{
-                  borderTop: "2px solid #555",
-                  margin: "15px auto",
-                  width: "70%",
-                }}
-              ></div>
-              <p
-                style={{
-                  margin: "5px 0",
-                  fontSize: "18px",
-                  fontWeight: "bold",
-                  fontFamily: "Arial",
-                }}
-              >
-                POTENTIAL NET PRICE
-              </p>
-              <p
-                style={{
-                  color: RED_DISCLAIMER_COLOR,
-                  fontSize: "24px",
-                  fontWeight: "bold",
-                  margin: "5px 0",
-                  fontFamily: "Arial",
-                }}
-              >
-                **{formatCurrency(netPrice)}**
-              </p>
+              <div style={cardContentStyle}>
+                <h1
+                  style={{
+                    color: CARD_HEADER_BG_COLOR,
+                    fontSize: "36px",
+                    margin: "0 0 10px 0",
+                    fontFamily: "Arial",
+                  }}
+                >
+                  {formatCurrency(estimatePrice)}
+                </h1>
+                <p
+                  style={{
+                    margin: "5px 0",
+                    fontSize: "14px",
+                    color: "#006400",
+                    fontWeight: "bold",
+                    fontFamily: "Arial",
+                  }}
+                >
+                  POTENTIAL TAX REBATES: {formatCurrency(taxRebate)}
+                </p>
+                <div
+                  style={{
+                    borderTop: "2px solid #555",
+                    margin: "15px auto",
+                    width: "70%",
+                  }}
+                ></div>
+                <p
+                  style={{
+                    margin: "5px 0",
+                    fontSize: "18px",
+                    fontWeight: "bold",
+                    fontFamily: "Arial",
+                  }}
+                >
+                  POTENTIAL NET PRICE
+                </p>
+                <p
+                  style={{
+                    color: RED_DISCLAIMER_COLOR,
+                    fontSize: "24px",
+                    fontWeight: "bold",
+                    margin: "5px 0",
+                    fontFamily: "Arial",
+                  }}
+                >
+                  {formatCurrency(netPrice)}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </PageWrapper>
-      <PageWrapper page={currentPage}>
+      <PageWrapper page={++pageCounter}>
         <CustomReportPageHeader
           title="Roof Disclaimer"
           isCoverPage={false}
