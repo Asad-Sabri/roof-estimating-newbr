@@ -1,5 +1,3 @@
-// C:\Users\ASAD SABRI\Documents\GitHub\roof-estimating-newbr\components\layout\pdf\pdfGenerator.tsx
-
 import PDFTemplate from "./PDFTemplate";
 import { getMapCenter, getMapImageBase64 } from "./getMapImage";
 
@@ -12,7 +10,6 @@ import {
 
 type ReportType = "full" | "owner";
 
-// --- NEW Interface for 4 Images ---
 interface AngledImages {
   north: string; // bearing: 0
   east: string; // bearing: 90
@@ -71,11 +68,14 @@ const generateSinglePDF = async (
     const projectsRaw = localStorage.getItem("projects");
     const latestProject = projectsRaw
       ? JSON.parse(projectsRaw).slice(-1)[0]
-      : { polygons: [], lines: [], totalArea: "0", totalLength: "0" };
+      : { polygons: [], lines: [], totalArea: "0", totalLength: "0", mapboxBearing: "0" };
 
     const polygons = latestProject.polygons || [];
     const totalAreaSqFt = parseFloat(latestProject.totalArea || "0");
     const lines = latestProject.lines || [];
+    
+    // Retrieve the Mapbox rotation angle from the saved project data
+    const mapboxRotationAngle = parseFloat(latestProject.mapboxBearing || "0");
 
     const center = getMapCenter(polygons, lines);
     const mapOptions = { zoom: 20, width: 800, height: 600 };
@@ -104,7 +104,8 @@ const generateSinglePDF = async (
     // Top View (used for Page 2, typically North view is used)
     const topViewImage = northViewImage; 
 
-    const roofDiagramSVG = createRoofSVG(polygons, lines, 800, 600);
+    // Passing the rotation angle to correct the SVG drawing
+    const roofDiagramSVG = createRoofSVG(polygons, lines, 800, 600, mapboxRotationAngle);
 
     const roofDiagramImage = await convertSVGToDataURL(
       roofDiagramSVG,
@@ -137,7 +138,7 @@ const generateSinglePDF = async (
           materialQuantities: materialQuantities,
         }}
         topViewImage={topViewImage}
-        angledImages={angledImages} // Passing 4 images
+        angledImages={angledImages}
       />
     );
 

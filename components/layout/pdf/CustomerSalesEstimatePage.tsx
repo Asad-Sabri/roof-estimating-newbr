@@ -302,34 +302,34 @@ export const CustomerSalesEstimatePage: React.FC<
           </div>
           <div style={cardContentStyle}>
             <p style={{ fontSize: "14px", margin: "0 0 10px 0" }}>
-              You can expect an immediate follow-up from **
-              {data.salesPersonName}**. They will contact you to schedule your
-              roof inspection and discuss the estimate. We will also assist you
-              in reducing the price through tax rebates.
+         You can expect an immediate follow-up from **
+               (Superior Pro Roofing). They will contact you to schedule your
+              roof inspection and discuss the estimate. We will also assist you
+              in reducing the price through tax rebates.
             </p>
             {/* 🔗 Clickable Links - Task Complete */}
             <p style={{ fontSize: "14px", margin: 0 }}>
               **Contact:**
               <a
-                href={`mailto:${data.salesPersonEmail}`}
+                href={`mailto:superiorroofing@gmail.com`}
                 style={{
                   color: CARD_HEADER_BG_COLOR,
                   textDecoration: "none",
                   fontWeight: "bold",
                 }}
               >
-                {data.salesPersonEmail}
+                superiorroofing@gmail.com
               </a>
               {" | "}
               <a
-                href={`tel:${data.salesPersonMobile}`}
+                href={`tel:+1 (847) 489-7999`}
                 style={{
                   color: CARD_HEADER_BG_COLOR,
                   textDecoration: "none",
                   fontWeight: "bold",
                 }}
               >
-                {data.salesPersonMobile}
+                +1 (847) 489-7999
               </a>
             </p>
           </div>
@@ -344,9 +344,9 @@ export const CustomerSalesEstimatePage: React.FC<
             fontFamily: "Arial",
           }}
         >
-          Tax rebates are available on installations that include
-          energy-efficient products, such as solar attic ventilation. Price
-          subject to change if material selections are updated.
+          Tax rebates are available on installations that include          
+          energy-efficient products, such as solar attic ventilation. Price    
+                subject to change if material selections are updated.
         </p>
       </PageWrapper>
     </>

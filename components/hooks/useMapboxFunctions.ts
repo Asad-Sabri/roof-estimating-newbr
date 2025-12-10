@@ -420,7 +420,7 @@ export function useMapboxFunctions() {
       pinMarkerRef.current.setLngLat(tempLocation);
       pinMarkerRef.current.setDraggable(false);
     }
-    mapRef.current?.flyTo({ center: tempLocation, zoom: 20, essential: true });
+    mapRef.current?.flyTo({ center: tempLocation, zoom: 21, essential: true });
   }, [tempLocation]);
   const handleChangeLocation = useCallback(() => {
     if (pinMarkerRef.current) {
@@ -483,7 +483,7 @@ export function useMapboxFunctions() {
       container: mapContainerRef.current,
       style: customGoogleStyle as mapboxgl.Style,
       center,
-      zoom: 19,
+      zoom: 21,
       preserveDrawingBuffer: true,
     });
     mapRef.current = map;

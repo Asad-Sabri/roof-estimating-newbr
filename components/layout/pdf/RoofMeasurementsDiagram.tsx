@@ -1,17 +1,14 @@
+// RoofMeasurementsDiagram.tsx (Original Code - No change needed here)
 import * as React from "react";
 import {
   LINE_COLORS,
   LineData,
   PolygonData,
-  scaleCoordinatesToSVG,
+  scaleCoordinatesToSVG, // Yeh function rotation fix karega
 } from "./constants";
 import { GAFSummary } from "./processRoofData";
 
-// Hardcoded viewbox dimensions (Inko ab component ke andar define kiya hai)
-// const SVG_WIDTH = 750;
-// const SVG_HEIGHT = 450;
-
-// Inner ViewBox dimensions (yeh coordinates scale karne ke liye use honge)
+// Hardcoded viewbox dimensions
 const VIEWBOX_WIDTH = 750;
 const VIEWBOX_HEIGHT = 450;
 
@@ -20,7 +17,6 @@ interface RoofMeasurementsDiagramProps {
   linesData: LineData[];
   polygonsData: PolygonData[];
   summary: GAFSummary;
-  // NEW PROP ADDED: Control to show/hide lengths and detailed legend
   showLengths?: boolean;
 }
 
@@ -30,12 +26,11 @@ export const RoofMeasurementsDiagram: React.FC<
   linesData,
   polygonsData,
   summary,
-  showLengths = true, // Default to true for Full Report compatibility
+  showLengths = true, 
 }) => {
   const { scaledLines, scaledPolygons } = scaleCoordinatesToSVG(
     linesData,
     polygonsData,
-    // Ab yeh viewbox values use honge scaling ke liye
     VIEWBOX_WIDTH,
     VIEWBOX_HEIGHT
   );
@@ -50,19 +45,19 @@ export const RoofMeasurementsDiagram: React.FC<
   const stepLength = summary.hips || 0;
   const dripLength = (summary.eaves || 0) + (summary.rakes || 0);
 
-  // Main container ko flexible banaya gaya hai
+  // Main container
   return (
     <div 
       className="roof-diagram-container" 
       style={{ 
         fontFamily: 'Arial', 
-        width: '100%', // Yeh sabse zaruri hai
-        maxWidth: `${VIEWBOX_WIDTH}px`, // Optional: Agar aap ek max width chahte hain
-        margin: '0 auto', // Center alignment, agar maxWidth set ho
+        width: '100%', 
+        maxWidth: `${VIEWBOX_WIDTH}px`, 
+        margin: '0 auto', 
       }}
     >
       
-      {/* 1. Lengths in feet Header aur Summary ko right side mein adjust karna */}
+      {/* 1. Lengths in feet Header aur Summary */}
       {showLengths && (
         <div 
           style={{ 
@@ -71,15 +66,11 @@ export const RoofMeasurementsDiagram: React.FC<
             alignItems: 'flex-end', 
             marginBottom: '40px', 
             marginTop: '-10px',
-            // Is div ko `width: 100%` se container ki tarah spread karna
             width: '100%', 
-            // Relative positioning hata kar container ke flow me rakha hai
           }}
         >
-          {/* Header */}
-            <span style={{ fontWeight: 'bold', fontSize: '18px', color: '#333', marginBottom: "10px"}}>Lengths in feet</span>
+          <span style={{ fontWeight: 'bold', fontSize: '18px', color: '#333', marginBottom: "10px"}}>Lengths in feet</span>
           
-          {/* Values container */}
           <div
             style={{
               display: 'flex',
@@ -96,29 +87,25 @@ export const RoofMeasurementsDiagram: React.FC<
         </div>
       )}
       
-      {/* SVG (Drawing) - Ab yeh container ki width lega */}
+      {/* 2. SVG (Drawing) */}
       <div 
         style={{ 
-          width: '100%', // Important: 100% width parent container se lega
-          paddingBottom: `${(VIEWBOX_HEIGHT / VIEWBOX_WIDTH) * 100}%`, // Aspect ratio maintain karne ke liye padding-bottom trick
-          position: 'relative', // Padding-bottom trick ke liye zaruri
+          width: '100%', 
+          paddingBottom: `${(VIEWBOX_HEIGHT / VIEWBOX_WIDTH) * 100}%`,
+          position: 'relative', 
         }}
       >
         <svg
-          // width aur height properties hata di hain ya '100%' set kiye hain
-          // width aur height ko relative set kiya hai position absolute se
           width="100%"
           height="100%"
-          viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} // ViewBox set kiya hai
-          // PreserveAspectRatio: Scale up/down karte waqt aspect ratio maintain karta hai
+          viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} 
           preserveAspectRatio="xMidYMid meet" 
           style={{ 
             backgroundColor: '#fff', 
             border: '1px solid #ddd',
-            position: 'absolute', // Padding-bottom trick ke liye
+            position: 'absolute',
             top: 0,
             left: 0,
-            
           }}
         >
           {/* Polygons */}
@@ -183,16 +170,16 @@ export const RoofMeasurementsDiagram: React.FC<
           style={{
             display: "flex",
             justifyContent: "center",
-            gap: "15px", // Gap thoda kam kiya hai
-            flexWrap: 'wrap', // Choti screens par wrap ho jayega
-            marginTop: '15px', // Upar se space
+            gap: "15px", 
+            flexWrap: 'wrap', 
+            marginTop: '15px',
           }}
         >
           {linearSummary.map(([key, value]) => (
             <div key={key} style={{ display: "flex", alignItems: "center" }}>
               <div
                 style={{
-                  width: "12px", // Legend box chota kiya hai
+                  width: "12px", 
                   height: "12px",
                   backgroundColor: LINE_COLORS[key],
                   marginRight: "6px",

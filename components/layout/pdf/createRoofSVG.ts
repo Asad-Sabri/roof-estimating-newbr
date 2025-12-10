@@ -1,6 +1,5 @@
 import * as turf from "@turf/turf";
 
-// Interfaces (ensure same structure as your local data)
 interface LineData {
     id: string;
     type: string;
@@ -24,7 +23,6 @@ interface PolygonData {
 
 const PADDING = 50;
 
-// SAME COLOR MAP FOR LINES + POLYGONS
 const COLOR_MAP: { [key: string]: string } = {
     Ridge: "#FFA500",
     Hip: "#008000",
@@ -39,13 +37,14 @@ const COLOR_MAP: { [key: string]: string } = {
     Default: "#333333",
 };
 
-const formatLength = (length: number): string => `${length.toFixed(2)}  `;
+const formatLength = (length: number): string => `${length.toFixed(2)}  `;
 
 export const createRoofSVG = (
     polygons: PolygonData[],
     lines: LineData[],
     width = 800,
-    height = 600
+    height = 600,
+    rotationAngleDeg = 0
 ): string => {
 
     const features = [
@@ -88,27 +87,26 @@ export const createRoofSVG = (
         return [x, flippedY];
     };
 
-    // 🔥 FINAL SVG STRING
+    // Calculate the center point for rotation
+    const diagramCenterX = width / 2;
+    const diagramCenterY = height / 2;
+    
+    // Reverse the Mapbox rotation: rotate by -angle around the center
+    const rotationTransform = `rotate(${-rotationAngleDeg}, ${diagramCenterX}, ${diagramCenterY})`;
+
     let svg = `
     <svg width="${width}" height="${height}"
     viewBox="0 0 ${width} ${height}"
     xmlns="http://www.w3.org/2000/svg"
-    style="background:white">`;
+    style="background:white">
+        <g transform="${rotationTransform}">
+    `;
 
-    /* ---------------------------------------------------
-       🔶 DRAW POLYGONS (with correct color logic)
-    --------------------------------------------------- */
-    // A. Polygons Draw Karein (Roof Facets)
+    // 🔶 DRAW POLYGONS (with correct color logic)
     polygons.forEach(poly => {
-
-        // Normalize label safe way (avoid undefined/null)
         const rawLabel = poly.properties?.label || "polygon";
-        const normLabel = rawLabel.trim().toLowerCase();   // **critical fix**
+        const normLabel = rawLabel.trim().toLowerCase();
 
-        // Color priority:
-        // 1) custom color
-        // 2) color map
-        // 3) fallback polygon color
         const strokeColor =
             poly.properties?.color ||
             COLOR_MAP[normLabel.charAt(0).toUpperCase() + normLabel.slice(1)] ||
@@ -133,9 +131,7 @@ export const createRoofSVG = (
     `;
     });
 
-    /* ---------------------------------------------------
-       🔶 DRAW LINES + LABELS
-    --------------------------------------------------- */
+    // 🔶 DRAW LINES + LABELS
     lines.forEach(line => {
         const rawLabel = line.properties?.label || "Default";
         const normLabel =
@@ -163,7 +159,6 @@ export const createRoofSVG = (
 
             const text = formatLength(line.properties.lengthFeet);
             const boxW = text.length * 7;
-
             svg += `
                 <rect x="${midX - boxW / 2 - 5}" y="${midY - 10}"
                     width="${boxW + 10}" height="20"
@@ -179,6 +174,6 @@ export const createRoofSVG = (
         }
     });
 
-    svg += `</svg>`;
+    svg += `</g></svg>`; // Close the rotation group and the SVG tag
     return svg;
 };

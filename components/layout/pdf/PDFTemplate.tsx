@@ -1,24 +1,27 @@
-// components/layout/pdf/PDFTemplate.tsx (UPDATED)
+// components/layout/pdf/PDFTemplate.tsx (Updated)
 
 import React from "react";
 import logoSrc from "../../../public/logo-latest.png";
 import { GAFSummary } from "./processRoofData";
 import { RoofMeasurementsDiagram } from "./RoofMeasurementsDiagram";
 import { LineData, PolygonData, LINE_COLORS } from "./constants";
-import { calculateCombinedSummary } from "./calculateCombinedSummary";
+import {
+  calculateCombinedSummary,
+  CombinedSummary, // Import CombinedSummary interface (assuming it exists)
+} from "./calculateCombinedSummary";
 import {
   calculateMaterialQuantities,
   MaterialQuantities,
 } from "./calculateMaterials";
-import { GAFSummaryPage } from "./GAFSummaryPage";
-import { CustomerSalesEstimatePage } from "./CustomerSalesEstimatePage";
+import { GAFSummaryPage } from "./GAFSummaryPage"; // Assuming this is imported
+import { CustomerSalesEstimatePage } from "./CustomerSalesEstimatePage"; // Assuming this is imported
 import {
   BASE_RATE_PER_SQ_FT,
   RATE_PER_LINEAR_FOOT_TRIM,
   MINIMUM_JOB_FEE,
   CARD_HEADER_BG_COLOR,
   ACCENT_COLOR,
-  RED_DISCLAIMER_COLOR, // Added
+  RED_DISCLAIMER_COLOR,
   PageWrapper,
   CardTitleHeader,
   cardContentStyle,
@@ -46,7 +49,6 @@ interface ProjectLocation {
   gafSummary: GAFSummary;
   polygons: PolygonData[];
   lines: LineData[];
-  // Assuming these are part of Customer Selections
   selectedStyle?: string;
   selectedColor?: string;
 }
@@ -61,6 +63,7 @@ interface PDFTemplateProps {
   angledImages: AngledImages;
 }
 
+// CustomReportPageHeader (Kept as provided by user, just fixed logo reference if needed)
 const CustomReportPageHeader: React.FC<{
   title: string;
   isCoverPage: boolean;
@@ -79,14 +82,13 @@ const CustomReportPageHeader: React.FC<{
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    // padding: "15px 25px", // Adjusted padding
-    padding: "15px 10px 10px 10px", // Adjusted padding
-    borderRadius: "8px", // Added border radius
+    padding: "15px 10px 10px 10px", 
+    borderRadius: "8px", 
     margin: "5px 0 20px 0",
   };
 
   const reportMainTitle = isFullReport
-    ? "FULL ROOF MEASUREMENT REPORT" // Changed to Admin Report as per instruction
+    ? "FULL ROOF MEASUREMENT REPORT" 
     : "CUSTOMER ESTIMATE REPORT";
 
   const headerText = isCoverPage ? reportMainTitle : title;
@@ -98,8 +100,7 @@ const CustomReportPageHeader: React.FC<{
           src={logoSrc.src}
           alt="Logo"
           style={{ height: 100, width: "auto" }}
-        />{" "}
-        {/* Adjusted Logo Size */}
+        />
       </div>
 
       <div style={{ textAlign: "right", color: "#fff" }}>
@@ -134,7 +135,7 @@ const CustomReportPageHeader: React.FC<{
   );
 };
 
-// MaterialReportTable remains the same for Admin Report, but updated with better styles
+// MaterialReportTable (Kept as provided by user)
 const MaterialReportTable: React.FC<{ materials: MaterialQuantities }> = ({
   materials,
 }) => {
@@ -210,28 +211,27 @@ const MaterialReportTable: React.FC<{ materials: MaterialQuantities }> = ({
     marginTop: "15px",
     backgroundColor: "#fff",
     borderRadius: "6px",
-    overflow: "hidden", // Ensures border-radius works on table edges
+    overflow: "hidden", 
   };
 
   const thStyle: React.CSSProperties = {
     textAlign: "left",
-    padding: "10px", // Increased padding
-    border: "1px solid #ddd", // Lighter border
+    padding: "10px", 
+    border: "1px solid #ddd", 
     backgroundColor: CARD_HEADER_BG_COLOR,
     color: "#fff",
     fontWeight: "bold",
-    // Removed border-radius here, managed by table style
   };
 
   const tdStyle: React.CSSProperties = {
     padding: "10px",
-    border: "1px solid #eee", // Very light border
+    border: "1px solid #eee", 
     verticalAlign: "middle",
   };
 
   const categoryHeaderStyle: React.CSSProperties = {
     ...tdStyle,
-    backgroundColor: "#EFEFEF", // Lighter background
+    backgroundColor: "#EFEFEF", 
     color: "#333",
     fontWeight: "bold",
     fontSize: "13px",
@@ -301,6 +301,98 @@ const MaterialReportTable: React.FC<{ materials: MaterialQuantities }> = ({
   );
 };
 
+
+// --- 🆕 REUSABLE MEASUREMENT LENGTHS PAGE COMPONENT ---
+interface MeasurementLengthsPageProps {
+    data: ProjectLocation;
+    isFullReport: boolean;
+    customerName: string;
+    pageCounter: number; 
+}
+
+const MeasurementLengthsPage: React.FC<MeasurementLengthsPageProps> = ({
+    data,
+    isFullReport,
+    customerName,
+    pageCounter
+}) => {
+    // calculateCombinedSummary is assumed to be imported
+    const combinedSummary: CombinedSummary = calculateCombinedSummary(data.lines, data.polygons);
+
+    return (
+        // PageWrapper ko bahar se pass kiye gaye pageCounter par depend karega
+        <PageWrapper page={pageCounter}> 
+            <CustomReportPageHeader
+                title="Measurement Lengths Summary"
+                isCoverPage={false}
+                titleFontSize="20px"
+                isFullReport={isFullReport}
+                customerName={customerName}
+            />
+
+            <div style={cardContainerStyle}>
+                <CardTitleHeader title="Detailed Lineal Measurements" />
+                <div style={cardContentStyle}>
+                    {/* Roof Diagram Component: showLengths={true} */}
+                    <RoofMeasurementsDiagram
+                        linesData={data.lines}
+                        polygonsData={data.polygons}
+                        summary={data.gafSummary}
+                        showLengths={true}
+                    />
+                    <div
+                        style={{
+                            display: "flex",
+                            justifyContent: "space-around",
+                            padding: "10px 0 0 0",
+                            borderTop: "1px solid #eee",
+                            marginTop: "10px",
+                        }}
+                    >
+                        {[
+                            { label: "Ridge", value: combinedSummary.ridges },
+                            { label: "Hip", value: combinedSummary.hips },
+                            { label: "Valley", value: combinedSummary.valleys },
+                            { label: "Rake", value: combinedSummary.rakes },
+                            { label: "Eave", value: combinedSummary.eaves },
+                            { label: "Flashing", value: combinedSummary.flashings },
+                            {
+                                label: "Step Flashing",
+                                value: combinedSummary.stepFlashings,
+                            },
+                        ].map((item) => (
+                            <div
+                                key={item.label}
+                                style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    fontSize: "12px",
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        fontWeight: "bold",
+                                        marginBottom: "3px",
+                                        color:
+                                            LINE_COLORS[item.label.toLowerCase()] ||
+                                            CARD_HEADER_BG_COLOR,
+                                    }}
+                                >
+                                    {item.label}
+                                </div>
+                                <div>{item.value?.toFixed(0) || 0} ft</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </PageWrapper>
+    );
+};
+// --- END REUSABLE COMPONENT ---
+
+
 const PDFTemplate: React.FC<PDFTemplateProps> = ({
   mapImage,
   topViewImage,
@@ -343,7 +435,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
     totalNetAreaSqFt
   );
 
-  let pageCounter = 0;
+  let pageCounter = 0; // pageCounter will be incremented in the main render logic
 
   const DYNAMIC_SALES_DATA = {
     estimatePrice: Math.round(estimatePrice / 10) * 10,
@@ -372,101 +464,243 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
 
   const customerName = `${data.firstName || ""} ${data.lastName || ""}`.trim();
 
-  // --- CUSTOMER REPORT TEMPLATE ---
+  // --- CUSTOMER REPORT TEMPLATE (Owner/Preliminary Report) ---
 
   const CustomerReportTemplate: React.FC<{
     roofArea: string;
     customerSelections: { style: string; color: string };
-  }> = ({ roofArea, customerSelections }) => (
-    <>
-      <PageWrapper page={++pageCounter}>
-        <CustomReportPageHeader
-          title="Customer Estimate Report"
-          isCoverPage={true}
-          isFullReport={false}
-          customerName={customerName}
+    mapImage: string;
+    topViewImage: string;
+    angledImages: AngledImages;
+    customerName: string;
+    initialPageCounter: number;
+  }> = ({ roofArea, customerSelections, mapImage, topViewImage, angledImages, customerName, initialPageCounter }) => {
+    let internalPageCounter = initialPageCounter; 
+    
+    return (
+      <>
+        {/* Page 1: Cover Page / Summary / Selections / Disclaimer */}
+        <PageWrapper page={++internalPageCounter}>
+          <CustomReportPageHeader
+            title="Customer Estimate Report"
+            isCoverPage={true}
+            isFullReport={false}
+            customerName={customerName}
+          />
+
+          <div style={{ ...cardContainerStyle, marginBottom: "40px" }}>
+            <CardTitleHeader title="Preliminary Estimate Summary" />
+            <div
+              style={{
+                ...cardContentStyle,
+                textAlign: "center",
+                padding: "30px 25px",
+              }}
+            >
+              <h3 style={{ margin: 0, color: "#333", fontSize: "16px" }}>
+                Estimated Total Roofing Area
+              </h3>
+              <p
+                style={{
+                  margin: "10px 0 20px 0",
+                  fontSize: "36px",
+                  fontWeight: "bold",
+                  color: CARD_HEADER_BG_COLOR,
+                }}
+              >
+                {roofArea} SQ FT
+              </p>
+            </div>
+          </div>
+
+          <div style={cardContainerStyle}>
+            <CardTitleHeader title="Your Selections" />
+            <div style={cardContentStyle}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "10px 0",
+                  borderBottom: "1px solid #eee",
+                }}
+              >
+                <span style={{ fontWeight: "bold" }}>Shingle Style:</span>
+                <span>{customerSelections.style}</span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "10px 0",
+                }}
+              >
+                <span style={{ fontWeight: "bold" }}>Color:</span>
+                <span>{customerSelections.color}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Disclaimer Card (PRELIMINARY ESTIMATE ONLY – TO BE CONFIRMED AFTER INSPECTION) */}
+          <div style={cardContainerStyle}>
+            <div
+              style={{
+                ...cardContentStyle,
+                textAlign: "center",
+                padding: "15px 25px",
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                  color: RED_DISCLAIMER_COLOR,
+                }}
+              >
+                PRELIMINARY ESTIMATE ONLY – TO BE CONFIRMED AFTER INSPECTION
+              </p>
+              <p style={{ margin: "5px 0 0 0", fontSize: "10px", color: "#666" }}>
+                This estimate is based on aerial measurements and is subject to
+                change upon a physical inspection of the property.
+              </p>
+            </div>
+          </div>
+        </PageWrapper>
+
+        {/* Page 2: Black Simple Diagram (Top View) */}
+        <PageWrapper page={++internalPageCounter}>
+          <CustomReportPageHeader
+            title="Roof Outline Diagram"
+            isCoverPage={false}
+            titleFontSize="20px"
+            isFullReport={false} 
+            customerName={customerName}
+          />
+          {topViewImage && ( 
+            <div style={cardContainerStyle}>
+              <CardTitleHeader title="Top Down Schematic View" />
+              <div style={cardContentStyle}>
+                <img
+                  src={topViewImage}
+                  alt="Roof Outline Diagram"
+                  style={{
+                    width: "100%",
+                    height: "auto",
+                    maxHeight: "700px",
+                    objectFit: "contain",
+                    borderRadius: "6px",
+                    display: "block",
+                    border: `1px solid #333`,
+                  }}
+                  crossOrigin="anonymous"
+                />
+              </div>
+            </div>
+          )}
+        </PageWrapper>
+
+        {/* Page 3: Top View (Aerial Map View) */}
+        <PageWrapper page={++internalPageCounter}>
+          <CustomReportPageHeader
+            title="Aerial Map View (Top View)"
+            isCoverPage={false}
+            titleFontSize="20px"
+            isFullReport={false} 
+            customerName={customerName}
+          />
+          {mapImage && (
+            <div style={cardContainerStyle}>
+              <CardTitleHeader title="High-Resolution Map Imagery" />
+              <div style={cardContentStyle}>
+                <img
+                  src={mapImage}
+                  alt="Map Screenshot"
+                  style={{
+                    width: "100%",
+                    height: "auto",
+                    maxHeight: "700px",
+                    objectFit: "contain",
+                    borderRadius: "6px",
+                    display: "block",
+                    border: `1px solid ${ACCENT_COLOR}`,
+                  }}
+                  crossOrigin="anonymous"
+                />
+              </div>
+            </div>
+          )}
+        </PageWrapper>
+
+        {/* Page 4: Side Views (Angled Images) */}
+        <PageWrapper page={++internalPageCounter}>
+          <CustomReportPageHeader
+            title="Side Angles View"
+            isCoverPage={false}
+            titleFontSize="20px"
+            isFullReport={false} 
+            customerName={customerName}
+          />
+          <div
+            style={{
+              ...cardContainerStyle,
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: 15,
+              padding: "10px  25px 25px 25px", 
+            }}
+          >
+            {Object.entries(angledImages).map(([direction, src]) => (
+              <div
+                key={direction}
+                style={{
+                  position: "relative",
+                  border: "1px solid #eee",
+                  borderRadius: 6,
+                  overflow: "hidden",
+                }}
+              >
+                <img
+                  src={src}
+                  alt={`${direction} View`}
+                  style={{
+                    width: "100%",
+                    height: "auto",
+                    display: "block",
+                  }}
+                  crossOrigin="anonymous"
+                />
+                <h4
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    margin: 0,
+                    padding: "0px 5px 10px 5px",
+                    backgroundColor: CARD_HEADER_BG_COLOR,
+                    color: "#ffffff",
+                    fontSize: "8px",
+                    fontWeight: "bold",
+                    textTransform: "uppercase",
+                    borderBottomRightRadius: 6,
+                  }}
+                >
+                  {direction}
+                </h4>
+              </div>
+            ))}
+          </div>
+        </PageWrapper>
+
+        {/* 💥 Page 5: Measurement Lengths Diagram (Using New Reusable Component) */}
+        <MeasurementLengthsPage
+            data={data}
+            isFullReport={false} // Customer Report
+            customerName={customerName}
+            pageCounter={++internalPageCounter}
         />
-
-        <div style={{ ...cardContainerStyle, marginBottom: "40px" }}>
-          <CardTitleHeader title="Preliminary Estimate Summary" />
-          <div
-            style={{
-              ...cardContentStyle,
-              textAlign: "center",
-              padding: "30px 25px",
-            }}
-          >
-            <h3 style={{ margin: 0, color: "#333", fontSize: "16px" }}>
-              Estimated Total Roofing Area
-            </h3>
-            <p
-              style={{
-                margin: "10px 0 20px 0",
-                fontSize: "36px",
-                fontWeight: "bold",
-                color: CARD_HEADER_BG_COLOR,
-              }}
-            >
-              {roofArea} SQ FT
-            </p>
-          </div>
-        </div>
-
-        <div style={cardContainerStyle}>
-          <CardTitleHeader title="Your Selections" />
-          <div style={cardContentStyle}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "10px 0",
-                borderBottom: "1px solid #eee",
-              }}
-            >
-              <span style={{ fontWeight: "bold" }}>Shingle Style:</span>
-              <span>{customerSelections.style}</span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "10px 0",
-              }}
-            >
-              <span style={{ fontWeight: "bold" }}>Color:</span>
-              <span>{customerSelections.color}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Disclaimer Card */}
-        <div style={cardContainerStyle}>
-          <div
-            style={{
-              ...cardContentStyle,
-              textAlign: "center",
-              padding: "15px 25px",
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                fontSize: "14px",
-                fontWeight: "bold",
-                color: RED_DISCLAIMER_COLOR,
-              }}
-            >
-              PRELIMINARY ESTIMATE ONLY – TO BE CONFIRMED AFTER INSPECTION
-            </p>
-            <p style={{ margin: "5px 0 0 0", fontSize: "10px", color: "#666" }}>
-              This estimate is based on aerial measurements and is subject to
-              change upon a physical inspection of the property.
-            </p>
-          </div>
-        </div>
-      </PageWrapper>
-    </>
-  );
+      </>
+    );
+  };
 
   // --- MAIN RENDER ---
   return (
@@ -479,13 +713,26 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             style: DYNAMIC_SALES_DATA.style,
             color: DYNAMIC_SALES_DATA.color,
           }}
+          mapImage={mapImage}
+          topViewImage={topViewImage}
+          angledImages={angledImages}
+          customerName={customerName}
+          initialPageCounter={pageCounter} // Pass the current page counter
         />
       )}
+      
+      {/* Update pageCounter after Customer Report renders */}
+      {/* Note: In a real environment, PDF rendering library handles page numbering implicitly. 
+         Here, we track it manually. Since CustomerReportTemplate updates its internal counter, 
+         we need to figure out the last page number from it if we proceed to Admin Report next. 
+         But since we only render one type, we can safely start Admin counter from 0/1. 
+         Let's keep the logic simple assuming only one template is rendered. 
+      */}
 
       {/* RENDER FULL REPORT PAGES */}
       {isFullReport && (
         <>
-          {/* Page 1: Cover Page / Project Details (Admin Report) */}
+          {/* Page 1: Cover Page / Color-Coded Diagram (Admin Report) */}
           <PageWrapper page={++pageCounter}>
             <CustomReportPageHeader
               title="Full Roof Measurement Report"
@@ -495,15 +742,14 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             />
 
             <div style={cardContainerStyle}>
-              {/* <CardTitleHeader title="Color-Coded Roof Diagram" /> */}
               <div>
                 {polygonDiagramImage && (
                   <img
                     src={polygonDiagramImage}
-                    alt="Polygon Diagram"
+                    alt="Color Coded Polygon Diagram" // Image added for color-coded diagram
                     style={{
                       width: "100%",
-                      height: "450px", // Maintained height
+                      height: "450px", 
                       objectFit: "contain",
                       borderRadius: "6px",
                       border: `1px solid ${ACCENT_COLOR}`,
@@ -526,14 +772,16 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                 <CardTitleHeader title="Report Contents" />
                 <div style={{ ...cardContentStyle, fontSize: "12px" }}>
                   {[
-                    "Overview",
-                    "Top View",
-                    "Side Views",
-                    "Lengths",
-                    "Pitches",
-                    "Areas",
-                    "Summary",
-                    "Materials",
+                    "Color-Coded View",
+                    "Top View (Simple Diagram)",
+                    "Aerial Map View (Top View)",
+                    "Side Views (4 Angles)",
+                    "Lengths Diagram",
+                    "Pitches Summary",
+                    "Areas Summary",
+                    "GAF Summary",
+                    "Materials Quantity",
+                    "Sales Estimate",
                   ].map((item, index) => (
                     <div
                       key={item}
@@ -600,26 +848,30 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             </div>
           </PageWrapper>
 
-          {/* Page 2: Top View (Card Applied) */}
+          {/* Page 2: Top View (Simple Diagram - Schematic) */}
           <PageWrapper page={++pageCounter}>
             <CustomReportPageHeader
-              title="Top View"
+              title="Top View (Simple Diagram)"
               isCoverPage={false}
               titleFontSize="20px"
               isFullReport={isFullReport}
               customerName={customerName}
             />
-            {mapImage && (
+            {topViewImage && ( 
               <div style={cardContainerStyle}>
-                <CardTitleHeader title="Aerial Map View" />
+                <CardTitleHeader title="Top Down Schematic View" />
                 <div style={cardContentStyle}>
                   <img
-                    src={mapImage}
-                    alt="Map Screenshot"
+                    src={topViewImage}
+                    alt="Top View Simple Diagram"
                     style={{
                       width: "100%",
+                      height: "auto",
+                      maxHeight: "650px", 
+                      objectFit: "contain",
                       borderRadius: "6px",
                       display: "block",
+                      border: `1px solid #333`, 
                     }}
                     crossOrigin="anonymous"
                   />
@@ -628,10 +880,43 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             )}
           </PageWrapper>
 
-          {/* Page 3: Side Views (Card Applied) */}
+          {/* Page 3: Top View (Aerial Map View) */}
           <PageWrapper page={++pageCounter}>
             <CustomReportPageHeader
-              title="Side Views"
+              title="Aerial Map View (Top View)"
+              isCoverPage={false}
+              titleFontSize="20px"
+              isFullReport={isFullReport}
+              customerName={customerName}
+            />
+            {mapImage && (
+              <div style={cardContainerStyle}>
+                <CardTitleHeader title="High-Resolution Map Imagery" />
+                <div style={cardContentStyle}>
+                  <img
+                    src={mapImage}
+                    alt="Map Screenshot"
+                    style={{
+                      width: "100%",
+                      height: "auto",
+                      maxHeight: "650px", 
+                      objectFit: "contain",
+                      borderRadius: "6px",
+                      display: "block",
+                      border: `1px solid ${ACCENT_COLOR}`,
+                    }}
+                    crossOrigin="anonymous"
+                  />
+                </div>
+              </div>
+            )}
+          </PageWrapper>
+
+
+          {/* Page 4: Side Views (Angled Images) */}
+          <PageWrapper page={++pageCounter}>
+            <CustomReportPageHeader
+              title="Side Views (4 Angles)"
               isCoverPage={false}
               titleFontSize="20px"
               isFullReport={isFullReport}
@@ -643,7 +928,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                 display: "grid",
                 gridTemplateColumns: "repeat(2, 1fr)",
                 gap: 15,
-                padding: "10px  25px 25px 25px", // Padding inside the main card container
+                padding: "10px  25px 25px 25px", 
               }}
             >
               {Object.entries(angledImages).map(([direction, src]) => (
@@ -688,77 +973,16 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             </div>
           </PageWrapper>
 
-          {/* Page 4: Measurement Diagram Image and Key (Card Applied) */}
-
-          {/* Page 5: Measurement Lengths Summary (Card Applied) */}
-          <PageWrapper page={++pageCounter}>
-            <CustomReportPageHeader
-              title="Measurement Lengths Summary"
-              isCoverPage={false}
-              titleFontSize="20px"
-              isFullReport={isFullReport}
-              customerName={customerName}
-            />
-
-            <div style={cardContainerStyle}>
-              <CardTitleHeader title="Detailed Lineal Measurements" />
-              <div style={cardContentStyle}>
-                <RoofMeasurementsDiagram
-                  linesData={data.lines}
-                  polygonsData={data.polygons}
-                  summary={data.gafSummary}
-                  showLengths={true}
-                />
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-around",
-                    padding: "10px 0 0 0",
-                    borderTop: "1px solid #eee",
-                    marginTop: "10px",
-                  }}
-                >
-                  {[
-                    { label: "Ridge", value: combinedSummary.ridges },
-                    { label: "Hip", value: combinedSummary.hips },
-                    { label: "Valley", value: combinedSummary.valleys },
-                    { label: "Rake", value: combinedSummary.rakes },
-                    { label: "Eave", value: combinedSummary.eaves },
-                    { label: "Flashing", value: combinedSummary.flashings },
-                    {
-                      label: "Step Flashing",
-                      value: combinedSummary.stepFlashings,
-                    },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        fontSize: "12px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontWeight: "bold",
-                          marginBottom: "3px",
-                          color:
-                            LINE_COLORS[item.label.toLowerCase()] ||
-                            CARD_HEADER_BG_COLOR,
-                        }}
-                      >
-                        {item.label}
-                      </div>
-                      <div>{item.value?.toFixed(0) || 0} ft</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </PageWrapper>
-
-          {/* Page 6: MATERIAL REPORT (Card Applied) */}
+          {/* 💥 Page 5: Measurement Lengths Diagram (Reusable Component) */}
+          {/* Your requested page, using the new reusable component */}
+          <MeasurementLengthsPage
+            data={data}
+            isFullReport={true} // Admin Report
+            customerName={customerName}
+            pageCounter={++pageCounter}
+          />
+          
+          {/* Page 6: MATERIAL REPORT (Internal Pricing/Quantities) */}
           <PageWrapper page={++pageCounter}>
             <CustomReportPageHeader
               title="Roofing Materials Estimate"
@@ -779,7 +1003,6 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
               </div>
             </div>
 
-            {/* Notes Section (Small Card) */}
             <div style={cardContainerStyle}>
               <CardTitleHeader title="Notes" />
               <div
@@ -808,6 +1031,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </PageWrapper>
 
           {/* Remaining Admin Report Pages (GAF Summary and Sales Estimate) */}
+          {/* GAFSummaryPage will handle its own page increment internally, starting from the current pageCounter */}
           <GAFSummaryPage
             data={{
               ...data,
@@ -822,6 +1046,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             pageCounter={pageCounter}
           />
 
+          {/* CustomerSalesEstimatePage will handle its own page increment internally */}
           <CustomerSalesEstimatePage
             data={{
               ...data,
