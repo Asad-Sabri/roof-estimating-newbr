@@ -320,7 +320,7 @@ export const CustomerSalesEstimatePage: React.FC<
               >
                 superiorroofing@gmail.com
               </a>
-              {" | "}
+              {"|"}
               <a
                 href={`tel:+1 (847) 489-7999`}
                 style={{
