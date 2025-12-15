@@ -13,7 +13,7 @@ type ReportType = "full" | "owner";
 interface AngledImages {
   north: string;
   east: string;
-  south: string; // bearing: 180
+  south: string;
   west: string; // bearing: 270
 }
 
