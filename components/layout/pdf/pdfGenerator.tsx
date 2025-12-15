@@ -11,7 +11,7 @@ import {
 type ReportType = "full" | "owner";
 
 interface AngledImages {
-  north: string; // bearing: 0
+  north: string;
   east: string; // bearing: 90
   south: string; // bearing: 180
   west: string; // bearing: 270
