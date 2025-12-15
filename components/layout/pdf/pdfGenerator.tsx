@@ -14,7 +14,7 @@ interface AngledImages {
   north: string;
   east: string;
   south: string;
-  west: string; // bearing: 270
+  west: string; 
 }
 
 const convertSVGToDataURL = (
