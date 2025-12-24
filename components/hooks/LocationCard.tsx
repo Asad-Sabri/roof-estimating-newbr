@@ -8,6 +8,8 @@ interface Props {
   handleConfirmLocation: () => void;
   handleChangeLocation: () => void;
   editMode: boolean;
+  isLocationConfirmed?: boolean;
+  showLocationCard?: boolean;
 }
 
 export default function LocationCard({
@@ -15,6 +17,8 @@ export default function LocationCard({
   handleConfirmLocation,
   handleChangeLocation,
   editMode,
+  isLocationConfirmed = false,
+  showLocationCard = true,
 }: Props) {
   const [address, setAddress] = useState("Loading address...");
 
@@ -58,14 +62,23 @@ export default function LocationCard({
           onClick={handleConfirmLocation}
           className="bg-blue-800 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-blue-900 transition-colors"
         >
-          Confirm
+          Confirm Location
         </button>
-        <button
-          onClick={handleChangeLocation}
-          className={`px-3 py-1.5 rounded-md text-sm font-medium border text-black transition-colors ${editMode ? "bg-yellow-100" : "bg-white"}`}
-        >
-          {editMode ? "Tap map to move pin" : "Change"}
-        </button>
+        {/* Show "Change Location" button when NOT in edit mode */}
+        {!editMode && (
+          <button
+            onClick={handleChangeLocation}
+            className="px-3 py-1.5 rounded-md text-sm font-medium border border-gray-300 bg-white text-black hover:bg-gray-50 transition-colors"
+          >
+            Change Location
+          </button>
+        )}
+        {/* Show "Click on map to move pin" when in edit mode - same row */}
+        {editMode && (
+          <div className="px-3 py-1.5 rounded-md text-sm font-medium border border-yellow-400 bg-yellow-50 text-yellow-800">
+            Click on map to move pin
+          </div>
+        )}
       </div>
     </div>
   );

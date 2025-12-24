@@ -11,6 +11,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 type Report = {
   id: number;
@@ -60,6 +61,7 @@ const mockReports: Report[] = [
 ];
 
 export default function AdminReportsPage() {
+  useProtectedRoute(); // Protect this route
   const [reports, setReports] = useState<Report[]>([]);
 
   // ✅ Load mock reports

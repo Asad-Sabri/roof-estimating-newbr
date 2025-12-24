@@ -11,6 +11,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 // ✅ Stats Overview
 const stats = [
@@ -31,6 +32,7 @@ const activities = [
 ];
 
 export default function AdminDashboardPage() {
+  useProtectedRoute(); // Protect this route
   return (
     <AdminDashboardLayout>
       <div className="space-y-10 animate-fadeIn">

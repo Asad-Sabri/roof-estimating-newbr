@@ -57,6 +57,7 @@ const rolePermissions: Record<Role, string[]> = {
 };
 
 export default function AssignRolesPage() {
+  useProtectedRoute(); // Protect this route
   const [users, setUsers] = useState<UserData[]>(initialUsers);
 
   // store per-user saved permissions (if any)

@@ -12,20 +12,26 @@ export default function Mapbox() {
     tempLocation,
     showLocationCard,
     isLocationConfirmed,
+    isEditMode,
     handleConfirmLocation,
     handleChangeLocation,
   } = useMapContext();
 
   return (
-    <div className="w-full h-full">
-      <HeaderToolbar mapRef={mapRef || { current: null }} />
-      <div ref={mapContainerRef} className="w-full h-full" />
+    <div className="absolute inset-0 w-full h-full relative" style={{ zIndex: 1, overflow: 'hidden' }}>
+      <div 
+        ref={mapContainerRef} 
+        className="absolute inset-0 w-full h-full" 
+        style={{ zIndex: 0, position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      />
       {showLocationCard && tempLocation && (
         <LocationCard
           tempLocation={tempLocation}
           handleConfirmLocation={handleConfirmLocation}
           handleChangeLocation={handleChangeLocation}
-          editMode={!isLocationConfirmed}
+          editMode={isEditMode}
+          isLocationConfirmed={isLocationConfirmed}
+          showLocationCard={showLocationCard}
         />
       )}
     </div>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import DashboardLayout from "@/app/page"; // <-- update if your layout is elsewhere
 import { motion } from "framer-motion";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import {
   FileText,
   Clock,
@@ -196,6 +197,7 @@ function SignaturePad({
 
 /* --------------------- Page Component --------------------- */
 export default function ProposalPage() {
+  useProtectedRoute(); // Protect this route
   const { id } = useParams();
   const [name, setName] = useState("");
   const [signedRecord, setSignedRecord] = useState<SignedRecord | null>(null);

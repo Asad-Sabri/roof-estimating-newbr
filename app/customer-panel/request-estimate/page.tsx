@@ -9,12 +9,14 @@ import CustomerDashboardLayout from "@/app/dashboard/customer/page";
 import { useRouter } from "next/navigation";
 import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 import { createProjectAPI } from "../../../services/auth";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 const geocodingClient = mbxGeocoding({
   accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN!,
 });
 
 export default function CreateProjectForm() {
+  useProtectedRoute(); // Protect this route
   const router = useRouter();
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);

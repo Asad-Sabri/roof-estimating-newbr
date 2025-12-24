@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { User, Edit, Trash2, Eye, ToggleLeft, ToggleRight } from "lucide-react";
 import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 type Customer = {
   id: number;
@@ -61,6 +62,7 @@ const mockData: Customer[] = [
 ];
 
 export default function AdminCustomersPage() {
+  useProtectedRoute(); // Protect this route
   // ✅ Start with mockData
   const [customers, setCustomers] = useState<Customer[]>(mockData);
 

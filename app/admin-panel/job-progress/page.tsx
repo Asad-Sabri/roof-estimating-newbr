@@ -19,6 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 /* -------------------- Types -------------------- */
 type Update = {
@@ -41,6 +42,7 @@ const STATUS_STEPS = [
 
 /* -------------------- Component -------------------- */
 export default function AdminJobProgressPage() {
+  useProtectedRoute(); // Protect this route
   const { id } = useParams();
 
   const [updates, setUpdates] = useState<Update[]>(() => {

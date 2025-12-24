@@ -46,10 +46,122 @@ export function useMapboxFunctions() {
   const [tempLocation, setTempLocation] = useState<[number, number] | null>(null);
   const [pinLocation, setPinLocation] = useState<[number, number] | null>(null);
   const pinMarkerRef = useRef<mapboxgl.Marker | null>(null);
-  const savedLocationRaw = typeof window !== "undefined" ? localStorage.getItem("projectLocation") : null;
-  const initialLocationConfirmed = !!savedLocationRaw;
-  const [showLocationCard, setShowLocationCard] = useState<boolean>(!initialLocationConfirmed);
-  const [isLocationConfirmed, setIsLocationConfirmed] = useState<boolean>(initialLocationConfirmed);
+  
+  // Function to create/update marker at a location
+  const setMarkerAtLocation = useCallback((location: [number, number], draggable: boolean = false) => {
+    if (!mapRef.current) {
+      // Wait for map to be ready
+      setTimeout(() => setMarkerAtLocation(location, draggable), 100);
+      return;
+    }
+    
+    if (!pinMarkerRef.current) {
+      // Create new marker
+      const marker = new mapboxgl.Marker({
+        draggable,
+        color: '#FF0000',
+      })
+        .setLngLat(location)
+        .addTo(mapRef.current);
+      
+      // Wait for marker to be added to DOM, then style it
+      setTimeout(() => {
+        const markerElement = marker.getElement();
+        if (markerElement) {
+          // Force marker to be visible
+          markerElement.style.cssText = `
+            z-index: 9999 !important;
+            position: absolute !important;
+            pointer-events: auto !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+          `;
+          // Set all parent containers
+          let parent = markerElement.parentElement;
+          while (parent) {
+            if (parent.classList.contains('mapboxgl-marker-container') || parent.classList.contains('mapboxgl-marker')) {
+              parent.style.cssText = `
+                z-index: 9999 !important;
+                position: relative !important;
+                display: block !important;
+                visibility: visible !important;
+              `;
+            }
+            parent = parent.parentElement;
+          }
+          console.log('Marker created and visible:', markerElement);
+        }
+      }, 100);
+      
+      // Add drag listener if draggable
+      if (draggable) {
+        marker.on("drag", (ev) => {
+          const p = (ev.target as mapboxgl.Marker).getLngLat();
+          setTempLocation([p.lng, p.lat]);
+        });
+      }
+      
+      pinMarkerRef.current = marker;
+    } else {
+      // Update existing marker
+      pinMarkerRef.current.setLngLat(location);
+      pinMarkerRef.current.setDraggable(draggable);
+      
+      // Ensure z-index is set
+      setTimeout(() => {
+        const markerElement = pinMarkerRef.current?.getElement();
+        if (markerElement) {
+          markerElement.style.cssText = `
+            z-index: 9999 !important;
+            position: absolute !important;
+            pointer-events: auto !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+          `;
+          let parent = markerElement.parentElement;
+          while (parent) {
+            if (parent.classList.contains('mapboxgl-marker-container') || parent.classList.contains('mapboxgl-marker')) {
+              parent.style.cssText = `
+                z-index: 9999 !important;
+                position: relative !important;
+                display: block !important;
+                visibility: visible !important;
+              `;
+            }
+            parent = parent.parentElement;
+          }
+        }
+      }, 50);
+    }
+  }, []);
+  
+  // Function to get location from localStorage
+  const getLocationFromStorage = useCallback((): [number, number] | null => {
+    if (typeof window === "undefined") return null;
+    
+    const savedLoc = localStorage.getItem("projectLocation");
+    if (!savedLoc) return null;
+    
+    try {
+      const coords = JSON.parse(savedLoc);
+      if (coords && typeof coords.lat === "number" && typeof coords.lng === "number") {
+        return [coords.lng, coords.lat];
+      }
+    } catch (err) {
+      console.warn("Error parsing projectLocation from localStorage", err);
+    }
+    
+    return null;
+  }, []);
+  
+  // Get initial coordinates from localStorage
+  const initialCoords = getLocationFromStorage();
+  
+  // Show location card initially - user needs to confirm even if location is saved
+  const [showLocationCard, setShowLocationCard] = useState<boolean>(true);
+  const [isLocationConfirmed, setIsLocationConfirmed] = useState<boolean>(false);
   const defaultPolygonLabels = ["Ridge", "Hip", "Valley", "Rake", "Eave", "Flashing", "Step Flashing"];
   const defaultLineLabels = ["Ridge", "Hip", "Valley", "Rake", "Eave", "Flashing", "Step Flashing"];
 
@@ -398,45 +510,74 @@ export function useMapboxFunctions() {
       }
     }
   }, [pushHistory, updateShapesData, updateEdgeLabels, toggleGrid, labelsVisible]);
-  let center: [number, number] = [0, 0];
-  if (savedLocationRaw) {
-    try {
-      const coords = JSON.parse(savedLocationRaw);
-      if (coords && typeof coords.lat === "number" && typeof coords.lng === "number") {
-        center = [coords.lng, coords.lat];
-      }
-    } catch (err) {
-      console.warn("Invalid projectLocation in localStorage", err);
-    }
-  }
+  
+  // Calculate center from saved location (projectLocation or projectAddress)
+  // Use initialCoords if available, otherwise default to [0, 0]
+  const center: [number, number] = initialCoords || [0, 0];
   const handleConfirmLocation = useCallback(() => {
     if (!tempLocation) return;
+    
+    // Save location to localStorage
     if (typeof window !== "undefined") {
       localStorage.setItem("projectLocation", JSON.stringify({ lat: tempLocation[1], lng: tempLocation[0] }));
+      // Also update projectAddress if it exists
+      const projectAddress = localStorage.getItem("projectAddress");
+      if (projectAddress) {
+        try {
+          const addr = JSON.parse(projectAddress);
+          addr.lat = tempLocation[1];
+          addr.lng = tempLocation[0];
+          localStorage.setItem("projectAddress", JSON.stringify(addr));
+        } catch (e) {
+          console.warn("Could not update projectAddress", e);
+        }
+      }
     }
+    
+    // Hide location card and exit edit mode
     setIsLocationConfirmed(true);
+    setIsEditMode(false);
     setShowLocationCard(false);
-    if (pinMarkerRef.current) {
-      pinMarkerRef.current.setLngLat(tempLocation);
-      pinMarkerRef.current.setDraggable(false);
+    
+    // Update marker position and make it non-draggable (fixed at location)
+    setMarkerAtLocation(tempLocation, false);
+    
+    // Zoom to confirmed location - marker will stay fixed at coordinates
+    if (mapRef.current) {
+      mapRef.current.flyTo({ 
+        center: tempLocation, 
+        zoom: 21, 
+        essential: true,
+        duration: 1000 
+      });
     }
-    mapRef.current?.flyTo({ center: tempLocation, zoom: 21, essential: true });
-  }, [tempLocation]);
+  }, [tempLocation, setMarkerAtLocation]);
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  
   const handleChangeLocation = useCallback(() => {
+    setIsLocationConfirmed(false);
+    setIsEditMode(true); // Enable edit mode when "Change Location" is clicked
+    setShowLocationCard(true);
+    // Make marker draggable and enable map clicks
     if (pinMarkerRef.current) {
       pinMarkerRef.current.setDraggable(true);
     }
-    setIsLocationConfirmed(false);
-    setShowLocationCard(true);
   }, []);
   useEffect(() => {
     if (!mapRef.current) return;
     const map = mapRef.current;
     let onClickMoveMap: (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => void;
-    if (showLocationCard && !isLocationConfirmed) {
+    
+    // Enable map clicks when location card is shown, location is not confirmed, and in edit mode
+    if (showLocationCard && !isLocationConfirmed && isEditMode) {
       onClickMoveMap = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
         const { lng, lat } = e.lngLat;
-        setTempLocation([lng, lat]);
+        const newLocation: [number, number] = [lng, lat];
+        setTempLocation(newLocation);
+        setPinLocation(newLocation);
+        
+        // Move marker to clicked location
+        setMarkerAtLocation(newLocation, true);
       };
       map.on("click", onClickMoveMap);
       return () => {
@@ -444,31 +585,12 @@ export function useMapboxFunctions() {
       };
     }
     return () => { };
-  }, [showLocationCard, isLocationConfirmed]);
+  }, [showLocationCard, isLocationConfirmed, isEditMode, setMarkerAtLocation]);
   useEffect(() => {
     if (!mapRef.current || !tempLocation) return;
-    if (!pinMarkerRef.current) {
-      const marker = new mapboxgl.Marker({
-        draggable: !isLocationConfirmed,
-        anchor: 'top',
-        offset: [625, -800],
-        color: "#FF0000",
-      })
-        .setLngLat(tempLocation)
-        .addTo(mapRef.current);
-      if (!isLocationConfirmed) {
-        marker.on("drag", (ev) => {
-          const p = (ev.target as mapboxgl.Marker).getLngLat();
-          setTempLocation([p.lng, p.lat]);
-        });
-      }
-      pinMarkerRef.current = marker;
-    }
-    else {
-      pinMarkerRef.current.setLngLat(tempLocation);
-      pinMarkerRef.current.setDraggable(!isLocationConfirmed);
-    }
-  }, [tempLocation, isLocationConfirmed]);
+    // Update marker position based on confirmation status
+    setMarkerAtLocation(tempLocation, !isLocationConfirmed);
+  }, [tempLocation, isLocationConfirmed, setMarkerAtLocation]);
   // useMapboxFunctions.ts (Add this new useEffect)
   useEffect(() => {
     if (tempLocation) {
@@ -483,7 +605,7 @@ export function useMapboxFunctions() {
       container: mapContainerRef.current,
       style: customGoogleStyle as mapboxgl.Style,
       center,
-      zoom: 21,
+      zoom: 20,
       preserveDrawingBuffer: true,
     });
     mapRef.current = map;
@@ -543,7 +665,20 @@ export function useMapboxFunctions() {
     } as any);
     drawRef.current = draw;
     map.addControl(draw);
+    
+    // Handle window resize to keep map responsive
+    const handleResize = () => {
+      if (mapRef.current) {
+        mapRef.current.resize();
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    
     map.on("load", () => {
+      // Resize map to ensure proper display
+      setTimeout(() => {
+        map.resize();
+      }, 100);
       if (!map.getSource("polygon-edges")) {
         map.addSource("polygon-edges", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       }
@@ -560,12 +695,90 @@ export function useMapboxFunctions() {
           },
         });
       }
+      
+      // Check for saved location from localStorage (projectLocation) - direct access to avoid function dependency
+      if (typeof window !== "undefined") {
+        const savedLoc = localStorage.getItem("projectLocation");
+        if (savedLoc) {
+          try {
+            const coords = JSON.parse(savedLoc);
+            if (coords && typeof coords.lat === "number" && typeof coords.lng === "number") {
+              const savedLocation: [number, number] = [coords.lng, coords.lat];
+              
+              // Set temp location to saved coordinates
+              setTempLocation(savedLocation);
+              setPinLocation(savedLocation);
+              
+              // Fly to the saved location
+              map.flyTo({ center: savedLocation, zoom: 20, essential: true });
+              
+              // Show location card - marker will be fixed (not draggable) until "Change Location" is clicked
+              setShowLocationCard(true);
+              setIsLocationConfirmed(true); // Fixed at location
+              setIsEditMode(false);
+              
+              // Set marker at saved location (not draggable - fixed) - wait for map to be fully ready
+              setTimeout(() => {
+                if (mapRef.current && mapRef.current.loaded()) {
+                  if (!pinMarkerRef.current) {
+                    const marker = new mapboxgl.Marker({
+                      draggable: false,
+                      color: '#FF0000',
+                    })
+                      .setLngLat(savedLocation)
+                      .addTo(mapRef.current);
+                    
+                    // Wait a bit for marker to be added to DOM
+                    setTimeout(() => {
+                      const markerElement = marker.getElement();
+                      if (markerElement) {
+                        markerElement.style.cssText = `
+                          z-index: 9999 !important;
+                          position: absolute !important;
+                          pointer-events: auto !important;
+                          display: block !important;
+                          visibility: visible !important;
+                          opacity: 1 !important;
+                        `;
+                        let parent = markerElement.parentElement;
+                        while (parent) {
+                          if (parent.classList.contains('mapboxgl-marker-container') || parent.classList.contains('mapboxgl-marker')) {
+                            parent.style.cssText = `
+                              z-index: 9999 !important;
+                              position: relative !important;
+                              display: block !important;
+                              visibility: visible !important;
+                            `;
+                          }
+                          parent = parent.parentElement;
+                        }
+                        console.log('Marker added and styled:', markerElement);
+                      }
+                    }, 50);
+                    
+                    pinMarkerRef.current = marker;
+                  } else {
+                    pinMarkerRef.current.setLngLat(savedLocation);
+                    pinMarkerRef.current.setDraggable(false);
+                  }
+                }
+              }, 300);
+              
+              return; // Exit early if we have saved location
+            }
+          } catch (err) {
+            console.warn("Error parsing saved location", err);
+          }
+        }
+      }
+      
+      // Default behavior if no saved location
+      const mapCenter = map.getCenter();
+      const lngLat: [number, number] = [mapCenter.lng, mapCenter.lat];
+      setTempLocation(lngLat);
+      setPinLocation(lngLat);
+      setShowLocationCard(true);
     });
-    const mapCenter = map.getCenter();
-    const lngLat: [number, number] = [mapCenter.lng, mapCenter.lat];
-    setTempLocation(lngLat);
-    setPinLocation(lngLat);
-    setShowLocationCard(true);
     map.on("draw.create", handleDrawChange);
     map.on("draw.update", handleDrawChange);
     map.on("draw.delete", () => {
@@ -575,6 +788,7 @@ export function useMapboxFunctions() {
     });
     map.on("render", updateLabelPositions);
     return () => {
+      window.removeEventListener('resize', handleResize);
       map.off("render", updateLabelPositions);
       map.off("draw.create", handleDrawChange);
       map.off("draw.update", handleDrawChange);
@@ -583,7 +797,8 @@ export function useMapboxFunctions() {
       mapRef.current = null;
       drawRef.current = null;
     };
-  }, [handleDrawChange, updateLabelPositions, pushHistory, updateEdgeLabels, updateShapesData, setTempLocation, setShowLocationCard, toggleGrid, labelsVisible]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - map should only initialize once
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -677,6 +892,7 @@ export function useMapboxFunctions() {
     showLocationCard,
     tempLocation,
     isLocationConfirmed,
+    isEditMode,
     pinLocation,
     rotateMapCCW,
     rotateMapCW,

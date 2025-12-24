@@ -11,6 +11,7 @@ import {
   Download,
 } from "lucide-react";
 import jsPDF from "jspdf";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 interface Payment {
   id: string;
@@ -23,6 +24,7 @@ interface Payment {
 }
 
 export default function AdminPaymentsPage() {
+  useProtectedRoute(); // Protect this route
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);

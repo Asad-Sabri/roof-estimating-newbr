@@ -18,6 +18,7 @@ type Estimate = {
 };
 
 export default function AdminRequestEstimatePage() {
+  useProtectedRoute(); // Protect this route
   const [estimates, setEstimates] = useState<Estimate[]>([]);
 
   useEffect(() => {

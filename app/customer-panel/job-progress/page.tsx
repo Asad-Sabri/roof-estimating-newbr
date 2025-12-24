@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import DashboardLayout from "@/app/page"; // adjust if layout path differs
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import {
   Camera,
   Image,
@@ -40,6 +41,7 @@ const STATUS_STEPS = [
 
 /* -------------------- Component -------------------- */
 export default function JobProgressPage() {
+  useProtectedRoute(); // Protect this route
   const { id } = useParams();
 
   // initial sample updates

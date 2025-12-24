@@ -14,6 +14,7 @@ import {
   User,
 } from "lucide-react";
 import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 /* ---------------- Types ---------------- */
 type SignedRecord = {
@@ -35,6 +36,7 @@ type Proposal = {
 
 /* ---------------- Component ---------------- */
 export default function AdminProposalsPage() {
+  useProtectedRoute(); // Protect this route
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [selected, setSelected] = useState<Proposal | null>(null);
 

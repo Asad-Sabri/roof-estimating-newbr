@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileText, Eye, ArrowLeft, DownloadCloud, X } from "lucide-react";
 import CustomerDashboardLayout from "@/app/dashboard/customer/page";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 type EstimateStatus = "Pending" | "Approved" | "Rejected";
 
@@ -29,6 +30,7 @@ interface Estimate {
 }
 
 export default function ViewAllEstimatesPage() {
+  useProtectedRoute(); // Protect this route
   const router = useRouter();
 
   // Sample data (you can replace with API data)

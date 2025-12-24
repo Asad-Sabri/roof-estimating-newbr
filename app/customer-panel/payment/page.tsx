@@ -4,6 +4,7 @@ import DashboardLayout from "@/app/page"; // update if your layout lives elsewhe
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import {
   CreditCard as CreditCardIcon,
   Check,
@@ -80,6 +81,7 @@ function validateExpiry(expiry: string) {
 
 /* -------------------- Component ------------------------------ */
 export default function PaymentPage() {
+  useProtectedRoute(); // Protect this route
   const { id } = useParams();
   const invoiceId = id ?? "unknown";
 

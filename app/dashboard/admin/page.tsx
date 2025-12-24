@@ -570,6 +570,7 @@ import {
   Users,
   Settings,
 } from "lucide-react";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 const navItems = [
   { name: "Dashboard", href: "/admin-panel/dashboard", icon: LayoutDashboard },
@@ -586,8 +587,25 @@ export default function AdminDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { isAuthenticated, isChecking } = useProtectedRoute(); // Protect all admin dashboard pages
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  
+  // Don't render anything if checking or not authenticated
+  if (isChecking) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect via hook
+  }
 
   // Close sidebar on Escape
   useEffect(() => {

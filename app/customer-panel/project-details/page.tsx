@@ -6,6 +6,12 @@ import CustomerDashboardLayout from "@/app/dashboard/customer/page";
 import { Search, Eye, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
+
+const geocodingClient = mbxGeocoding({
+  accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN!,
+});
 
 interface Project {
   _id: string;
@@ -29,6 +35,7 @@ interface Project {
 }
 
 export default function ProjectDetailsPage() {
+  useProtectedRoute(); // Protect this route
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,26 +98,30 @@ export default function ProjectDetailsPage() {
 
       const data = await response.json();
 
-      if (data.success === true) {
+      // Check if response is successful (200-299 status codes or success flag)
+      if (response.ok || data.success === true) {
         toast.success(data.message || "Project deleted successfully!");
 
-        // ✅ Runtime state update without full fetch
+        // ✅ Immediately remove from both arrays for instant UI update
         const updatedProjects = projects.filter((p) => p._id !== id);
-        setProjects(updatedProjects);
-
         const updatedFiltered = filteredProjects.filter((p) => p._id !== id);
+        
+        setProjects(updatedProjects);
         setFilteredProjects(updatedFiltered);
 
-        // ✅ Pagination adjust
+        // ✅ Adjust pagination if needed
         const newTotalPages = Math.ceil(updatedFiltered.length / itemsPerPage);
-        if (currentPage > newTotalPages)
-          setCurrentPage(newTotalPages > 0 ? newTotalPages : 1);
+        if (currentPage > newTotalPages && newTotalPages > 0) {
+          setCurrentPage(newTotalPages);
+        } else if (updatedFiltered.length === 0 && currentPage > 1) {
+          setCurrentPage(1);
+        }
       } else {
         toast.error(data.message || "Delete failed");
       }
     } catch (error) {
       console.error("Delete Error:", error);
-      toast.error("Something went wrong");
+      toast.error("Something went wrong. Please try again.");
     }
   };
 
@@ -221,16 +232,67 @@ export default function ProjectDetailsPage() {
                       <td className="px-6 py-4 text-center whitespace-nowrap flex justify-center gap-4">
                         {/* VIEW BUTTON */}
                         <button
-                          onClick={() => {
-                            const addr = {
-                              lat: p.address?.lat || 31.5204, // fallback Lahore
-                              lng: p.address?.lng || 74.3587,
-                            };
-                            localStorage.setItem(
-                              "projectAddress",
-                              JSON.stringify(addr)
-                            );
-                            router.push("/property-map"); // map screen pe redirect
+                          onClick={async () => {
+                            try {
+                              let lat = p.address?.lat;
+                              let lng = p.address?.lng;
+                              
+                              // If coordinates are missing, geocode the address string
+                              if (!lat || !lng) {
+                                // Construct full address string from address object
+                                const addressParts = [
+                                  p.address?.street,
+                                  p.address?.city,
+                                  p.address?.state,
+                                  p.address?.zip_code,
+                                  p.address?.country
+                                ].filter(Boolean); // Remove empty parts
+                                
+                                const addressString = addressParts.join(", ") || p.address?.street || "";
+                                
+                                if (addressString && addressString.trim().length > 0) {
+                                  toast.info("Fetching location from address...");
+                                  const geoRes = await geocodingClient
+                                    .forwardGeocode({ query: addressString, limit: 1 })
+                                    .send();
+                                  
+                                  if (geoRes.body.features && geoRes.body.features.length > 0) {
+                                    const [lngCoord, latCoord] = geoRes.body.features[0].center;
+                                    lng = lngCoord;
+                                    lat = latCoord;
+                                    toast.success("Location found!");
+                                  } else {
+                                    toast.error("Could not find location. Using default.");
+                                    lat = 31.5204; // fallback Lahore
+                                    lng = 74.3587;
+                                  }
+                                } else {
+                                  toast.warning("No address found. Using default location.");
+                                  lat = 31.5204; // fallback Lahore
+                                  lng = 74.3587;
+                                }
+                              }
+                              
+                              const addr = {
+                                lat: lat!,
+                                lng: lng!,
+                                address: p.address?.street || "", // Full address string
+                              };
+                              
+                              // Save as both projectAddress and projectLocation for compatibility
+                              localStorage.setItem(
+                                "projectAddress",
+                                JSON.stringify(addr)
+                              );
+                              localStorage.setItem(
+                                "projectLocation",
+                                JSON.stringify({ lat: addr.lat, lng: addr.lng })
+                              );
+                              router.push("/property-map"); // map screen pe redirect
+                            } catch (error) {
+                              console.error("Error geocoding address:", error);
+                              toast.error("Error fetching location. Please try again.");
+                            }
                           }}
                           className="p-2 rounded-full hover:bg-blue-100 transition"
                           title="View on Map"
