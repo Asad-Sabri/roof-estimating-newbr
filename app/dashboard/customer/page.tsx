@@ -17,12 +17,19 @@ import { handleLogout } from "@/utils/authHelper";
 import { useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import { useDispatch } from "react-redux";
+import { logout } from "@/redux/slices/authSlice";
 
 const navItems = [
   {
     name: "Dashboard",
     href: "/customer-panel/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    name: "Estimating",
+    href: "/customer-panel/estimating",
+    icon: ClipboardPlus,
   },
   { name: "Proposals", href: "/customer-panel/proposal", icon: FileText },
   { name: "Payments", href: "/customer-panel/payment", icon: CreditCard },
@@ -35,7 +42,7 @@ const navItems = [
     name: "Project Details",
     href: "/customer-panel/project-details",
     icon: FileText,
-  }, // ✅ NEW
+  },
   {
     name: "Request Estimate",
     href: "/customer-panel/request-estimate",
@@ -69,16 +76,18 @@ export default function CustomerDashboardLayout({
   }
 
   const queryClient = useQueryClient();
+  const dispatch = useDispatch();
 
   const userProfile: any = queryClient.getQueryData(["profile"]) || {};
 
   const handleLogoutFunction = () => {
+    dispatch(logout()); // Clear Redux state
     handleLogout();
     setSidebarOpen(false);
   };
 
   return (
-    <div className="flex bg-gray-100 text-gray-900">
+    <div className="flex bg-gray-100 text-gray-900 min-h-screen">
       {/* Sidebar */}
       <aside
         className={`fixed z-30 inset-y-0 left-0 transform bg-white shadow-lg w-64 transition-transform duration-300 ease-in-out
@@ -140,7 +149,7 @@ export default function CustomerDashboardLayout({
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col lg:ml-64">
+      <div className="flex-1 flex flex-col lg:ml-64 bg-gray-50" style={{ minHeight: '100vh' }}>
         {/* Navbar */}
         <header className="h-16 bg-white shadow flex items-center justify-between px-4 md:px-6 sticky top-0 z-10">
           {/* Left section (Menu + Title) */}
@@ -189,7 +198,7 @@ export default function CustomerDashboardLayout({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 md:p-6 overflow-y-auto bg-gray-50">
+        <main className="flex-1 p-4 md:p-6 bg-gray-50" style={{ minHeight: 'calc(100vh - 4rem)' }}>
           {children}
         </main>
       </div>

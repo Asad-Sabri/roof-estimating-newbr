@@ -558,6 +558,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   Menu,
   X,
@@ -571,6 +572,10 @@ import {
   Settings,
 } from "lucide-react";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import { handleLogout } from "@/utils/authHelper";
+import { useDispatch } from "react-redux";
+import { logout } from "@/redux/slices/authSlice";
+import logo from "../../../public/logo-latest.png";
 
 const navItems = [
   { name: "Dashboard", href: "/admin-panel/dashboard", icon: LayoutDashboard },
@@ -590,6 +595,13 @@ export default function AdminDashboardLayout({
   const { isAuthenticated, isChecking } = useProtectedRoute(); // Protect all admin dashboard pages
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const dispatch = useDispatch();
+  
+  const handleLogoutFunction = () => {
+    dispatch(logout()); // Clear Redux state
+    handleLogout();
+    setSidebarOpen(false);
+  };
   
   // Don't render anything if checking or not authenticated
   if (isChecking) {
@@ -641,8 +653,15 @@ export default function AdminDashboardLayout({
         {/* Sidebar content container with scroll */}
         <div className="h-screen flex flex-col overflow-y-auto">
           {/* Header */}
-          <div className="h-16 flex items-center justify-center font-bold text-xl bg-gradient-to-r from-green-600 to-teal-600 text-white">
-            Admin Panel
+          <div className="h-35 flex items-center justify-center border-b bg-gradient-to-r from-green-600 to-teal-600">
+            <Image
+              src={logo}
+              alt="Superior Pro Roofing Logo"
+              width={180}
+              height={60}
+              className="object-contain drop-shadow-md mt-2"
+              priority
+            />
           </div>
 
           {/* Navigation items */}
@@ -672,6 +691,7 @@ export default function AdminDashboardLayout({
           {/* Footer (Logout button stays fixed at bottom of scroll area) */}
           <div className="p-4 border-t">
             <button
+              onClick={handleLogoutFunction}
               className="flex items-center cursor-pointer gap-2 w-full px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
               aria-label="Logout"
             >

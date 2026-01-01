@@ -1,11 +1,13 @@
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
 import { parseCookies } from "nookies";
 
 export const useProtectedRoute = () => {
   const router = useRouter();
+  const pathname = usePathname();
+  const hasRedirected = useRef(false); // Prevent multiple redirects
   
-  // Check immediately on client side (synchronous check)
+  // Check immediately on client side
   let initialAuth = false;
   let initialChecking = true;
   
@@ -17,8 +19,6 @@ export const useProtectedRoute = () => {
       initialAuth = true;
       initialChecking = false;
     } else {
-      // No token found - redirect immediately using window.location for instant redirect
-      window.location.href = "/login";
       initialAuth = false;
       initialChecking = false;
     }
@@ -28,23 +28,30 @@ export const useProtectedRoute = () => {
   const [isChecking, setIsChecking] = useState(initialChecking);
 
   useEffect(() => {
-    // Double check in useEffect as well
-    const { token } = parseCookies();
-    let tokenFromStorage = null;
-    if (typeof window !== "undefined") {
-      tokenFromStorage = localStorage.getItem("token");
-    }
+    // Only run on client side
+    if (typeof window === "undefined") return;
+    
+    // Prevent multiple redirects
+    if (hasRedirected.current) return;
 
-    if (!token && !tokenFromStorage) {
-      // Use window.location for immediate redirect
-      window.location.href = "/login";
-      setIsAuthenticated(false);
-      setIsChecking(false);
-    } else {
+    const { token } = parseCookies();
+    const tokenFromStorage = localStorage.getItem("token");
+    
+    // Check if token exists
+    if (token || tokenFromStorage) {
       setIsAuthenticated(true);
       setIsChecking(false);
+      hasRedirected.current = false;
+    } else {
+      // Only redirect if not already on login page and haven't redirected yet
+      if (pathname !== "/login" && !hasRedirected.current) {
+        hasRedirected.current = true;
+        router.replace("/login");
+      }
+      setIsAuthenticated(false);
+      setIsChecking(false);
     }
-  }, [router]);
+  }, [pathname, router]);
 
   // Return authentication status
   return { isAuthenticated, isChecking };

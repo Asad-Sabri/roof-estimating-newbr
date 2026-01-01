@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import { useQueryClient } from "@tanstack/react-query";
 
 // ✅ Stats Overview
 const stats = [
@@ -33,6 +34,12 @@ const activities = [
 
 export default function AdminDashboardPage() {
   useProtectedRoute(); // Protect this route
+  const queryClient = useQueryClient();
+  
+  // Get user profile to check role
+  const userProfile: any = queryClient.getQueryData(["profile"]) || {};
+  const userRole = userProfile?.role || (typeof window !== "undefined" ? localStorage.getItem("loginRole") : null) || "admin";
+  
   return (
     <AdminDashboardLayout>
       <div className="space-y-10 animate-fadeIn">

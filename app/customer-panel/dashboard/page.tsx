@@ -16,6 +16,7 @@ import {
   FileSignature,
 } from "lucide-react";
 import CustomerDashboardLayout from "@/app/dashboard/customer/page";
+import { useQueryClient } from "@tanstack/react-query";
 
 type JobStatus = "Pending" | "In Progress" | "Completed";
 type ProposalStatus = "Pending" | "Signed" | "Declined";
@@ -46,6 +47,11 @@ interface Payment {
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, isChecking } = useProtectedRoute(); // Protect this route
+  const queryClient = useQueryClient();
+  
+  // Get user profile to check role
+  const userProfile: any = queryClient.getQueryData(["profile"]) || {};
+  const userRole = userProfile?.role || (typeof window !== "undefined" ? localStorage.getItem("loginRole") : null) || "customer";
 
   // Don't render anything if not authenticated
   if (isChecking) {
@@ -155,7 +161,7 @@ export default function DashboardPage() {
             animate={{ x: 0, opacity: 1 }}
           >
             <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-2">
-              <Briefcase className="text-blue-600" /> My Dashboard
+              <Briefcase className="text-blue-600" /> {userRole === "admin" ? "Admin Dashboard" : "Customer Dashboard"}
             </h1>
             <p className="mt-1 text-sm text-gray-600">
               Overview of your jobs, proposals and payments

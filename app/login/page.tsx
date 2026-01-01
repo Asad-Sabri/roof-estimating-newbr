@@ -8,19 +8,49 @@ import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { useMutation } from "@tanstack/react-query";
 import { useDispatch } from "react-redux";
-import { setCookie } from "nookies";
+import { setCookie, parseCookies } from "nookies";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import { useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { loginAPI } from "@/services/auth";
 import { setCredentials } from "@/redux/slices/authSlice";
 
 import logo from "../../public/logo-latest.png";
 
+type LoginTab = "admin" | "customer";
+
 export default function LoginPage() {
   const dispatch = useDispatch();
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState<LoginTab>("customer");
+  
+  // Check if user is already logged in (only if not coming from logout)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Check if coming from logout (check for logout flag in sessionStorage)
+      const isFromLogout = sessionStorage.getItem("logout");
+      if (isFromLogout) {
+        sessionStorage.removeItem("logout");
+        return; // Don't redirect if coming from logout
+      }
+
+      const { token } = parseCookies();
+      const tokenFromStorage = localStorage.getItem("token");
+      
+      // Only redirect if token actually exists
+      if (token || tokenFromStorage) {
+        const loginRole = localStorage.getItem("loginRole");
+        // User is already logged in, redirect to appropriate dashboard
+        if (loginRole === "admin") {
+          router.replace("/admin-panel/dashboard");
+        } else {
+          router.replace("/customer-panel/dashboard");
+        }
+      }
+    }
+  }, [router]);
 
   const validationSchema = Yup.object().shape({
     email: Yup.string().email("Invalid email").required("Email is required"),
@@ -28,17 +58,28 @@ export default function LoginPage() {
   });
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (values: { email: string; password: string }) =>
-      loginAPI(values),
+    mutationFn: (values: { email: string; password: string; role: string }) => {
+      // Pass role to API
+      return loginAPI({
+        email: values.email,
+        password: values.password,
+        role: values.role, // This will be "admin" or "customer" based on activeTab
+      });
+    },
     onSuccess: (data: any) => {
       const { token, user } = data;
+      
+      // Save selected role in localStorage
       if (typeof window !== "undefined") {
         localStorage.setItem("token", token);
+        localStorage.setItem("loginRole", activeTab);
+        
         // Also, for quick testing, set a cookie without secure flag
         document.cookie = `token=${token}; path=/; max-age=${
           30 * 24 * 60 * 60
         }`;
       }
+      
       // ✅ Save token in cookie
       setCookie(null, "token", token, {
         maxAge: 30 * 24 * 60 * 60,
@@ -55,10 +96,12 @@ export default function LoginPage() {
       dispatch(setCredentials({ user, token }));
       toast.success(data?.message || "Login successful!");
 
-      // Redirect
-      const roleName = data?.role?.name || "";
-      if (roleName === "Admin") router.push("/customer-panel/dashboard/");
-      else router.push("/customer-panel/dashboard");
+      // Redirect based on role
+      if (activeTab === "admin") {
+        router.push("/admin-panel/dashboard");
+      } else {
+        router.push("/customer-panel/dashboard");
+      }
     },
 
     onError: (error: any) => {
@@ -83,14 +126,40 @@ export default function LoginPage() {
             />
           </div>
 
-          <h2 className="text-center font-bold text-lg sm:text-xl text-[#0c2340]">
+          <h2 className="text-center font-bold text-lg sm:text-xl text-[#0c2340] mb-6">
             Login to Your Account
           </h2>
+
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6 bg-gray-100 rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab("customer")}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                activeTab === "customer"
+                  ? "bg-white text-[#25606a] shadow-sm"
+                  : "text-gray-600 hover:text-[#25606a]"
+              }`}
+            >
+              Customer
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("admin")}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                activeTab === "admin"
+                  ? "bg-white text-[#25606a] shadow-sm"
+                  : "text-gray-600 hover:text-[#25606a]"
+              }`}
+            >
+              Admin
+            </button>
+          </div>
 
           <Formik
             initialValues={{ email: "", password: "" }}
             validationSchema={validationSchema}
-            onSubmit={(values) => mutate(values)}
+            onSubmit={(values) => mutate({ ...values, role: activeTab })}
           >
             {() => (
               <Form className="space-y-4 mt-5">
