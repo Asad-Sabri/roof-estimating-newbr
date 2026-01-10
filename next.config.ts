@@ -9,6 +9,58 @@ const nextConfig: NextConfig = {
   },
   images: {
     unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.pexels.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.pixabay.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'app.roofr.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'litespeedconstruction.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'sundownexteriors.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'safeharborinspections.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'pmsilicone.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.billraganroofing.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'colonyroofers.com',
+        pathname: '/**',
+      },
+    ],
   },
   async rewrites() {
     return [

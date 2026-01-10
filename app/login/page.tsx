@@ -100,6 +100,13 @@ export default function LoginPage() {
       if (activeTab === "admin") {
         router.push("/admin-panel/dashboard");
       } else {
+        // For customer: Set flag to auto-open estimate modal on dashboard
+        if (typeof window !== "undefined") {
+          // Clear any previous session flag
+          sessionStorage.removeItem("hasCheckedEstimateModal");
+          // Set flag to show modal on dashboard load
+          sessionStorage.setItem("showEstimateModal", "true");
+        }
         router.push("/customer-panel/dashboard");
       }
     },

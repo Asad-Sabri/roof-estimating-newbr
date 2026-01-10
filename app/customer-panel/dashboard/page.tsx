@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -14,9 +14,13 @@ import {
   Eye,
   PlusCircle,
   FileSignature,
+  TrendingUp,
+  MapPin,
+  DollarSign,
 } from "lucide-react";
 import CustomerDashboardLayout from "@/app/dashboard/customer/page";
 import { useQueryClient } from "@tanstack/react-query";
+import EstimateModal from "@/components/estimating/EstimateModal";
 
 type JobStatus = "Pending" | "In Progress" | "Completed";
 type ProposalStatus = "Pending" | "Signed" | "Declined";
@@ -113,6 +117,58 @@ export default function DashboardPage() {
     { id: "INV-499", amount: 1200, status: "Paid", date: "2025-09-05" },
   ]);
 
+  // Load estimates from localStorage
+  const [estimates, setEstimates] = useState<any[]>([]);
+  const [isEstimateModalOpen, setIsEstimateModalOpen] = useState(false);
+  const hasAutoOpenedRef = useRef(false);
+  
+  // Load estimates and check if modal should auto-open
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    
+    // Wait for authentication to complete
+    if (isChecking) return;
+    
+    // Only run if authenticated
+    if (!isAuthenticated) return;
+    
+    // Load estimates first
+    const savedEstimates = localStorage.getItem("customerEstimates");
+    let parsedEstimates: any[] = [];
+    
+    if (savedEstimates) {
+      try {
+        parsedEstimates = JSON.parse(savedEstimates);
+        setEstimates(parsedEstimates);
+      } catch (e) {
+        console.error("Error parsing estimates:", e);
+        parsedEstimates = [];
+      }
+    }
+    
+    // Check if we should show modal (from login or if no estimates)
+    const shouldShowModal = sessionStorage.getItem("showEstimateModal") === "true";
+    const hasNoEstimates = parsedEstimates.length === 0;
+    
+    // Auto-open modal if:
+    // 1. Flag is set from login, OR
+    // 2. No estimates exist (first time user)
+    if ((shouldShowModal || hasNoEstimates) && !hasAutoOpenedRef.current) {
+      // Clear the flag
+      sessionStorage.removeItem("showEstimateModal");
+      
+      // Small delay to ensure page is fully rendered
+      const timer = setTimeout(() => {
+        setIsEstimateModalOpen(true);
+        hasAutoOpenedRef.current = true;
+      }, 800);
+      
+      return () => clearTimeout(timer);
+    } else {
+      hasAutoOpenedRef.current = true;
+    }
+  }, [isAuthenticated, isChecking]);
+
   const statusColor = (status: JobStatus) => {
     switch (status) {
       case "Pending":
@@ -145,6 +201,41 @@ export default function DashboardPage() {
     router.push(`/customer-panel/job-progress`);
   const openRequestEstimate = () =>
     router.push(`/customer-panel/request-estimate`);
+
+  const handleOpenEstimateModal = () => {
+    setIsEstimateModalOpen(true);
+  };
+
+  const handleCloseEstimateModal = () => {
+    setIsEstimateModalOpen(false);
+    // Clear the session flag so modal can open again if user logs out and logs back in
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("hasCheckedEstimateModal");
+    }
+  };
+
+  const handleSaveEstimate = (estimateData: any) => {
+    // Save to localStorage
+    if (typeof window !== "undefined") {
+      const existingEstimates = JSON.parse(
+        localStorage.getItem("customerEstimates") || "[]"
+      );
+      const newEstimate = {
+        id: Date.now().toString(),
+        ...estimateData,
+        createdAt: new Date().toISOString(),
+      };
+      existingEstimates.push(newEstimate);
+      localStorage.setItem("customerEstimates", JSON.stringify(existingEstimates));
+      setEstimates(existingEstimates);
+      // Mark that we've auto-opened so it doesn't open again after redirect
+      hasAutoOpenedRef.current = true;
+      // Clear session flag
+      sessionStorage.removeItem("hasCheckedEstimateModal");
+    }
+    setIsEstimateModalOpen(false);
+    // Modal already redirects to dashboard in EstimateModal component
+  };
 
   return (
     <CustomerDashboardLayout>
@@ -415,6 +506,106 @@ export default function DashboardPage() {
           </motion.div>
         </section>
 
+        {/* Estimate Cards Section */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <TrendingUp size={20} /> Instant Estimates
+            </h2>
+            <button
+              onClick={handleOpenEstimateModal}
+              className="inline-flex items-center cursor-pointer gap-1 xl:gap-2 bg-green-600 hover:bg-green-700 text-white px-3 xl:px-4 py-2 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+            >
+              <PlusCircle size={16} /> Get Free Estimate Instantly
+            </button>
+          </div>
+
+          {estimates.length === 0 ? (
+            <motion.div
+              className="bg-white rounded-2xl p-12 shadow-sm text-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <TrendingUp className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg mb-2">No estimates yet</p>
+              <p className="text-gray-400 mb-6">
+                Get your first instant estimate in just a few minutes
+              </p>
+              <button
+                onClick={handleOpenEstimateModal}
+                className="px-6 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 mx-auto"
+              >
+                <TrendingUp className="w-5 h-5" />
+                Get Free Estimate Instantly
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+            >
+              {estimates.slice(-6).reverse().map((estimate) => (
+                <motion.article
+                  key={estimate.id}
+                  className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-lg transition flex flex-col justify-between"
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <div>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-2">
+                          <MapPin size={18} className="text-green-600" />
+                          {estimate.address || "Property Estimate"}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-3">
+                          {estimate.desiredRoofType && (
+                            <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs mr-2">
+                              {estimate.desiredRoofType}
+                            </span>
+                          )}
+                          {new Date(estimate.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {estimate.estimates && estimate.estimates.length > 0 && (
+                      <div className="space-y-2">
+                        {estimate.estimates.slice(0, 2).map((est: any, idx: number) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                          >
+                            <span className="text-sm text-gray-700">{est.type}</span>
+                            <span className="text-sm font-semibold text-green-600">
+                              ${est.minPrice.toLocaleString()} - ${est.maxPrice.toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                        {estimate.estimates.length > 2 && (
+                          <p className="text-xs text-gray-500 text-center">
+                            +{estimate.estimates.length - 2} more estimates
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <Link
+                      href="/customer-panel/estimating"
+                      className="flex-1 text-center px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                    >
+                      View Details
+                    </Link>
+                  </div>
+                </motion.article>
+              ))}
+            </motion.div>
+          )}
+        </section>
+
         {/* Footer */}
         <footer className="text-center text-sm text-gray-500 pt-4">
           Need help?{" "}
@@ -426,6 +617,13 @@ export default function DashboardPage() {
           </a>
         </footer>
       </motion.div>
+
+      {/* Estimate Modal - Always render, control visibility via isOpen prop */}
+      <EstimateModal
+        isOpen={isEstimateModalOpen}
+        onClose={handleCloseEstimateModal}
+        onSave={handleSaveEstimate}
+      />
     </CustomerDashboardLayout>
   );
 }
