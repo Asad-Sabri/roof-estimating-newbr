@@ -287,13 +287,13 @@ export default function JobProgressPage() {
         className="text-gray-900"
       >
         {/* Header */}
-        <header className="bg-gradient-to-r from-green-600 to-teal-600 text-white py-5 px-4 sm:px-6 md:px-12 flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
+        <header className="bg-gray-200 text-black py-5 px-4 sm:px-6 md:px-12 flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
           {/* Left Section (Title + Project ID) */}
           <div className="text-center md:text-left">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold flex items-center justify-center md:justify-start gap-2 sm:gap-3">
-              <Play className="text-white w-5 h-5 sm:w-6 sm:h-6" /> Job Progress
+              <Play className="w-5 h-5 sm:w-6 sm:h-6" /> Job Progress
             </h1>
-            <div className="text-xs sm:text-sm text-green-100 mt-1">
+            <div className="text-xs sm:text-sm  mt-1">
               Project ID: <span className="font-medium">{id}</span>
             </div>
           </div>
@@ -302,7 +302,7 @@ export default function JobProgressPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center md:justify-end gap-3 sm:gap-6 w-full md:w-auto">
             {/* Progress Text */}
             <div className="text-center sm:text-right">
-              <div className="text-xs sm:text-sm text-green-100">Progress</div>
+              <div className="text-xs sm:text-sm">Progress</div>
               <div className="font-semibold text-lg sm:text-xl">
                 {progressPercent}%
               </div>
@@ -311,7 +311,7 @@ export default function JobProgressPage() {
             {/* Progress Bar */}
             <div className="w-full sm:w-40 md:w-56 bg-white/10 rounded-full h-3 overflow-hidden mx-auto sm:mx-0">
               <div
-                className="h-3 bg-gradient-to-r from-blue-400 to-green-400 transition-all"
+                className="h-3 transition-all"
                 style={{ width: `${progressPercent}%` }}
                 aria-hidden
               />

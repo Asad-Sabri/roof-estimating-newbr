@@ -106,7 +106,7 @@ export default function EstimatingPricingPage() {
         className="text-gray-900"
       >
         {/* Header */}
-        <header className="text-white py-5 px-2 md:px-6 flex md:items-center justify-between" style={{ backgroundColor: "#8b0e0f" }}>
+        <header className="text-black bg-gray-200 py-5 px-2 md:px-6 flex md:items-center justify-between">
           <h1 className="md:text-2xl font-bold flex items-center gap-2">
             <DollarSign size={28} />
             Estimating Pricing
