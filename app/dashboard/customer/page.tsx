@@ -28,12 +28,12 @@ const navItems = [
     icon: LayoutDashboard,
   },
   {
-    name: "Instant Estimate",
+    name: "Instant Estimator",
     href: "/customer-panel/instant-estimate",
     icon: Zap,
   },
   {
-    name: "Estimating",
+    name: "Measurements",
     href: "/customer-panel/estimating",
     icon: ClipboardPlus,
   },
@@ -101,7 +101,7 @@ export default function CustomerDashboardLayout({
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
       >
-        <div className="h-35 flex items-center justify-center border-b bg-gradient-to-r from-green-600 to-teal-600">
+        <div className="h-35 flex items-center justify-center border-b bg-white">
           <Image
             src={logo}
             alt="Superior Pro Roofing Logo"
@@ -124,9 +124,10 @@ export default function CustomerDashboardLayout({
                 className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors duration-200
                   ${
                     isActive
-                      ? "bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md"
-                      : "text-gray-700 hover:bg-green-100"
+                      ? "text-white shadow-md"
+                      : "text-gray-700 hover:bg-gray-100"
                   }`}
+                style={isActive ? { backgroundColor: "#8b0e0f" } : {}}
               >
                 <Icon className="h-5 w-5" />
                 <span>{item.name}</span>
@@ -169,9 +170,9 @@ export default function CustomerDashboardLayout({
               <Menu className="h-6 w-6" />
             </button>
             {/* Title */}
-            <h1 className="font-semibold text-lg tracking-wide ">
+            {/* <h1 className="font-semibold text-lg tracking-wide ">
               Roof Estimate CRM
-            </h1>
+            </h1> */}
           </div>
 
           {/* Right section (User info) */}

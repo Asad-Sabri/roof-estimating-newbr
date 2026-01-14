@@ -262,7 +262,7 @@ export default function EstimateModal({
             {/* <p className="text-md text-gray-500 mb-2 text-left pb-5">
               Step {currentStep} of {totalSteps}
             </p> */}
-            <h1 className="text-3xl font-bold text-gray-900 text-center py-5">
+            <h1 className="text-3xl font-bold text-gray-900 text-center py-5">  
               {currentStep === 1 && "What's your address?"}
               {currentStep === 2 && "How steep is your roof?"}
               {currentStep === 3 && "What type of building do you have?"}

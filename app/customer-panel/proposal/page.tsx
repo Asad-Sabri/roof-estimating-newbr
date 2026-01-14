@@ -446,21 +446,21 @@ export default function ProposalPage() {
         transition={{ duration: 0.35 }}
       >
         {/* Header */}
-        <header className="w-full bg-gradient-to-r from-green-600 to-teal-600 text-white py-4 px-4 md:px-8 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+        <header className="w-full bg-gray-200 text-white py-4 px-4 md:px-8 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-black">
               <FileText /> Roof Estimate Proposal
             </h1>
-            <p className="text-sm text-green-100 mt-1">
+            <p className="text-sm mt-1 text-black">
               Proposal ID: <span className="font-medium">{id}</span>
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="text-xs text-green-100 flex items-center gap-2">
+          <div className="flex items-center gap-3 text-black">
+            <div className="text-xs  flex items-center gap-2 text-black">
               <Clock /> {new Date().toLocaleDateString()}
             </div>
-            <div className="text-xs text-green-100 flex items-center gap-2">
+            <div className="text-xs flex items-center gap-2 text-black">
               <MapPin /> {ip ?? "IP unknown"}
             </div>
           </div>

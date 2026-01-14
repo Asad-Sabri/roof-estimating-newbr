@@ -108,18 +108,18 @@ export default function AdminCustomersPage() {
         className="text-gray-900"
       >
         {/* Header */}
-        <header className="bg-gradient-to-r from-green-600 to-teal-600 text-white py-5 px-2 md:px-6 flex items-center justify-between">
-          <h1 className=" text-sm md:text-2xl font-bold flex items-center gap-2">
-            <User /> Admin – Customers
+        <header className="bg-gray-200 text-white py-5 px-2 md:px-6 flex items-center justify-between">
+          <h1 className=" text-sm md:text-2xl font-bold flex items-center gap-2 text-black">
+            <User />Customers
           </h1>
-          <span className="text-xs">{customers.length} Customers</span>
+          <span className="text-xs text-black fw-bold">{customers.length} Customers</span>
         </header>
 
         {/* Table */}
         <section className="my-8">
           <div className="overflow-x-auto bg-white">
             <table className="w-full border border-gray-300 rounded-lg shadow text-sm min-w-[1200px]">
-              <thead className="bg-gradient-to-r from-green-600 to-teal-600 text-white">
+              <thead className="text-white" style={{ backgroundColor: "#8b0e0f" }}>
                 <tr>
                   <th className="p-3 text-left">Name</th>
                   <th className="p-3 text-left">Email</th>

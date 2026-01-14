@@ -259,16 +259,16 @@ export default function PaymentPage() {
         animate={{ opacity: 1, y: 0 }}
       >
         {/* Header */}
-        <header className="bg-gradient-to-r from-green-600 to-teal-600 text-white py-4 px-6 md:px-12 flex flex-col md:flex-row justify-between text-center md:text-start items-center gap-3">
+        <header className="bg-gray-200 text-black py-4 px-6 md:px-12 flex flex-col md:flex-row justify-between text-center md:text-start items-center gap-3">
           <div>
-            <h1 className="md:text-2xl font-bold flex items-center gap-3">
+            <h1 className="md:text-2xl font-bold flex items-center gap-3 text-black">
               <CreditCardIcon /> Roof Estimate Payment
             </h1>
-            <p className="text-sm text-green-100 mt-1">Invoice ID: <span className="font-medium">{invoiceId}</span></p>
+            <p className="text-sm text-black mt-1">Invoice ID: <span className="font-medium">{invoiceId}</span></p>
           </div>
 
           <div className="text-right">
-            <div className="text-sm text-green-100">Total Due</div>
+            <div className="text-sm text-black-100">Total Due</div>
             <div className="text-2xl font-semibold">${totalDue.toLocaleString()}</div>
           </div>
         </header>

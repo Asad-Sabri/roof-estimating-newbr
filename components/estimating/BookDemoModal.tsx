@@ -141,9 +141,20 @@ export default function BookDemoModal({ isOpen, onClose }: BookDemoModalProps) {
                 disabled={!email || !email.includes("@")}
                 className={`w-full py-3 rounded-lg font-semibold transition-all ${
                   email && email.includes("@")
-                    ? "bg-gray-800 text-white hover:bg-gray-900"
+                    ? "text-white"
                     : "bg-gray-200 text-gray-500 cursor-not-allowed"
                 }`}
+                style={email && email.includes("@") ? { backgroundColor: "#8b0e0f" } : {}}
+                onMouseEnter={(e) => {
+                  if (email && email.includes("@")) {
+                    e.currentTarget.style.backgroundColor = "#6d0b0c";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (email && email.includes("@")) {
+                    e.currentTarget.style.backgroundColor = "#8b0e0f";
+                  }
+                }}
               >
                 Start booking
               </button>
@@ -265,9 +276,20 @@ export default function BookDemoModal({ isOpen, onClose }: BookDemoModalProps) {
                       disabled={!selectedTime}
                       className={`w-full py-3 rounded-lg font-semibold transition-all ${
                         selectedTime
-                          ? "bg-black text-white hover:bg-gray-800"
+                          ? "text-white"
                           : "bg-gray-200 text-gray-400 cursor-not-allowed"
                       }`}
+                      style={selectedTime ? { backgroundColor: "#8b0e0f" } : {}}
+                      onMouseEnter={(e) => {
+                        if (selectedTime) {
+                          e.currentTarget.style.backgroundColor = "#6d0b0c";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (selectedTime) {
+                          e.currentTarget.style.backgroundColor = "#8b0e0f";
+                        }
+                      }}
                     >
                       Next
                     </button>
@@ -403,7 +425,10 @@ export default function BookDemoModal({ isOpen, onClose }: BookDemoModalProps) {
                     </button>
                     <button
                       type="submit"
-                      className="px-8 py-3 bg-gray-800 text-white rounded-lg font-semibold hover:bg-gray-900 transition-all"
+                      className="px-8 py-3 text-white rounded-lg font-semibold transition-all"
+                      style={{ backgroundColor: "#8b0e0f" }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
                     >
                       Confirm
                     </button>

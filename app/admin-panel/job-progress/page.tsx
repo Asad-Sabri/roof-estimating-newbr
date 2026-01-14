@@ -215,9 +215,9 @@ export default function AdminJobProgressPage() {
         animate={{ opacity: 1 }}
         className="text-gray-900"
       >
-        <header className="bg-gradient-to-r from-green-600 to-teal-600 text-white py-5 px-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <header className="bg-gray-200 text-black py-5 px-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <h1 className=" md:text-3xl font-bold flex items-center gap-2">
-            <Play /> Admin – Job Progress
+            <Play /> Job Progress
           </h1>
           <span>Project ID: {id}</span>
         </header>
@@ -268,7 +268,7 @@ export default function AdminJobProgressPage() {
           {/* Updates Table */}
           <div className="overflow-x-auto bg-white">
             <table className="w-full border border-gray-300 text-sm min-w-[1000px]">
-              <thead className="bg-gradient-to-r from-green-600 to-teal-600 text-white">
+              <thead className=" text-white" style={{ backgroundColor: "#8b0e0f" }}>
                 <tr>
                   <th className="p-3 text-left">Date</th>
                   <th className="p-3 text-left">Status</th>

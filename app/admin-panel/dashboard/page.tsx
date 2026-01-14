@@ -16,7 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 // ✅ Stats Overview
 const stats = [
-  { name: "Total Customers", value: "120", icon: Users, color: "from-green-500 to-emerald-600", link: "/admin-panel/customers" },
+  { name: "Total Customers", value: "120", icon: Users, color: "from-red-600 to-red-700", link: "/admin-panel/customers" },
   { name: "Active Jobs", value: "35", icon: Briefcase, color: "from-blue-500 to-indigo-600", link: "/admin-panel/job-progress" },
   { name: "Proposals Sent", value: "220", icon: FileText, color: "from-purple-500 to-pink-600", link: "/admin-panel/proposals" },
   { name: "Payments Received", value: "$85,000", icon: CreditCard, color: "from-yellow-500 to-orange-600", link: "/admin-panel/payments" },
@@ -44,17 +44,18 @@ export default function AdminDashboardPage() {
     <AdminDashboardLayout>
       <div className="space-y-10 animate-fadeIn">
         {/* 🔹 Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between bg-gradient-to-r from-green-600 to-teal-600 text-white p-6 rounded-2xl shadow-md">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between text-white p-6 rounded-2xl shadow-md" style={{ backgroundColor: "#8b0e0f" }}>
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-sm text-green-100 mt-1">
+            <p className="text-sm text-white opacity-90 mt-1">
               Overview of customer activity and performance
             </p>
           </div>
           <div className="mt-4 md:mt-0">
             <Link
               href="/admin-panel/reports"
-              className="flex items-center gap-2 bg-white text-green-700 font-semibold px-4 py-2 rounded-lg shadow hover:bg-gray-100 transition"
+              className="flex items-center gap-2 bg-white font-semibold px-4 py-2 rounded-lg shadow hover:bg-gray-100 transition"
+              style={{ color: "#8b0e0f" }}
             >
               View Reports <ArrowRight className="h-4 w-4" />
             </Link>

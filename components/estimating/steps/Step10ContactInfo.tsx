@@ -34,7 +34,7 @@ export default function Step10ContactInfo({ data, onInputChange }: StepProps) {
                 onInputChange("firstName", e.target.value);
               }}
               placeholder="John"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none text-black"
               onFocus={(e) => e.currentTarget.style.boxShadow = "0 0 0 2px #8b0e0f"}
               onBlur={(e) => e.currentTarget.style.boxShadow = ""}
               required
@@ -51,7 +51,7 @@ export default function Step10ContactInfo({ data, onInputChange }: StepProps) {
                 onInputChange("lastName", e.target.value);
               }}
               placeholder="Doe"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none text-black"
               onFocus={(e) => e.currentTarget.style.boxShadow = "0 0 0 2px #8b0e0f"}
               onBlur={(e) => e.currentTarget.style.boxShadow = ""}
               required
@@ -82,7 +82,7 @@ export default function Step10ContactInfo({ data, onInputChange }: StepProps) {
               }
             }}
             placeholder="john@example.com"
-            className={`w-full px-4 py-3 border rounded-lg focus:outline-none ${
+            className={`w-full px-4 py-3 border rounded-lg text-black focus:outline-none ${
               emailError ? "border-red-300" : "border-gray-300"
             }`}
             onFocus={(e) => e.currentTarget.style.boxShadow = "0 0 0 2px #8b0e0f"}
@@ -117,7 +117,7 @@ export default function Step10ContactInfo({ data, onInputChange }: StepProps) {
               }
             }}
             placeholder="+1 (555) 123-4567"
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${
+            className={`w-full px-4 py-3 border rounded-lg text-black focus:ring-2 focus:ring-green-500 focus:border-transparent ${
               phoneError ? "border-red-300" : "border-gray-300"
             }`}
             required

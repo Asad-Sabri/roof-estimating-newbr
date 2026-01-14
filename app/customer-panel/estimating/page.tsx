@@ -52,12 +52,13 @@ function PreliminaryEstimateModal({ isOpen, onClose, estimate }: PreliminaryEsti
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className={`sticky top-0 bg-gradient-to-r from-green-600 to-teal-600 px-6 py-4 flex items-center justify-between transition-all duration-500 ${
+        <div className={`sticky top-0 px-6 py-4 flex items-center justify-between transition-all duration-500 ${
           isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
-        }`}>
+        }`}
+        style={{ backgroundColor: "#8b0e0f" }}>
           <div>
             <h2 className="text-xl font-bold text-white">Preliminary Estimate</h2>
-            <p className="text-green-100 text-sm mt-1">Estimate #{estimate.id?.slice(-6) || 'N/A'}</p>
+            <p className="text-white text-sm mt-1 opacity-90">Estimate #{estimate.id?.slice(-6) || 'N/A'}</p>
           </div>
           <button
             onClick={onClose}
@@ -207,10 +208,12 @@ function PreliminaryEstimateModal({ isOpen, onClose, estimate }: PreliminaryEsti
                     <span className="font-bold text-green-600 text-xl">$199</span>
                   </div>
                 </div>
-                <button className={`w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-105 hover:shadow-lg ${
+                <button className={`w-full px-6 py-3 text-white font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-105 hover:shadow-lg ${
                   isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                 }`}
-                style={{ transitionDelay: '450ms' }}
+                style={{ transitionDelay: '450ms', backgroundColor: "#155dfc" }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1249c9"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#155dfc"}
                 >
                   <CreditCard className="w-5 h-5" />
                   Get Full Report - $199
@@ -298,7 +301,10 @@ export default function EstimatingPage() {
           </div>
           <button
             onClick={handleOpenModal}
-            className="px-6 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+            className="px-6 py-3 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+            style={{ backgroundColor: "#8b0e0f" }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
           >
             <TrendingUp className="w-5 h-5" />
             Get Free Estimate
@@ -379,7 +385,10 @@ export default function EstimatingPage() {
               </p>
               <button
                 onClick={handleOpenModal}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                className="px-6 py-2 text-white rounded-lg transition"
+                style={{ backgroundColor: "#8b0e0f" }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
               >
                 Get Your First Estimate
               </button>
@@ -475,7 +484,10 @@ export default function EstimatingPage() {
                         <div className="flex items-center gap-2">
                           <button 
                             onClick={() => handleViewPreliminaryEstimate(estimate)}
-                            className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition flex items-center gap-1"
+                            className="px-3 py-1.5 text-white text-xs font-medium rounded-lg transition flex items-center gap-1"
+                            style={{ backgroundColor: "#8b0e0f" }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
                           >
                             <Eye className="w-3 h-3" />
                             Preliminary Estimate

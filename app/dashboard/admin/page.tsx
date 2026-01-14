@@ -570,6 +570,7 @@ import {
   ClipboardList,
   Users,
   Settings,
+  DollarSign,
 } from "lucide-react";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import { handleLogout } from "@/utils/authHelper";
@@ -583,6 +584,7 @@ const navItems = [
   { name: "Payments", href: "/admin-panel/payments", icon: CreditCard },
   { name: "Job Progress", href: "/admin-panel/job-progress", icon: Briefcase },
   { name: "Estimates", href: "/admin-panel/estimates", icon: ClipboardList },
+  { name: "Estimating Pricing", href: "/admin-panel/estimating-pricing", icon: DollarSign },
   { name: "Customers", href: "/admin-panel/customers", icon: Users },
   { name: "Assign Role", href: "/admin-panel/assign-role", icon: Settings },
 ];
@@ -653,7 +655,7 @@ export default function AdminDashboardLayout({
         {/* Sidebar content container with scroll */}
         <div className="h-screen flex flex-col overflow-y-auto">
           {/* Header */}
-          <div className="h-35 flex items-center justify-center border-b bg-gradient-to-r from-green-600 to-teal-600">
+          <div className="h-35 flex items-center justify-center border-b bg-white">
             <Image
               src={logo}
               alt="Superior Pro Roofing Logo"
@@ -677,9 +679,10 @@ export default function AdminDashboardLayout({
                   className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors duration-200
               ${
                 isActive
-                  ? "bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md"
-                  : "text-gray-700 hover:bg-green-100"
+                  ? "text-white shadow-md"
+                  : "text-gray-700 hover:bg-gray-100"
               }`}
+                  style={isActive ? { backgroundColor: "#8b0e0f" } : {}}
                 >
                   <Icon className="h-5 w-5" />
                   <span>{item.name}</span>
@@ -719,11 +722,11 @@ export default function AdminDashboardLayout({
             )}
           </button>
           <h1 className="font-semibold text-lg tracking-wide truncate text-center lg:text-left">
-            Roof Estimate CRM
+            {/* Roof Estimate CRM */}
           </h1>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 text-left">
             <span className="hidden sm:inline text-sm text-gray-600">
-              Admin User
+              Admin
             </span>
             <img
               src="https://i.pravatar.cc/40?img=5"

@@ -155,18 +155,21 @@ export default function EstimateReportPage() {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border hover:bg-gray-50"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-black hover:bg-gray-50"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 text-black" />
             Back
           </button>
           <div className="flex items-center gap-3">
             <button
               onClick={() => window.print()}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white transition-all"
+              style={{ backgroundColor: "#8b0e0f" }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
             >
               <Printer className="w-4 h-4" />
-              Print / Save PDF
+              Download Report
             </button>
           </div>
         </div>
@@ -214,11 +217,11 @@ export default function EstimateReportPage() {
 
         <div className="px-8 pt-6">
           <p className="text-xs uppercase text-gray-500">Preliminary</p>
-          <h2 className="text-2xl font-extrabold tracking-tight mt-1">
-            Roofing Estimate For <span style={{ color: accent }}>{customerName}</span>
+          <h2 className="text-2xl font-extrabold mt-1" style={{ color: "#8b0e0f" }}>
+            Roofing Estimate For: <span className="text-black">{customerName}</span>
           </h2>
           {estimate.address && (
-            <p className="text-sm text-emerald-700 mt-1">{estimate.address}</p>
+            <p className="text-sm text-gray-700 mt-1">{estimate.address}</p>
           )}
         </div>
 
@@ -267,15 +270,15 @@ export default function EstimateReportPage() {
         <div className="px-8 py-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1">
             <div className="rounded-xl border overflow-hidden">
-              <div className="px-5 py-3 text-white font-semibold" style={{ backgroundColor: accent }}>
+              <div className="px-5 py-3 text-white font-semibold" style={{ backgroundColor: "#8b0e0f" }}>
                 Your Estimate
               </div>
               <div className="px-5 py-6 text-center">
-                <div className="text-3xl font-black text-emerald-700">
+                <div className="text-3xl font-black text-emerald-700" style={{ color: "#8b0e0f"}}>
                   {currency(highlight?.minPrice)}
                 </div>
                 <div className="text-sm text-gray-500">to</div>
-                <div className="text-2xl font-extrabold text-emerald-700">
+                <div className="text-2xl font-extrabold text-emerald-700" style={{ color: "#8b0e0f"}}>
                   {currency(highlight?.maxPrice)}
                 </div>
                 <div className="mt-3 text-xs text-gray-500">
@@ -310,7 +313,7 @@ export default function EstimateReportPage() {
         <div className="px-8 pb-3">
           <div className="rounded-xl border overflow-hidden">
             <div className="px-5 py-3 bg-gray-50 font-semibold border-b">
-              What's Included
+              Whats Included
             </div>
             <div className="px-5 py-5 text-sm grid grid-cols-1 md:grid-cols-2 gap-2">
               <ul className="list-disc pl-5 space-y-1 text-gray-700">
@@ -342,7 +345,10 @@ export default function EstimateReportPage() {
                 href={`mailto:${company.email}?subject=Schedule%20Inspection&body=Hello%2C%20I%27d%20like%20to%20schedule%20an%20inspection%20for%20${encodeURIComponent(
                   estimate.address || ""
                 )}`}
-                className="inline-flex items-center justify-center px-5 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+                className="inline-flex items-center justify-center px-5 py-2 rounded-lg text-white transition-all"
+                style={{ backgroundColor: "#8b0e0f" }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
               >
                 Schedule Inspection
               </a>

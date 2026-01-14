@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle, XCircle, Trash2, FileText } from "lucide-react";
 import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 type Estimate = {
   id: number;
@@ -97,9 +98,9 @@ export default function AdminRequestEstimatePage() {
         className="text-gray-900"
       >
         {/* Header */}
-        <header className="bg-gradient-to-r flex-col md:flex-row from-green-600 to-teal-600 text-white py-5 px-2 md:px-6 flex md:items-center justify-between">
+        <header className="flex-col bg-gray-200 md:flex-row py-5 text-black px-2 md:px-6 flex md:items-center justify-between">
           <h1 className=" md:text-2xl font-bold flex items-center  gap-2">
-            <FileText /> Admin – Request Estimates
+            <FileText /> Request Estimates
           </h1>
           <span className="text-xs text-end">{estimates.length} Requests</span>
         </header>
@@ -108,7 +109,7 @@ export default function AdminRequestEstimatePage() {
         <section className="my-8">
           <div className="overflow-x-auto bg-white">
             <table className="w-full border border-gray-300 rounded-lg shadow text-sm min-w-[1200px]">
-              <thead className="bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-t-lg">
+              <thead className="text-white rounded-t-lg" style={{ backgroundColor: "#8b0e0f" }}>
                 <tr>
                   <th className="p-3 text-left">Name</th>
                   <th className="p-3 text-left">Email</th>

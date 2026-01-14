@@ -127,7 +127,7 @@ export default function AdminPaymentsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <thead className="bg-gradient-to-r from-green-600 to-teal-600 text-white">
+              <thead className="to-teal-600 text-white" style={{ backgroundColor: "#8b0e0f" }}>
                 <tr>
                   <th className="p-3 text-left">Invoice ID</th>
                   <th className="p-3 text-left">Customer</th>

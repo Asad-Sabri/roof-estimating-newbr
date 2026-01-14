@@ -232,14 +232,17 @@ export default function DashboardPage() {
           >
             <button
               onClick={openRequestEstimate}
-              className="inline-flex items-center cursor-pointer gap-1 xl:gap-2 bg-green-600 hover:bg-green-700 text-white px-2 xl:px-4 py-2 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="inline-flex items-center cursor-pointer gap-1 xl:gap-2 text-white px-2 xl:px-4 py-2 rounded-lg shadow-md focus:outline-none focus:ring-2 transition-all"
+              style={{ backgroundColor: "#8b0e0f" }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
             >
               <PlusCircle size={18} /> Request New Estimate
             </button>
 
             <Link
               href="/customer-panel/view-all-estimate"
-              className="inline-flex items-center gap-1 text-gray-700 px-3 py-2 rounded-md hover:bg-gray-100"
+              className="inline-flex items-center gap-1 text-gray-700 bg-gray-200 px-3 py-2 rounded-md hover:bg-gray-400"
             >
               <ClipboardList size={18} /> View All Estimates
             </Link>
@@ -348,7 +351,10 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => openJobProgress(job.id)}
-                      className="flex items-center cursor-pointer gap-1 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                      className="flex items-center cursor-pointer gap-1 px-3 py-1 text-sm text-white rounded-md transition-all"
+                      style={{ backgroundColor: "#8b0e0f" }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
                     >
                       <PlayCircle size={14} /> Track
                     </button>
@@ -408,7 +414,10 @@ export default function DashboardPage() {
                     </span>
                     <button
                       onClick={() => openProposal(p.id)}
-                      className="flex items-center cursor-pointer gap-1 px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                      className="flex items-center cursor-pointer gap-1 px-3 py-1 text-white rounded-md text-sm transition-all"
+                      style={{ backgroundColor: "#8b0e0f" }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
                     >
                       <Eye size={14} /> View
                     </button>
@@ -461,7 +470,10 @@ export default function DashboardPage() {
 
                     <button
                       onClick={() => openPayment(inv.id)}
-                      className="flex items-center cursor-pointer gap-1 px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                      className="flex items-center cursor-pointer gap-1 px-3 py-1 text-white rounded-md text-sm transition-all"
+                      style={{ backgroundColor: "#8b0e0f" }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
                     >
                       <CreditCard size={14} /> Pay / View
                     </button>
@@ -480,7 +492,10 @@ export default function DashboardPage() {
             </h2>
             <button
               onClick={handleOpenEstimateModal}
-              className="inline-flex items-center cursor-pointer gap-1 xl:gap-2 bg-green-600 hover:bg-green-700 text-white px-3 xl:px-4 py-2 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              className="inline-flex items-center cursor-pointer gap-1 xl:gap-2 text-white px-3 xl:px-4 py-2 rounded-lg shadow-md focus:outline-none focus:ring-2 transition-all text-sm"
+              style={{ backgroundColor: "#8b0e0f" }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
             >
               <PlusCircle size={16} /> Get Free Estimate Instantly
             </button>
@@ -499,7 +514,10 @@ export default function DashboardPage() {
               </p>
               <button
                 onClick={handleOpenEstimateModal}
-                className="px-6 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 mx-auto"
+                className="px-6 py-3 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 mx-auto"
+                style={{ backgroundColor: "#8b0e0f" }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
               >
                 <TrendingUp className="w-5 h-5" />
                 Get Free Estimate Instantly
@@ -561,7 +579,10 @@ export default function DashboardPage() {
                   <div className="mt-4 flex items-center gap-2">
                     <Link
                       href="/customer-panel/estimating"
-                      className="flex-1 text-center px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                      className="flex-1 text-center px-4 py-2 text-sm text-white rounded-lg transition"
+                      style={{ backgroundColor: "#8b0e0f" }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
                     >
                       View Details
                     </Link>

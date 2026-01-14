@@ -78,8 +78,8 @@ export default function AdminReportsPage() {
         className="text-gray-900"
       >
         {/* Header */}
-        <header className="bg-gradient-to-r from-green-600 to-teal-600 text-white py-5 px-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+        <header className=" bg-gray-200 py-5 px-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold flex items-center gap-2 text-black">
             <FileText /> Admin – Reports
           </h1>
           <span className="text-sm">{reports.length} Reports</span>
@@ -119,7 +119,7 @@ export default function AdminReportsPage() {
               <BarChart3 /> Reports Overview
             </h2>
             <table className="w-full border border-gray-300 rounded-lg text-sm">
-              <thead className="bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-t-md">
+              <thead className="text-white rounded-t-md" style={{ backgroundColor: "#8b0e0f" }}>
                 <tr>
                   <th className="p-3 text-left">Type</th>
                   <th className="p-3 text-left">Description</th>

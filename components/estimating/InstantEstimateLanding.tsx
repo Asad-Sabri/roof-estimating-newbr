@@ -65,7 +65,10 @@ export default function InstantEstimateLanding() {
               </button>
               <button
                 onClick={handleBookDemo}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                className="px-6 py-3 text-white rounded-lg font-semibold transition-all"
+                style={{ backgroundColor: "#8b0e0f" }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
               >
                 Book a demo
               </button>
