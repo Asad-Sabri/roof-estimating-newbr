@@ -27,16 +27,17 @@ export default function Step4BuildingType({ data, onInputChange }: StepProps) {
             onClick={() => onInputChange("buildingType", option.value)}
             className={`p-6 border-2 rounded-lg text-center transition-all overflow-hidden ${
               data.buildingType === option.value
-                ? "border-green-600 bg-green-50"
+                ? ""
                 : "border-gray-200 hover:border-gray-300"
             }`}
+            style={data.buildingType === option.value ? { borderColor: "#959595", backgroundColor: "rgba(149, 149, 149, 0.1)" } : {}}
           >
-            <div className="w-full h-44 rounded mb-3 overflow-hidden bg-gray-100">
+            <div className="w-full h-80 rounded mb-3 overflow-hidden bg-gray-100">
               <Image
                 src={option.image}
                 alt={option.label}
-                width={400}
-                height={300}
+                width={500}
+                height={500}
                 className="w-full h-full object-cover"
                 unoptimized
               />

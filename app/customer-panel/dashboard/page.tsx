@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -120,9 +120,8 @@ export default function DashboardPage() {
   // Load estimates from localStorage
   const [estimates, setEstimates] = useState<any[]>([]);
   const [isEstimateModalOpen, setIsEstimateModalOpen] = useState(false);
-  const hasAutoOpenedRef = useRef(false);
   
-  // Load estimates and check if modal should auto-open
+  // Load estimates
   useEffect(() => {
     if (typeof window === "undefined") return;
     
@@ -132,40 +131,16 @@ export default function DashboardPage() {
     // Only run if authenticated
     if (!isAuthenticated) return;
     
-    // Load estimates first
+    // Load estimates
     const savedEstimates = localStorage.getItem("customerEstimates");
-    let parsedEstimates: any[] = [];
     
     if (savedEstimates) {
       try {
-        parsedEstimates = JSON.parse(savedEstimates);
+        const parsedEstimates = JSON.parse(savedEstimates);
         setEstimates(parsedEstimates);
       } catch (e) {
         console.error("Error parsing estimates:", e);
-        parsedEstimates = [];
       }
-    }
-    
-    // Check if we should show modal (from login or if no estimates)
-    const shouldShowModal = sessionStorage.getItem("showEstimateModal") === "true";
-    const hasNoEstimates = parsedEstimates.length === 0;
-    
-    // Auto-open modal if:
-    // 1. Flag is set from login, OR
-    // 2. No estimates exist (first time user)
-    if ((shouldShowModal || hasNoEstimates) && !hasAutoOpenedRef.current) {
-      // Clear the flag
-      sessionStorage.removeItem("showEstimateModal");
-      
-      // Small delay to ensure page is fully rendered
-      const timer = setTimeout(() => {
-        setIsEstimateModalOpen(true);
-        hasAutoOpenedRef.current = true;
-      }, 800);
-      
-      return () => clearTimeout(timer);
-    } else {
-      hasAutoOpenedRef.current = true;
     }
   }, [isAuthenticated, isChecking]);
 
@@ -208,10 +183,6 @@ export default function DashboardPage() {
 
   const handleCloseEstimateModal = () => {
     setIsEstimateModalOpen(false);
-    // Clear the session flag so modal can open again if user logs out and logs back in
-    if (typeof window !== "undefined") {
-      sessionStorage.removeItem("hasCheckedEstimateModal");
-    }
   };
 
   const handleSaveEstimate = (estimateData: any) => {
@@ -228,13 +199,8 @@ export default function DashboardPage() {
       existingEstimates.push(newEstimate);
       localStorage.setItem("customerEstimates", JSON.stringify(existingEstimates));
       setEstimates(existingEstimates);
-      // Mark that we've auto-opened so it doesn't open again after redirect
-      hasAutoOpenedRef.current = true;
-      // Clear session flag
-      sessionStorage.removeItem("hasCheckedEstimateModal");
     }
     setIsEstimateModalOpen(false);
-    // Modal already redirects to dashboard in EstimateModal component
   };
 
   return (

@@ -7,7 +7,7 @@ export default function Step6DesiredRoofType({
   data,
   onInputChange,
 }: StepProps) {
-  // Same roof material images as Step 5 for consistency
+  // All roof material options from Step 5 (as per requirement)
   const options = [
     {
       value: "Asphalt",
@@ -27,23 +27,53 @@ export default function Step6DesiredRoofType({
       image:
         "https://app.roofr.com/images/instant-estimates/materials/tile.jpg",
     },
+    {
+      value: "Cedar",
+      label: "Cedar",
+      image:
+        "https://app.roofr.com/images/instant-estimates/materials/cedar.jpg",
+    },
+    {
+      value: "BUR",
+      label: "BUR (Built-Up Roofing)",
+      image:
+        "https://pmsilicone.com/wp-content/uploads/2023/04/BUR1-1536x1098.jpg",
+    },
+    {
+      value: "PVC",
+      label: "PVC",
+      image: "https://www.billraganroofing.com/hubfs/FlatRoofPVC.jpg",
+    },
+    {
+      value: "TPO",
+      label: "TPO",
+      image:
+        "https://pmsilicone.com/wp-content/uploads/2022/11/TPO-Roof-768x576.jpg",
+    },
+    {
+      value: "EPDM",
+      label: "EPDM",
+      image:
+        "https://colonyroofers.com/hs-fs/hubfs/EPDM%20Roofing%20Material.jpg?width=1350&height=600&name=EPDM%20Roofing%20Material.jpg",
+    },
   ];
 
   return (
     <div className="space-y-6">
       <p className="text-gray-600">What type of roof would you like?</p>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {options.map((option) => (
           <button
             key={option.value}
             onClick={() => onInputChange("desiredRoofType", option.value)}
             className={`p-4 border-2 rounded-lg text-center transition-all overflow-hidden ${
               data.desiredRoofType === option.value
-                ? "border-green-600 bg-green-50"
+                ? ""
                 : "border-gray-200 hover:border-gray-300"
             }`}
+            style={data.desiredRoofType === option.value ? { borderColor: "#959595", backgroundColor: "rgba(149, 149, 149, 0.1)" } : {}}
           >
-            <div className="w-full h-44 rounded mb-3 overflow-hidden bg-gray-100">
+            <div className="w-full h-36 rounded mb-2 overflow-hidden bg-gray-100">
               <Image
                 src={option.image}
                 alt={option.label}
@@ -53,7 +83,9 @@ export default function Step6DesiredRoofType({
                 unoptimized
               />
             </div>
-            <div className="font-semibold text-gray-900">{option.label}</div>
+            <div className="font-semibold text-sm text-gray-900">
+              {option.label}
+            </div>
           </button>
         ))}
       </div>

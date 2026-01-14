@@ -39,13 +39,13 @@ export default function Step3RoofSteepness({ data, onInputChange }: StepProps) {
           ></path>
           <path
             d="M16.6869 22.811L1.34424 13.9144L23.285 0.93457L38.6579 9.96152L16.6869 22.811Z"
-            fill="#10B981"
+            fill="#959595"
           ></path>
           <path
             fillRule="evenodd"
             clipRule="evenodd"
             d="M23.0141 0.478681C23.1801 0.380468 23.3863 0.380132 23.5527 0.477805L38.9255 9.50475C39.0879 9.60008 39.1875 9.77432 39.1874 9.96257C39.1872 10.1508 39.0872 10.3249 38.9247 10.4199L16.9538 23.2694C16.789 23.3657 16.5851 23.3661 16.4199 23.2703L1.07731 14.3738C0.914416 14.2793 0.813815 14.1056 0.812993 13.9173C0.812171 13.729 0.911251 13.5544 1.07332 13.4585L23.0141 0.478681ZM23.2851 1.5508L2.39277 13.9104L16.6849 22.1978L37.608 9.96118L23.2851 1.5508Z"
-            fill="#059669"
+            fill="#959595"
           ></path>
         </svg>
       ),
@@ -79,8 +79,8 @@ export default function Step3RoofSteepness({ data, onInputChange }: StepProps) {
           ></path>
           <path
             d="M25.8823 0.543945L4.83691 12.8162L18.6305 26.1025L39.2701 13.7796L25.8823 0.543945Z"
-            fill="#10B981"
-            stroke="#059669"
+            fill="#959595"
+            stroke="#959595"
             strokeWidth="1.09554"
             strokeLinejoin="round"
           ></path>
@@ -119,15 +119,15 @@ export default function Step3RoofSteepness({ data, onInputChange }: StepProps) {
           ></path>
           <path
             d="M0.812622 20.9606L6.03004 12.7344"
-            stroke="#059669"
+            stroke="#959595"
             strokeWidth="1.06105"
             strokeLinecap="round"
             strokeLinejoin="round"
           ></path>
           <path
             d="M26.5199 0.772705L6.13708 12.6586L17.1983 31.0259L37.1881 19.091L26.5199 0.772705Z"
-            fill="#10B981"
-            stroke="#059669"
+            fill="#959595"
+            stroke="#959595"
             strokeWidth="1.06105"
             strokeLinejoin="round"
           ></path>
@@ -138,6 +138,25 @@ export default function Step3RoofSteepness({ data, onInputChange }: StepProps) {
       value: "Steep",
       label: "Steep",
       description: "Hard to walk on",
+      icon: (
+        <svg
+          fill="#959595"
+          version="1.1"
+          xmlns="http://www.w3.org/2000/svg"
+          width="40"
+          height="40"
+          viewBox="0 0 356.637 356.637"
+          className="w-10 h-10"
+        >
+          <path d="M290.562,103.916c0.162-0.811,0.366-1.609,0.366-2.459V12.298C290.928,5.51,285.422,0,278.63,0h-43.042 c-6.792,0-12.298,5.51-12.298,12.298v21.84l-25.425-26.37c-5.002-4.999-11.715-7.461-18.896-7.064 c-6.566,0.405-12.809,3.245-17.585,8.034l-124.11,125.05c-4.225,4.251-4.201,11.13,0.054,15.348 c3.771,3.744,9.581,4.125,13.793,1.225v193.979c0,6.785,5.51,12.298,12.298,12.298h79.936h67.638h79.936 c6.791,0,12.298-5.513,12.298-12.298V148.337l0.618,0.646c2.138,2.2,4.979,3.32,7.818,3.32c2.715,0,5.429-1.015,7.53-3.044 c4.317-4.161,4.443-11.031,0.288-15.342L290.562,103.916z M247.886,24.596h18.446V71.77l-18.446-18.447V24.596z M155.652,332.041 v-79.936h43.042v79.936H155.652z M278.63,122.979v209.062h-55.34v-92.233c0-6.785-5.507-12.298-12.298-12.298h-67.638 c-6.789,0-12.298,5.513-12.298,12.298v92.233h-55.34V129.127c0-0.997-0.153-1.955-0.375-2.882L176.762,24.056 c0.976-0.979,2.306-1.612,3.54-1.685c1.446-0.111,2.011,0.541,2.077,0.606l96.27,99.866 C278.642,122.885,278.63,122.931,278.63,122.979z" />
+          <path d="M135.668,156.797c0,24.583,19.996,44.58,44.579,44.58c24.584,0,44.58-19.996,44.58-44.58s-19.996-44.58-44.58-44.58 C155.664,112.218,135.668,132.214,135.668,156.797z M203.306,156.797c0,12.709-10.347,23.059-23.059,23.059 c-12.715,0-23.058-10.35-23.058-23.059c0-12.709,10.343-23.058,23.058-23.058C192.959,133.739,203.306,144.088,203.306,156.797z" />
+        </svg>
+      ),
+    },
+    {
+      value: "Very Steep",
+      label: "Very Steep",
+      description: "Very hard to walk on",
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -156,7 +175,7 @@ export default function Step3RoofSteepness({ data, onInputChange }: StepProps) {
           ></path>
           <path
             d="M1.18213 32.016L9.48784 13.3271"
-            stroke="#059669"
+            stroke="#959595"
             strokeWidth="1.04661"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -169,30 +188,11 @@ export default function Step3RoofSteepness({ data, onInputChange }: StepProps) {
           ></path>
           <path
             d="M29.6955 1.46265L9.59009 13.1867L17.1004 40.2906L36.8182 28.5181L29.6955 1.46265Z"
-            fill="#10B981"
-            stroke="#059669"
+            fill="#959595"
+            stroke="#959595"
             strokeWidth="1.04661"
             strokeLinejoin="round"
           ></path>
-        </svg>
-      ),
-    },
-    {
-      value: "Very Steep",
-      label: "Very Steep",
-      description: "Very hard to walk on",
-      icon: (
-        <svg
-          fill="#10B981"
-          version="1.1"
-          xmlns="http://www.w3.org/2000/svg"
-          width="40"
-          height="40"
-          viewBox="0 0 356.637 356.637"
-          className="w-10 h-10"
-        >
-          <path d="M290.562,103.916c0.162-0.811,0.366-1.609,0.366-2.459V12.298C290.928,5.51,285.422,0,278.63,0h-43.042 c-6.792,0-12.298,5.51-12.298,12.298v21.84l-25.425-26.37c-5.002-4.999-11.715-7.461-18.896-7.064 c-6.566,0.405-12.809,3.245-17.585,8.034l-124.11,125.05c-4.225,4.251-4.201,11.13,0.054,15.348 c3.771,3.744,9.581,4.125,13.793,1.225v193.979c0,6.785,5.51,12.298,12.298,12.298h79.936h67.638h79.936 c6.791,0,12.298-5.513,12.298-12.298V148.337l0.618,0.646c2.138,2.2,4.979,3.32,7.818,3.32c2.715,0,5.429-1.015,7.53-3.044 c4.317-4.161,4.443-11.031,0.288-15.342L290.562,103.916z M247.886,24.596h18.446V71.77l-18.446-18.447V24.596z M155.652,332.041 v-79.936h43.042v79.936H155.652z M278.63,122.979v209.062h-55.34v-92.233c0-6.785-5.507-12.298-12.298-12.298h-67.638 c-6.789,0-12.298,5.513-12.298,12.298v92.233h-55.34V129.127c0-0.997-0.153-1.955-0.375-2.882L176.762,24.056 c0.976-0.979,2.306-1.612,3.54-1.685c1.446-0.111,2.011,0.541,2.077,0.606l96.27,99.866 C278.642,122.885,278.63,122.931,278.63,122.979z" />
-          <path d="M135.668,156.797c0,24.583,19.996,44.58,44.579,44.58c24.584,0,44.58-19.996,44.58-44.58s-19.996-44.58-44.58-44.58 C155.664,112.218,135.668,132.214,135.668,156.797z M203.306,156.797c0,12.709-10.347,23.059-23.059,23.059 c-12.715,0-23.058-10.35-23.058-23.059c0-12.709,10.343-23.058,23.058-23.058C192.959,133.739,203.306,144.088,203.306,156.797z" />
         </svg>
       ),
     },
@@ -200,7 +200,7 @@ export default function Step3RoofSteepness({ data, onInputChange }: StepProps) {
 
   return (
     <div className="space-y-6">
-      <p className="text-gray-600">How steep is your roof?</p>
+      <p className="text-gray-600 text-left"><b>How steep is your roof?</b></p>
       <div className="grid grid-cols-1 gap-3">
         {options.map((option) => (
           <button
@@ -208,9 +208,10 @@ export default function Step3RoofSteepness({ data, onInputChange }: StepProps) {
             onClick={() => onInputChange("roofSteepness", option.value)}
             className={`p-4 border-2 rounded-lg transition-all flex items-center gap-4 ${
               data.roofSteepness === option.value
-                ? "border-green-600 bg-green-50"
+                ? ""
                 : "border-gray-200 hover:border-gray-300"
             }`}
+            style={data.roofSteepness === option.value ? { borderColor: "#959595", backgroundColor: "rgba(149, 149, 149, 0.1)" } : {}}
           >
             <div className="w-16 h-16 flex items-center justify-center flex-shrink-0">
               {option.icon}

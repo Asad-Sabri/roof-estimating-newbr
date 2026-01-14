@@ -20,9 +20,10 @@ export default function Step7ProjectTimeline({
             onClick={() => onInputChange("projectTimeline", option)}
             className={`w-full p-4 border-2 rounded-lg text-left transition-all ${
               data.projectTimeline === option
-                ? "border-green-600 bg-green-50"
+                ? ""
                 : "border-gray-200 hover:border-gray-300"
             }`}
+            style={data.projectTimeline === option ? { borderColor: "#959595", backgroundColor: "rgba(149, 149, 149, 0.1)" } : {}}
           >
             <div className="font-semibold text-gray-900">{option}</div>
           </button>

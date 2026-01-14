@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, ArrowRight, ArrowLeft } from "lucide-react";
+import Image from "next/image";
+import logo from "@/public/logo-latest.png";
 import { EstimateData, EstimateModalProps } from "./types";
 import Step2Address from "./steps/Step2Address";
 import Step3RoofSteepness from "./steps/Step3RoofSteepness";
@@ -79,30 +81,60 @@ export default function EstimateModal({
     }
   }, [currentStep]);
 
+  // Validation function to check if current step is valid
+  const isStepValid = (step: number): boolean => {
+    switch (step) {
+      case 1:
+        return !!(formData.address && formData.pinConfirmed);
+      case 2:
+        return !!formData.roofSteepness;
+      case 3:
+        return !!formData.buildingType;
+      case 4:
+        return !!formData.currentRoofType;
+      case 5:
+        return !!formData.roofLayers;
+      case 6:
+        return !!formData.desiredRoofType;
+      case 7:
+        return !!formData.projectTimeline;
+      case 8:
+        return !!formData.financingInterest;
+      case 9:
+        return true; // Project description is optional
+      case 10:
+        return !!(
+          formData.firstName &&
+          formData.lastName &&
+          formData.email &&
+          formData.phone
+        );
+      case 11:
+        return true; // Review step, no validation needed
+      default:
+        return false;
+    }
+  };
+
   const handleNext = () => {
     // Validate current step before proceeding
-    // Step 1: Address (was Step 2)
-    if (currentStep === 1 && (!formData.address || !formData.pinConfirmed)) {
-      if (!formData.address) {
-        alert("Please enter your address");
-      } else if (!formData.pinConfirmed) {
+    if (!isStepValid(currentStep)) {
+      // Show appropriate error messages
+      if (currentStep === 1) {
+        if (!formData.address) {
+          alert("Please enter your address");
+        } else if (!formData.pinConfirmed) {
+          alert(
+            "Please confirm the pin drop location on the building before proceeding"
+          );
+        }
+      } else if (currentStep === 10) {
         alert(
-          "Please confirm the pin drop location on the building before proceeding"
+          "Please fill all required fields (First Name, Last Name, Email, and Phone)"
         );
+      } else {
+        alert("Please select an option before proceeding");
       }
-      return;
-    }
-    // Step 10: Contact Info (validation updated)
-    if (
-      currentStep === 10 &&
-      (!formData.firstName ||
-        !formData.lastName ||
-        !formData.email ||
-        !formData.phone)
-    ) {
-      alert(
-        "Please fill all required fields (First Name, Last Name, Email, and Phone)"
-      );
       return;
     }
 
@@ -176,9 +208,8 @@ export default function EstimateModal({
     localStorage.removeItem("currentEstimateForm");
     onSave(finalData);
 
-    // Close modal and redirect to dashboard
+    // Close modal - let parent component handle redirect
     onClose();
-    router.push("/customer-panel/dashboard");
   };
 
   const handleClose = () => {
@@ -192,12 +223,46 @@ export default function EstimateModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-95">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-y-auto m-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: "#f8f9fa" }}>
+      <div className="w-full min-h-full max-w-5xl mx-auto my-10 flex flex-col rounded-lg border border-gray-200 shadow-lg" style={{ backgroundColor: "#ffffff" }}>
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+        <div className="sticky top-0 bg-white border-b border-gray-200 z-10">
+          <div className="px-6 py-4 flex items-center justify-between">
+            {/* Logo */}
+            <div className="flex-shrink-0">
+              <Image
+                src={logo}
+                alt="Superior Pro Roofing Logo"
+                width={200}
+                height={50}
+                className="object-contain"
+              />
+            </div>
+            <button
+              onClick={handleClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition text-gray-600"
+            >
+            </button>
+          </div>
+          {/* Progress Bar */}
+          
+        </div>
+        <div className="pb-3">
+            <div className="w-full bg-gray-200 rounded-full h-1">
+              <div
+                className="h-1 rounded-full transition-all duration-300"
+                style={{ width: `${(currentStep / totalSteps) * 100}%`, backgroundColor: "#8b0e0f" }}
+              />
+            </div>
+          </div>
+        {/* Content */}
+        <div className="px-6 flex-1">
+          {/* Heading */}
+          <div className="relative">
+            {/* <p className="text-md text-gray-500 mb-2 text-left pb-5">
+              Step {currentStep} of {totalSteps}
+            </p> */}
+            <h1 className="text-3xl font-bold text-gray-900 text-center py-5">
               {currentStep === 1 && "What's your address?"}
               {currentStep === 2 && "How steep is your roof?"}
               {currentStep === 3 && "What type of building do you have?"}
@@ -210,31 +275,8 @@ export default function EstimateModal({
               {currentStep === 9 && "Tell us about your project"}
               {currentStep === 10 && "Where should we send your estimates?"}
               {currentStep === 11 && "Review your estimates"}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Step {currentStep} of {totalSteps}
-            </p>
+            </h1>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="px-6 py-4 bg-gray-50">
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-green-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(currentStep / totalSteps) * 100}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="px-6 py-8">
           {currentStep === 1 && (
             <Step2Address data={formData} onInputChange={handleInputChange} />
           )}
@@ -298,7 +340,7 @@ export default function EstimateModal({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
           <button
             onClick={handlePrevious}
             disabled={currentStep === 1}
@@ -311,23 +353,33 @@ export default function EstimateModal({
           {currentStep === totalSteps ? (
             <button
               onClick={handleGetEstimates}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+              className="px-6 py-2 text-white rounded-lg flex items-center gap-2"
+              style={{ backgroundColor: "#8b0e0f" }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
             >
               Get My Estimates
             </button>
           ) : (
             <button
               onClick={handleNext}
-              disabled={
-                currentStep === 1 &&
-                (!formData.address || !formData.pinConfirmed)
-              }
+              disabled={!isStepValid(currentStep)}
               className={`px-6 py-2 rounded-lg flex items-center gap-2 ${
-                currentStep === 1 &&
-                (!formData.address || !formData.pinConfirmed)
+                !isStepValid(currentStep)
                   ? "bg-gray-400 text-white cursor-not-allowed"
-                  : "bg-green-600 text-white hover:bg-green-700"
+                  : "text-white"
               }`}
+              style={isStepValid(currentStep) ? { backgroundColor: "#8b0e0f" } : {}}
+              onMouseEnter={(e) => {
+                if (isStepValid(currentStep)) {
+                  e.currentTarget.style.backgroundColor = "#6d0b0c";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (isStepValid(currentStep)) {
+                  e.currentTarget.style.backgroundColor = "#8b0e0f";
+                }
+              }}
             >
               Next
               <ArrowRight className="w-4 h-4" />

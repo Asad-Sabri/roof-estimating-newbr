@@ -15,7 +15,9 @@ export default function Step9ProjectDescription({
           onChange={(e) => onInputChange("projectDescription", e.target.value)}
           placeholder="Any additional details about your roofing project..."
           rows={6}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          className="w-full px-4 pt-5 pb-70 text-black border border-gray-300 rounded-lg focus:outline-none"
+          onFocus={(e) => e.currentTarget.style.boxShadow = "0 0 0 2px #8b0e0f"}
+          onBlur={(e) => e.currentTarget.style.boxShadow = ""}
         />
       </div>
     </div>

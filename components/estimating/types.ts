@@ -25,6 +25,7 @@ export interface EstimateData {
   name?: string; // Keep for backward compatibility
   email?: string;
   phone?: string;
+  textMessageOptIn?: boolean; // Text message opt-in consent
   estimates?: Array<{
     type: string;
     minPrice: number;

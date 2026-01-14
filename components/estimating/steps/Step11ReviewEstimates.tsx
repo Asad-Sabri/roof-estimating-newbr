@@ -62,9 +62,19 @@ export default function Step11ReviewEstimates({
             key={index}
             className={`border-2 rounded-lg p-6 transition-all ${
               estimate.enabled !== false
-                ? "border-gray-200 hover:border-green-600"
+                ? "border-gray-200"
                 : "border-gray-200 bg-gray-50 opacity-60"
             }`}
+            onMouseEnter={(e) => {
+              if (estimate.enabled !== false) {
+                e.currentTarget.style.borderColor = "#8b0e0f";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (estimate.enabled !== false) {
+                e.currentTarget.style.borderColor = "";
+              }
+            }}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -73,7 +83,7 @@ export default function Step11ReviewEstimates({
                 </h3>
                 {estimate.enabled !== false && (
                   <>
-                    <p className="text-2xl font-bold text-green-600">
+                    <p className="text-2xl font-bold" style={{ color: "#8b0e0f" }}>
                       ${estimate.minPrice.toLocaleString()} - $
                       {estimate.maxPrice.toLocaleString()}*
                     </p>
@@ -95,7 +105,8 @@ export default function Step11ReviewEstimates({
                     type="checkbox"
                     checked={estimate.enabled !== false}
                     onChange={() => handleToggleEstimate(index)}
-                    className="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                    className="h-5 w-5 border-gray-300 rounded"
+                    style={{ accentColor: "#8b0e0f" }}
                   />
                   <span className="ml-2 text-sm text-gray-600">
                     {estimate.enabled !== false ? "Show" : "Hide"}

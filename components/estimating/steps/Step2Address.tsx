@@ -28,6 +28,7 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
   const [pinConfirmed, setPinConfirmed] = useState<boolean>(
     data.pinConfirmed || false
   );
+  const [isGeocoding, setIsGeocoding] = useState(false);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
   const addressRef = useRef<string>(data.address || ""); // Track previous address to prevent unnecessary reloads
 
@@ -177,7 +178,7 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
 
               try {
                 drawRef.current?.add(polygon as any);
-                setTimeout(() => updateArea(), 100);
+                updateArea(); // Call immediately instead of setTimeout
                 return; // Successfully used Google Solar API
               } catch (err) {
                 console.error("Error adding Google Solar polygon:", err);
@@ -308,7 +309,7 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
 
               try {
                 drawRef.current?.add(polygon as any);
-                setTimeout(() => updateArea(), 100);
+                updateArea(); // Call immediately instead of setTimeout
                 return; // Successfully used OpenStreetMap
               } catch (err) {
                 console.error("Error adding OSM polygon:", err);
@@ -487,10 +488,7 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
 
               try {
                 drawRef.current?.add(polygon as any);
-                // Small delay to ensure polygon is added before calculating area
-                setTimeout(() => {
-                  updateArea();
-                }, 100);
+                updateArea(); // Call immediately instead of setTimeout
                 return; // Successfully used Mapbox detection
               } catch (err) {
                 console.error("Error adding detected polygon:", err);
@@ -530,10 +528,7 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
       // Add polygon to map
       try {
         drawRef.current.add(polygon as any);
-        // Small delay to ensure polygon is added before calculating area
-        setTimeout(() => {
-          updateArea();
-        }, 100);
+        updateArea(); // Call immediately instead of setTimeout
       } catch (err) {
         console.error("Error adding fallback polygon:", err);
       }
@@ -541,22 +536,16 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
     [updateArea]
   );
 
-  // Update map location when address changes (only when address actually changes, not on marker drag)
-  useEffect(() => {
+  // Handle Continue button click - geocode and navigate to location
+  const handleContinue = async () => {
     if (!data.address) return;
 
-    // Only update if address actually changed (not just coordinate update from drag)
-    if (addressRef.current === data.address) {
-      return; // Address hasn't changed, don't reload
-    }
-
-    // Update the tracked address
+    setIsGeocoding(true);
     addressRef.current = data.address;
 
     const updateMapLocation = async () => {
       // Wait for map to be initialized
       if (!mapRef.current) {
-        // Wait a bit and try again
         setTimeout(() => updateMapLocation(), 200);
         return;
       }
@@ -566,6 +555,7 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
         mapRef.current.once("load", updateMapLocation);
         return;
       }
+
       try {
         const geoRes = await geocodingClient
           .forwardGeocode({ query: data.address!, limit: 1 })
@@ -613,22 +603,22 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
             const markerLng = lng;
             const markerLat = lat;
 
-            // Update map center first - use geometry center for better accuracy
+            // Update map center and zoom
             mapRef.current!.flyTo({
               center: [markerLng, markerLat] as [number, number],
               zoom: 21,
+              duration: 2000,
             });
 
-            // Wait for map to finish moving, then add marker at exact location
-            mapRef.current.once("moveend", () => {
+            // Wait for map to finish moving, then add marker and detect polygon
+            mapRef.current!.once("moveend", () => {
               if (!mapRef.current) return;
 
-              // Use Mapbox default marker (no color property = default blue pin)
-              // This ensures marker stays at exact coordinates during zoom/pan
+              // Add marker at exact coordinates immediately
               const marker = new mapboxgl.Marker({
-                draggable: false, // Marker is fixed, cannot be moved
+                draggable: false,
               })
-                .setLngLat([markerLng, markerLat]) // Exact coordinates from address - Mapbox handles positioning
+                .setLngLat([markerLng, markerLat])
                 .addTo(mapRef.current!);
 
               markerRef.current = marker;
@@ -640,48 +630,28 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
               // Update coordinates in formData
               onInputChange("coordinates", initialCoords);
 
-              // Auto-detect roof geometry after marker is added
-              setTimeout(() => {
-                if (drawRef.current && mapRef.current) {
-                  autoDetectRoofGeometry(markerLng, markerLat);
-                }
-              }, 500);
+              // Auto-detect roof geometry immediately after marker is added
+              if (drawRef.current && mapRef.current) {
+                autoDetectRoofGeometry(markerLng, markerLat);
+              }
             });
           }
         }
       } catch (err) {
         console.error("Geocoding error:", err);
+      } finally {
+        setIsGeocoding(false);
       }
     };
 
-    // Wait for map to be fully loaded before updating location
-    const waitForMapAndUpdate = () => {
-      if (mapRef.current && mapRef.current.loaded()) {
-        updateMapLocation();
-      } else if (mapRef.current) {
-        // Wait for map to load if not ready yet
-        mapRef.current.once("load", () => {
-          updateMapLocation();
-        });
-      } else {
-        // Map not initialized yet, try again after a short delay
-        setTimeout(() => {
-          if (mapRef.current && mapRef.current.loaded()) {
-            updateMapLocation();
-          }
-        }, 500);
-      }
-    };
-
-    waitForMapAndUpdate();
-  }, [data.address, autoDetectRoofGeometry, onInputChange]); // Only depend on address, not autoDetectRoofGeometry to prevent reload on drag
+    updateMapLocation();
+  };
 
   const handleAddressChange = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const value = e.target.value;
     onInputChange("address", value);
-    // Don't update addressRef here - let useEffect handle it when address is actually set
 
     if (value.length < 3) {
       setSuggestions([]);
@@ -703,52 +673,74 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
   const handleSelectSuggestion = (suggestion: string) => {
     onInputChange("address", suggestion);
     setSuggestions([]);
-    // Address will be updated, useEffect will handle the map update
   };
 
   return (
     <div className="space-y-6">
-      <p className="text-gray-600">
+      {/* <p className="text-gray-600">
         Enter your property address and we&apos;ll automatically detect your
         roof geometry.
-      </p>
+      </p> */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Property Address *
+        <label className="block text-sm font-medium text-gray-700 mb-2 text-left">
+          Property Address
         </label>
-        <div className="relative">
-          <input
-            type="text"
-            value={data.address || ""}
-            onChange={handleAddressChange}
-            placeholder="123 Main St, City, State, ZIP"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            required
-          />
-          {suggestions.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-              {suggestions.map((suggestion, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => handleSelectSuggestion(suggestion)}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={data.address || ""}
+              onChange={handleAddressChange}
+              placeholder="123 Main St, City, State, ZIP"
+              className="w-full px-4 py-3 text-black border border-gray-300 rounded-lg focus:outline-none"
+              onFocus={(e) => e.currentTarget.style.boxShadow = "0 0 0 2px #8b0e0f"}
+              onBlur={(e) => e.currentTarget.style.boxShadow = ""}
+              required
+            />
+            {suggestions.length > 0 && (
+              <div className="absolute text-black z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {suggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => handleSelectSuggestion(suggestion)}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Continue Button - Show when address is entered but not yet confirmed */}
+          {data.address && !coordinates && (
+            <button
+              onClick={handleContinue}
+              disabled={isGeocoding}
+              className="px-6 py-3 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+              style={{ backgroundColor: "#8b0e0f" }}
+              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = "#6d0b0c")}
+              onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = "#8b0e0f")}
+            >
+              {isGeocoding ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Loading...
+                </>
+              ) : (
+                "Continue"
+              )}
+            </button>
           )}
         </div>
-        <p className="text-xs text-gray-500 mt-2">
+        {/* <p className="text-xs text-gray-500 mt-2">
           AI will automatically draw the polygon for your roof
-        </p>
+        </p> */}
       </div>
 
       {/* Map Container - Always render for map initialization */}
-      <div className="relative w-full h-96 md:h-[500px] rounded-lg overflow-hidden border border-gray-300">
+      <div className="relative w-full h-96 md:h-[600px] rounded-lg overflow-hidden border border-gray-300">
         <div ref={mapContainerRef} className="w-full h-full" />
-        {/* Default Mapbox pin marker will be shown via markerRef */}
         {!data.address && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
             <p className="text-gray-500 text-sm">
@@ -757,16 +749,17 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
           </div>
         )}
       </div>
+
       {/* Confirm Button and Area Display - Below Map */}
       {coordinates && (
         <div className="flex items-center justify-between gap-4 mt-4">
           {/* Roof Area Display - Show next to button */}
           {totalArea > 0 ? (
-            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex-1">
-              <p className="text-xs font-semibold text-green-900 mb-1">
+            <div className="rounded-lg px-4 py-3 flex-1" style={{ backgroundColor: "rgba(139, 14, 15, 0.1)", border: "1px solid rgba(139, 14, 15, 0.3)" }}>
+              <p className="text-xs font-semibold mb-1" style={{ color: "#8b0e0f" }}>
                 AI Detected Roof Area
               </p>
-              <p className="text-xl font-bold text-green-600">
+              <p className="text-xl font-bold" style={{ color: "#8b0e0f" }}>
                 {totalArea.toFixed(2)}{" "}
                 <span className="text-base font-normal text-gray-600">
                   sq ft
@@ -784,11 +777,20 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
               setPinConfirmed(true);
               onInputChange("pinConfirmed", true);
             }}
-            className={`px-8 py-3 rounded-lg font-semibold transition-all whitespace-nowrap ${
-              pinConfirmed
-                ? "bg-green-600 text-white hover:bg-green-700"
-                : "bg-blue-800 text-white hover:bg-blue-900"
+            className={`px-8 py-3 rounded-lg font-semibold transition-all whitespace-nowrap text-white ${
+              pinConfirmed ? "" : "bg-blue-800 hover:bg-blue-900"
             }`}
+            style={pinConfirmed ? { backgroundColor: "#8b0e0f" } : {}}
+            onMouseEnter={(e) => {
+              if (pinConfirmed) {
+                e.currentTarget.style.backgroundColor = "#6d0b0c";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (pinConfirmed) {
+                e.currentTarget.style.backgroundColor = "#8b0e0f";
+              }
+            }}
           >
             {pinConfirmed ? "✓ Location Confirmed" : "Confirm Location"}
           </button>

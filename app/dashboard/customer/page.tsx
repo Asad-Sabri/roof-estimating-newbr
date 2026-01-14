@@ -12,6 +12,7 @@ import {
   CreditCard,
   Briefcase,
   ClipboardPlus,
+  Zap,
 } from "lucide-react";
 import { handleLogout } from "@/utils/authHelper";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,6 +26,11 @@ const navItems = [
     name: "Dashboard",
     href: "/customer-panel/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    name: "Instant Estimate",
+    href: "/customer-panel/instant-estimate",
+    icon: Zap,
   },
   {
     name: "Estimating",

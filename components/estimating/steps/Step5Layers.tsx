@@ -44,9 +44,10 @@ export default function Step5Layers({ data, onInputChange }: StepProps) {
             onClick={() => onInputChange("roofLayers", option.value)}
             className={`p-6 border-2 rounded-lg text-center transition-all overflow-hidden ${
               data.roofLayers === option.value
-                ? "border-green-600 bg-green-50"
+                ? ""
                 : "border-gray-200 hover:border-gray-300"
             }`}
+            style={data.roofLayers === option.value ? { borderColor: "#959595", backgroundColor: "rgba(149, 149, 149, 0.1)" } : {}}
           >
             {option.hasImage ? (
               <div className="w-full h-40 rounded mb-3 overflow-hidden bg-gray-100">

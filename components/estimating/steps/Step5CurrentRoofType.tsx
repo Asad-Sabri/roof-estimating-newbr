@@ -68,9 +68,10 @@ export default function Step5CurrentRoofType({
             onClick={() => onInputChange("currentRoofType", option.value)}
             className={`p-4 border-2 rounded-lg text-center transition-all overflow-hidden ${
               data.currentRoofType === option.value
-                ? "border-green-600 bg-green-50"
+                ? ""
                 : "border-gray-200 hover:border-gray-300"
             }`}
+            style={data.currentRoofType === option.value ? { borderColor: "#959595", backgroundColor: "rgba(149, 149, 149, 0.1)" } : {}}
           >
             <div className="w-full h-36 rounded mb-2 overflow-hidden bg-gray-100">
               <Image
