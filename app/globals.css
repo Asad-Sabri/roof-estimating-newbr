@@ -130,10 +130,44 @@ body.map-page-no-scroll {
     html, body {
         margin: 0 !important;
         padding: 0 !important;
+        background: white !important;
     }
     /* Aapke main app wrapper par bhi */
     #root, .roof-estimate-wrapper { 
         margin: 0 !important;
         padding: 0 !important;
+    }
+    /* Print optimization for estimate reports */
+    @page {
+        size: letter;
+        margin: 0.5in;
+    }
+    /* Hide print-hidden elements using attribute selector */
+    [class*="print:hidden"] {
+        display: none !important;
+    }
+    /* Remove shadows and borders for print */
+    [class*="print:shadow-none"] {
+        box-shadow: none !important;
+    }
+    [class*="print:border-0"] {
+        border: none !important;
+    }
+    /* Remove rounded corners */
+    [class*="print:rounded-none"] {
+        border-radius: 0 !important;
+    }
+    /* Remove margins */
+    [class*="print:my-0"] {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    /* Ensure white background */
+    [class*="print:bg-white"] {
+        background: white !important;
+    }
+    /* Prevent page breaks inside sections */
+    * {
+        break-inside: avoid;
     }
 }

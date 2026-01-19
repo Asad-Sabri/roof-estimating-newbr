@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import { Eye, EyeOff } from "lucide-react";
 import { forgotPasswordAPI, resendOTPAPI } from "@/services/auth";
 import Image from "next/image";
+import logo from "../../public/logo-latest.png";
 
 // Validation Schemas
 const EmailSchema = Yup.object({
@@ -67,10 +68,12 @@ export default function ResetPasswordFlow() {
         {/* Logo */}
         <div className="flex justify-center mb-6">
           <Image
-            src="/Black-Logo-main.png"
-            alt="iRoofing Logo"
-            width={320}
-            height={40}
+            src={logo}
+            alt="Superior Pro Roofing Logo"
+            width={200}
+            height={50}
+            className="w-[220px] sm:w-[260px] h-auto drop-shadow-md"
+            priority
           />
         </div>
         <h2 className="text-xl font-bold text-center text-[#0B2244] mb-4">

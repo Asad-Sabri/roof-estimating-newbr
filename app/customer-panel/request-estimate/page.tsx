@@ -449,7 +449,7 @@ export default function CreateProjectForm() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-md font-semibold shadow hover:opacity-90 disabled:opacity-50"
+                    className="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white py-2 rounded-md font-semibold shadow hover:opacity-90 disabled:opacity-50"
                   >
                     {loading && (
                       <Loader2 className="animate-spin w-5 h-5 inline mr-2" />
@@ -461,8 +461,7 @@ export default function CreateProjectForm() {
                     type="button"
                     onClick={goToMap}
                     disabled={mapLoading}
-                    className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-md font-semibold shadow hover:opacity-90 disabled:opacity-50 flex items-center justify-center"
-                  >
+                    className="flex-1 text-white py-2 rounded-md font-semibold shadow hover:opacity-90 disabled:opacity-50 flex items-center justify-center" style={{ backgroundColor: "#8b0e0f" }}>
                     {mapLoading ? (
                       <Loader2 className="animate-spin w-5 h-5 mr-2" />
                     ) : (

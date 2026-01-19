@@ -199,6 +199,22 @@ export default function LoginPage() {
                   />
                 </div>
 
+                {/* Forgot Password & Forgot User ID Links */}
+                <div className="flex justify-between items-center text-xs sm:text-sm">
+                  <Link
+                    href="/forget"
+                    className="text-[#25606a] hover:underline"
+                  >
+                    Forgot Password?
+                  </Link>
+                  <Link
+                    href="/forget-user-id"
+                    className="text-[#25606a] hover:underline"
+                  >
+                    Forgot User ID?
+                  </Link>
+                </div>
+
                 <button
                   type="submit"
                   disabled={isPending}

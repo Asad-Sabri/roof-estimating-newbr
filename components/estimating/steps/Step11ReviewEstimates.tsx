@@ -124,6 +124,40 @@ export default function Step11ReviewEstimates({
           {!isAdmin && " Admin can toggle estimates on/off."}
         </p>
       </div>
+
+      {/* Email Me & Text Me Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 mt-6">
+        <button
+          onClick={() => {
+            // Email functionality - will be connected to backend later
+            const emailBody = `Dear ${data.firstName || "Customer"},\n\nThank you for requesting an estimate. Here are your preliminary estimates:\n\n${estimates.filter(e => e.enabled !== false).map(e => `${e.type}: $${e.minPrice.toLocaleString()} - $${e.maxPrice.toLocaleString()}`).join("\n")}\n\nBest regards,\nSuperior Pro Roofing Systems`;
+            window.location.href = `mailto:${data.email || ""}?subject=Preliminary Roof Estimate&body=${encodeURIComponent(emailBody)}`;
+          }}
+          className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          Email Me My Estimate
+        </button>
+        <button
+          onClick={() => {
+            // Text functionality - will be connected to backend later
+            if (data.phone) {
+              const textMessage = `Thank you for requesting an estimate from Superior Pro Roofing Systems. Your preliminary estimates are available. Please check your email for details.`;
+              window.location.href = `sms:${data.phone.replace(/\D/g, "")}?body=${encodeURIComponent(textMessage)}`;
+            } else {
+              alert("Phone number is required to send text message.");
+            }
+          }}
+          className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          Text Me My Estimate
+        </button>
+      </div>
     </div>
   );
 }
