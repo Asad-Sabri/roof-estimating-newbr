@@ -38,6 +38,23 @@ export default function EstimateModal({
       if (saved) {
         setFormData(JSON.parse(saved));
       }
+
+      // Load assignment data from URL params (QR code/link tracking)
+      const assignmentDataStr = localStorage.getItem("assignmentData");
+      if (assignmentDataStr) {
+        try {
+          const assignmentData = JSON.parse(assignmentDataStr);
+          setFormData((prev) => ({
+            ...prev,
+            promoter_id: assignmentData.promoter_id,
+            sales_rep_id: assignmentData.sales_rep_id,
+            marketing_channel: assignmentData.marketing_channel,
+            assignment_source: assignmentData.assignment_source,
+          }));
+        } catch (error) {
+          console.error("Error parsing assignment data:", error);
+        }
+      }
     }
   }, []);
 

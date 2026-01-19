@@ -14,8 +14,14 @@ export const useProtectedRoute = () => {
   if (typeof window !== "undefined") {
     const { token } = parseCookies();
     const tokenFromStorage = localStorage.getItem("token");
+    const isInstantEstimateVisitor = localStorage.getItem("isInstantEstimateVisitor");
+    const customerAddress = localStorage.getItem("customerAddress");
     
-    if (token || tokenFromStorage) {
+    // Check if token exists OR if user is instant estimate visitor (has address)
+    // For initial check, we allow if visitor flags exist (pathname check in useEffect)
+    const hasVisitorAccess = isInstantEstimateVisitor === "true" && customerAddress;
+    
+    if (token || tokenFromStorage || hasVisitorAccess) {
       initialAuth = true;
       initialChecking = false;
     } else {
@@ -36,9 +42,14 @@ export const useProtectedRoute = () => {
 
     const { token } = parseCookies();
     const tokenFromStorage = localStorage.getItem("token");
+    const isInstantEstimateVisitor = localStorage.getItem("isInstantEstimateVisitor");
+    const customerAddress = localStorage.getItem("customerAddress");
     
-    // Check if token exists
-    if (token || tokenFromStorage) {
+    // Check if token exists OR if user is instant estimate visitor (for customer panel only)
+    const isCustomerPanel = pathname?.startsWith("/customer-panel");
+    const hasVisitorAccess = isCustomerPanel && isInstantEstimateVisitor === "true" && customerAddress;
+    
+    if (token || tokenFromStorage || hasVisitorAccess) {
       setIsAuthenticated(true);
       setIsChecking(false);
       hasRedirected.current = false;

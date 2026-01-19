@@ -26,6 +26,11 @@ export interface EstimateData {
   email?: string;
   phone?: string;
   textMessageOptIn?: boolean; // Text message opt-in consent
+  // Customer Assignment Fields (from QR code/link)
+  promoter_id?: string;
+  sales_rep_id?: string;
+  marketing_channel?: string;
+  assignment_source?: "qr_code" | "link" | "direct_entry";
   estimates?: Array<{
     type: string;
     minPrice: number;

@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { signupAPI } from "@/services/auth";
 import { useMutation } from "@tanstack/react-query";
@@ -15,9 +15,36 @@ import Cookies from "js-cookie";
 
 export default function SignUp() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
+  const [prefilledData, setPrefilledData] = useState<any>(null);
 
-  // ✅ Validation Schema Updated
+  // Check if coming from estimate flow
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const fromEstimate = searchParams?.get("from_estimate");
+      if (fromEstimate === "true") {
+        const estimateDataStr = localStorage.getItem("estimateSignupData");
+        if (estimateDataStr) {
+          try {
+            const estimateData = JSON.parse(estimateDataStr);
+            setPrefilledData({
+              first_name: estimateData.firstName || "",
+              last_name: estimateData.lastName || "",
+              email: estimateData.email || "",
+              mobile_number: estimateData.phone || "",
+              address: estimateData.address || "",
+            });
+          } catch (error) {
+            console.error("Error parsing estimate data:", error);
+          }
+        }
+      }
+    }
+  }, [searchParams]);
+
+  // ✅ Validation Schema - Updated per client requirements
+  // Required: First Name, Last Name, Email, Phone (verified by OTP), Address
   const validationSchema = Yup.object({
     first_name: Yup.string().required("First name is required"),
     middle_name: Yup.string(),
@@ -29,8 +56,9 @@ export default function SignUp() {
     password: Yup.string()
       .min(6, "Password must be at least 6 characters")
       .required("Password is required"),
-    company: Yup.string().required("Company is required"),
-    postal_code: Yup.string().required("Postal code is required"),
+    address: Yup.string().required("Address is required"), // ✅ Required per client requirements
+    company: Yup.string(), // Optional for customer signup
+    postal_code: Yup.string(), // Optional for customer signup
   });
 
 const { mutate, isPending } = useMutation({
@@ -86,32 +114,60 @@ const { mutate, isPending } = useMutation({
 
         <Formik
           initialValues={{
-            first_name: "",
+            first_name: prefilledData?.first_name || "",
             middle_name: "",
-            last_name: "",
-            email: "",
-            mobile_number: "",
+            last_name: prefilledData?.last_name || "",
+            email: prefilledData?.email || "",
+            mobile_number: prefilledData?.mobile_number || "",
             password: "",
+            address: prefilledData?.address || "",
             company: "",
             postal_code: "",
           }}
           validationSchema={validationSchema}
           onSubmit={(values) => {
+            // Check if coming from estimate flow
+            const fromEstimate = searchParams?.get("from_estimate");
+            const estimateDataStr = localStorage.getItem("estimateSignupData");
+            let assignmentData = null;
+            
+            if (fromEstimate === "true" && estimateDataStr) {
+              try {
+                const estimateData = JSON.parse(estimateDataStr);
+                assignmentData = {
+                  promoter_id: estimateData.promoter_id,
+                  sales_rep_id: estimateData.sales_rep_id,
+                  marketing_channel: estimateData.marketing_channel,
+                  assignment_source: estimateData.assignment_source,
+                };
+              } catch (error) {
+                console.error("Error parsing estimate data:", error);
+              }
+            }
+
             const payload = {
-              account_type: "Contractor",
+              account_type: "Customer", // Changed to Customer for instant estimate signup
               first_name: values.first_name,
               middle_name: values.middle_name,
               last_name: values.last_name,
               email: values.email,
               password: values.password,
               role_id: 1,
-              company: values.company,
-              postal_code: values.postal_code,
+              company: values.company || "",
+              postal_code: values.postal_code || "",
               mobile_number: values.mobile_number,
+              address: values.address, // ✅ Required per client requirements
+              // Assignment data if coming from estimate
+              ...(assignmentData || {}),
             };
 
             console.log("📤 Sending signup payload:", payload);
             mutate(payload);
+            
+            // Clear estimate signup data after use
+            if (fromEstimate === "true") {
+              localStorage.removeItem("estimateSignupData");
+            }
           }}
         >
           {() => (
@@ -182,6 +238,20 @@ const { mutate, isPending } = useMutation({
                 />
                 <ErrorMessage
                   name="mobile_number"
+                  component="div"
+                  className="text-red-500 text-xs mt-1"
+                />
+              </div>
+
+              {/* Address - Required per client requirements */}
+              <div>
+                <Field
+                  name="address"
+                  placeholder="Address *"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-[#25606a]"
+                />
+                <ErrorMessage
+                  name="address"
                   component="div"
                   className="text-red-500 text-xs mt-1"
                 />
