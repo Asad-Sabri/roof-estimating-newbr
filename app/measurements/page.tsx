@@ -107,7 +107,7 @@ export default function MeasurementsPage() {
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
                 >
-                  Create Free Account
+                  Create Free Account 
                 </button>
                 <button
                   onClick={handleSkipAccount}
