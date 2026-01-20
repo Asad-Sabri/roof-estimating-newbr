@@ -303,7 +303,9 @@ export default function LoginPage() {
 
       if (token || tokenFromStorage) {
         const loginRole = localStorage.getItem("loginRole");
-        if (loginRole === "admin" || loginRole === "super-admin") {
+        if (loginRole === "super-admin") {
+          router.replace("/super-admin/dashboard");
+        } else if (loginRole === "admin") {
           router.replace("/admin-panel/dashboard");
         } else {
           router.replace("/customer-panel/dashboard");
@@ -352,7 +354,9 @@ export default function LoginPage() {
       toast.success(data?.message || "Login successful!");
 
       // Redirect based on role
-      if (variables.role === "admin" || variables.role === "super-admin") {
+      if (variables.role === "super-admin") {
+        router.push("/super-admin/dashboard");
+      } else if (variables.role === "admin") {
         router.push("/admin-panel/dashboard");
       } else {
         router.push("/customer-panel/dashboard");
@@ -560,7 +564,7 @@ export default function LoginPage() {
               onSubmit={(values) =>
                 mutate({
                   ...values,
-                  role: activeTab === "super-admin" ? "admin" : "admin", // Adjust based on backend
+                  role: activeTab, // This will be "admin" or "super-admin" based on selected tab
                 })
               }
             >
