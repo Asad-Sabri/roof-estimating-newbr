@@ -1,4 +1,5 @@
 import { axiosInstance, handleAPIRequest } from "./axiosInstance";
+
 export const createInstantEstimateAPI = (data) => {
   return handleAPIRequest(
     axiosInstance.post,
@@ -6,6 +7,7 @@ export const createInstantEstimateAPI = (data) => {
     data
   );
 };
+
 export const updateInstantEstimateAPI = (id, data) => {
   return handleAPIRequest(
     axiosInstance.patch,
