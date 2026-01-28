@@ -572,7 +572,7 @@ export default function EstimatingPage() {
                                 Preliminary Estimate
                               </button>
                               <Link
-                              target="_blank"
+                              target="_blank" 
                                 href={`/customer-panel/estimate-report/${est._id}`}
                                 className="px-3 py-1.5 border text-xs font-medium rounded-lg hover:bg-gray-50 transition"
                               >
