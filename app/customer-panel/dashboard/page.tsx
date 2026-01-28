@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import CustomerDashboardLayout from "@/app/dashboard/customer/page";
 import { useQueryClient } from "@tanstack/react-query";
-import EstimateModal from "@/components/estimating/EstimateModal";
+import { getUserInstantEstimatesAPI } from "@/services/instantEstimateAPI";
 
 type JobStatus = "Pending" | "In Progress" | "Completed";
 type ProposalStatus = "Pending" | "Signed" | "Declined";
@@ -117,31 +117,29 @@ export default function DashboardPage() {
     { id: "INV-499", amount: 1200, status: "Paid", date: "2025-09-05" },
   ]);
 
-  // Load estimates from localStorage
-  const [estimates, setEstimates] = useState<any[]>([]);
-  const [isEstimateModalOpen, setIsEstimateModalOpen] = useState(false);
-  
-  // Load estimates
+  // User ke instant estimates – API se
+  const [instantEstimatesFromAPI, setInstantEstimatesFromAPI] = useState<{
+    data: any[];
+    meta: { totalRecords: number } | null;
+  }>({ data: [], meta: null });
+  const [loadingInstantEstimates, setLoadingInstantEstimates] = useState(false);
+
+  // Fetch user's instant estimates from API
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    
-    // Wait for authentication to complete
-    if (isChecking) return;
-    
-    // Only run if authenticated
-    if (!isAuthenticated) return;
-    
-    // Load estimates
-    const savedEstimates = localStorage.getItem("customerEstimates");
-    
-    if (savedEstimates) {
-      try {
-        const parsedEstimates = JSON.parse(savedEstimates);
-        setEstimates(parsedEstimates);
-      } catch (e) {
-        console.error("Error parsing estimates:", e);
-      }
-    }
+    if (!isAuthenticated || isChecking) return;
+    setLoadingInstantEstimates(true);
+    getUserInstantEstimatesAPI()
+      .then((res: any) => {
+        setInstantEstimatesFromAPI({
+          data: res?.data ?? [],
+          meta: res?.meta ?? null,
+        });
+      })
+      .catch((err) => {
+        console.error("Instant estimates fetch error:", err);
+        setInstantEstimatesFromAPI({ data: [], meta: null });
+      })
+      .finally(() => setLoadingInstantEstimates(false));
   }, [isAuthenticated, isChecking]);
 
   const statusColor = (status: JobStatus) => {
@@ -175,33 +173,7 @@ export default function DashboardPage() {
   const openJobProgress = (id: number) =>
     router.push(`/customer-panel/job-progress`);
   const openRequestEstimate = () =>
-    router.push(`/customer-panel/request-estimate`);
-
-  const handleOpenEstimateModal = () => {
-    setIsEstimateModalOpen(true);
-  };
-
-  const handleCloseEstimateModal = () => {
-    setIsEstimateModalOpen(false);
-  };
-
-  const handleSaveEstimate = (estimateData: any) => {
-    // Save to localStorage
-    if (typeof window !== "undefined") {
-      const existingEstimates = JSON.parse(
-        localStorage.getItem("customerEstimates") || "[]"
-      );
-      const newEstimate = {
-        id: Date.now().toString(),
-        ...estimateData,
-        createdAt: new Date().toISOString(),
-      };
-      existingEstimates.push(newEstimate);
-      localStorage.setItem("customerEstimates", JSON.stringify(existingEstimates));
-      setEstimates(existingEstimates);
-    }
-    setIsEstimateModalOpen(false);
-  };
+    router.push(`/customer-panel/instant-estimate`);
 
   return (
     <CustomerDashboardLayout>
@@ -237,17 +209,17 @@ export default function DashboardPage() {
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
             >
-              <PlusCircle size={18} /> Request New Estimate
+              <PlusCircle size={18} /> Request New Instant Estimate
             </button>
 
             <Link
-              href="/customer-panel/view-all-estimate"
+              href="/customer-panel/estimating"
               className="inline-flex items-center gap-1 text-gray-700 bg-gray-200 px-3 py-2 rounded-md hover:bg-gray-400"
             >
               <ClipboardList size={18} /> View All Estimates
             </Link>
           </motion.div>
-        </header>
+        </header  >
 
         {/* Overview Cards */}
         <motion.section
@@ -484,24 +456,37 @@ export default function DashboardPage() {
           </motion.div>
         </section>
 
-        {/* Estimate Cards Section */}
+        {/* Instant Estimates – simple table, 5 rows, See all estimate → Measurements */}
         <section>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <TrendingUp size={20} /> Instant Estimates
             </h2>
-            <button
-              onClick={handleOpenEstimateModal}
-              className="inline-flex items-center cursor-pointer gap-1 xl:gap-2 text-white px-3 xl:px-4 py-2 rounded-lg shadow-md focus:outline-none focus:ring-2 transition-all text-sm"
+            <Link
+              href="/customer-panel/estimating"
+              className="inline-flex items-center justify-center gap-1 xl:gap-2 text-white px-3 xl:px-4 py-2 rounded-lg shadow-md focus:outline-none focus:ring-2 transition-all text-sm shrink-0 cursor-pointer"
               style={{ backgroundColor: "#8b0e0f" }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#6d0b0c";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#8b0e0f";
+              }}
             >
-              <PlusCircle size={16} /> Get Free Estimate Instantly
-            </button>
+              <PlusCircle size={16} /> See all estimate
+            </Link>
           </div>
 
-          {estimates.length === 0 ? (
+          {loadingInstantEstimates ? (
+            <motion.div
+              className="bg-white rounded-2xl p-12 shadow-sm text-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3" />
+              <p className="text-gray-500">Loading your instant estimates…</p>
+            </motion.div>
+          ) : (instantEstimatesFromAPI.data?.length ?? 0) === 0 ? (
             <motion.div
               className="bg-white rounded-2xl p-12 shadow-sm text-center"
               initial={{ opacity: 0, y: 20 }}
@@ -512,83 +497,65 @@ export default function DashboardPage() {
               <p className="text-gray-400 mb-6">
                 Get your first instant estimate in just a few minutes
               </p>
-              <button
-                onClick={handleOpenEstimateModal}
-                className="px-6 py-3 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 mx-auto"
+              <Link
+                href="/customer-panel/instant-estimate"
+                className="px-6 py-3 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 mx-auto w-fit cursor-pointer"
                 style={{ backgroundColor: "#8b0e0f" }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#6d0b0c")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#8b0e0f")}
               >
                 <TrendingUp className="w-5 h-5" />
                 Get Free Estimate Instantly
-              </button>
+              </Link>
             </motion.div>
           ) : (
             <motion.div
-              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+              className="bg-white rounded-2xl shadow-sm overflow-hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
+              transition={{ delay: 0.2 }}
             >
-              {estimates.slice(-6).reverse().map((estimate) => (
-                <motion.article
-                  key={estimate.id}
-                  className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-lg transition flex flex-col justify-between"
-                  whileHover={{ scale: 1.02 }}
-                >
-                  <div>
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-2">
-                          <MapPin size={18} className="text-green-600" />
-                          {estimate.address || "Property Estimate"}
-                        </h3>
-                        <p className="text-sm text-gray-500 mb-3">
-                          {estimate.desiredRoofType && (
-                            <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs mr-2">
-                              {estimate.desiredRoofType}
-                            </span>
-                          )}
-                          {new Date(estimate.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-
-                    {estimate.estimates && estimate.estimates.length > 0 && (
-                      <div className="space-y-2">
-                        {estimate.estimates.slice(0, 2).map((est: any, idx: number) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                          >
-                            <span className="text-sm text-gray-700">{est.type}</span>
-                            <span className="text-sm font-semibold text-green-600">
-                              ${est.minPrice.toLocaleString()} - ${est.maxPrice.toLocaleString()}
-                            </span>
-                          </div>
-                        ))}
-                        {estimate.estimates.length > 2 && (
-                          <p className="text-xs text-gray-500 text-center">
-                            +{estimate.estimates.length - 2} more estimates
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4 flex items-center gap-2">
-                    <Link
-                      href="/customer-panel/estimating"
-                      className="flex-1 text-center px-4 py-2 text-sm text-white rounded-lg transition"
-                      style={{ backgroundColor: "#8b0e0f" }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
-                    >
-                      View Details
-                    </Link>
-                  </div>
-                </motion.article>
-              ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead style={{ backgroundColor: "#8b0e0f" }}>
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                        Address
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                        Roof / Building
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                        Date
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {(instantEstimatesFromAPI.data ?? []).slice(0, 5).map((est: any) => {
+                      const addr = est.address || {};
+                      const addressStr = [addr.street, addr.city, addr.state, addr.zip_code]
+                        .filter(Boolean)
+                        .join(", ") || "—";
+                      return (
+                        <tr key={est._id} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-3 text-gray-900 font-medium max-w-[200px] truncate" title={addressStr}>
+                            {addressStr}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">
+                            <span className="text-gray-700">{est.roof_material || "—"}</span>
+                            {est.building_type && (
+                              <span className="text-gray-500 text-xs ml-1">({est.building_type})</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                            {est.createdAt ? new Date(est.createdAt).toLocaleDateString() : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </motion.div>
           )}
         </section>
@@ -604,13 +571,6 @@ export default function DashboardPage() {
           </a>
         </footer>
       </motion.div>
-
-      {/* Estimate Modal - Always render, control visibility via isOpen prop */}
-      <EstimateModal
-        isOpen={isEstimateModalOpen}
-        onClose={handleCloseEstimateModal}
-        onSave={handleSaveEstimate}
-      />
     </CustomerDashboardLayout>
   );
 }

@@ -5,6 +5,15 @@ import { motion } from "framer-motion";
 import { Save, Building2, Edit2 } from "lucide-react";
 import AdminDashboardLayout from "@/app/dashboard/admin/page";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import { getCompanyUserAPI, createCompanyAPI } from "@/services/companyAPI";
+
+type AddressShape = {
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  zip_code?: string;
+};
 
 type CompanyProfile = {
   companyName: string;
@@ -12,10 +21,11 @@ type CompanyProfile = {
   phone?: string;
   email?: string;
   website?: string;
+  address?: AddressShape;
+  addressLine?: string;
   logoUrl?: string;
   accentHex?: string;
   disclaimer?: string;
-  addressLine?: string;
   contactPersonName?: string;
   contactPersonPhone?: string;
   contactPersonEmail?: string;
@@ -23,6 +33,11 @@ type CompanyProfile = {
   whatsIncluded?: string[];
   interestRate?: number;
 };
+
+function formatAddressLine(addr: AddressShape | undefined): string {
+  if (!addr) return "";
+  return [addr.street, addr.city, addr.state, addr.country, addr.zip_code].filter(Boolean).join(", ");
+}
 
 const DEFAULT_COMPANY: CompanyProfile = {
   companyName: "Superior Pro Roofing Systems",
@@ -58,26 +73,28 @@ export default function CompanySettingsPage() {
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState<string>("");
   const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("companyProfile");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          setProfile({ ...DEFAULT_COMPANY, ...parsed });
-        } catch (e) {
-          console.error("Error loading profile:", e);
+    getCompanyUserAPI()
+      .then((res: any) => {
+        const r = res?.data ?? res;
+        if (r && typeof r === "object") {
+          const address = r.address && typeof r.address === "object" ? r.address : undefined;
+          setProfile({
+            ...DEFAULT_COMPANY,
+            companyName: r.companyName ?? r.company_name ?? DEFAULT_COMPANY.companyName,
+            licenseNumber: r.licenseNumber ?? r.license_number ?? DEFAULT_COMPANY.licenseNumber,
+            phone: r.mobile_number ?? r.phone ?? DEFAULT_COMPANY.phone,
+            email: r.email ?? DEFAULT_COMPANY.email,
+            website: r.website ?? DEFAULT_COMPANY.website,
+            address,
+            addressLine: formatAddressLine(address) || r.addressLine ?? r.address_line ?? DEFAULT_COMPANY.addressLine,
+          });
         }
-      }
-    }
+      })
+      .catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && profile.companyName) {
-      localStorage.setItem("companyProfile", JSON.stringify(profile));
-    }
-  }, [profile]);
 
   const handleEdit = (field: keyof CompanyProfile, currentValue: any) => {
     setIsEditing(field);
@@ -89,6 +106,13 @@ export default function CompanySettingsPage() {
       setProfile({ ...profile, [field]: tempValue.split("\n").filter(line => line.trim()) });
     } else if (field === "interestRate") {
       setProfile({ ...profile, [field]: parseFloat(tempValue) || 0 });
+    } else if (field === "addressLine") {
+      const parts = tempValue.split(",").map((s) => s.trim());
+      setProfile({
+        ...profile,
+        addressLine: tempValue,
+        address: { street: parts[0], city: parts[1], state: parts[2], country: parts[3] ?? "", zip_code: parts[4] ?? "" },
+      });
     } else {
       setProfile({ ...profile, [field]: tempValue });
     }
@@ -102,10 +126,26 @@ export default function CompanySettingsPage() {
     setTempValue("");
   };
 
-  const handleSaveAll = () => {
-    console.log("Saving company profile:", profile);
-    alert("Company settings saved successfully!");
-    setHasChanges(false);
+  const handleSaveAll = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        companyName: profile.companyName,
+        licenseNumber: profile.licenseNumber,
+        website: profile.website,
+        email: profile.email,
+        mobile_number: profile.phone,
+        address: profile.address ?? (profile.addressLine ? { street: profile.addressLine, city: "", state: "", country: "", zip_code: "" } : undefined),
+      };
+      await createCompanyAPI(payload);
+      setHasChanges(false);
+      alert("Company settings saved successfully!");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? err?.message ?? "Failed to save.";
+      alert(msg);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -125,11 +165,12 @@ export default function CompanySettingsPage() {
           {hasChanges && (
             <button
               onClick={handleSaveAll}
-              className="flex items-center gap-2 bg-white text-white px-4 py-2 rounded-lg shadow hover:bg-gray-100 transition"
+              disabled={saving}
+              className="flex items-center gap-2 bg-white text-white px-4 py-2 rounded-lg shadow hover:bg-gray-100 transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               style={{ color: "#8b0e0f" }}
             >
               <Save size={18} />
-              Save All Changes
+              {saving ? "Saving…" : "Save All Changes"}
             </button>
           )}
         </header>

@@ -1,11 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import CustomerDashboardLayout from "@/app/dashboard/customer/page";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
-import EstimateModal from "@/components/estimating/EstimateModal";
 import Link from "next/link";
-import { FileText, TrendingUp, DollarSign, Calendar, X, Eye, MapPin, Home, Layers, Clock, CreditCard } from "lucide-react";
+import { FileText, TrendingUp, DollarSign, Calendar, X, Eye, MapPin, Home, Layers, Clock, CreditCard, Trash2, ChevronDown, ChevronRight, Mail, Phone, User } from "lucide-react";
+import { getUserInstantEstimatesAPI, deleteInstantEstimateAPI } from "@/services/instantEstimateAPI";
+
+/** API item ko Preliminary modal ke expected shape me convert karta hai */
+function apiItemToModalEstimate(est: any) {
+  const addr = est.address || {};
+  const addressStr = [addr.street, addr.city, addr.state, addr.zip_code].filter(Boolean).join(", ");
+  const parsePriceRange = (pr: string) => {
+    const m = (pr || "").match(/\$?\s*([\d,]+)\s*-\s*([\d,]+)/);
+    if (!m) return { min: 0, max: 0 };
+    return { min: parseInt(String(m[1]).replace(/,/g, ""), 10), max: parseInt(String(m[2]).replace(/,/g, ""), 10) };
+  };
+  const estimates = (est.estimate_price || []).map((ep: any) => {
+    const { min, max } = parsePriceRange(ep.price_range);
+    return { type: ep.title, minPrice: min, maxPrice: max, enabled: true };
+  });
+  return {
+    id: est._id,
+    address: addressStr,
+    buildingType: est.building_type,
+    totalArea: est.area ? parseFloat(String(est.area)) : undefined,
+    roofSteepness: est.roof_teep,
+    currentRoofType: est.current_roof_material,
+    roofLayers: String(est.current_roof_layer ?? ""),
+    desiredRoofType: est.roof_material,
+    projectTimeline: est.timeline,
+    estimates,
+    createdAt: est.createdAt,
+  };
+}
 
 interface PreliminaryEstimateModalProps {
   isOpen: boolean;
@@ -35,39 +63,39 @@ function PreliminaryEstimateModal({ isOpen, onClose, estimate }: PreliminaryEsti
   const totalMaxPrice = estimate.estimates?.reduce((sum: number, e: any) => sum + (e.maxPrice || 0), 0) || 0;
 
   return (
-    <div 
-      className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-300 ${
-        isVisible 
-          ? 'bg-white/95 backdrop-blur-sm opacity-100' 
-          : 'bg-white/0 backdrop-blur-0 opacity-0'
+    <div
+      className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 transition-all duration-300 ${
+        isVisible ? "bg-black/20 opacity-100" : "bg-transparent opacity-0 pointer-events-none"
       }`}
       onClick={onClose}
+      style={{ backdropFilter: isVisible ? "none" : undefined }}
+      aria-modal="true"
+      role="dialog"
     >
-      <div 
-        className={`bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4 transform transition-all duration-300 ${
-          isVisible 
-            ? 'scale-100 opacity-100 translate-y-0' 
-            : 'scale-95 opacity-0 translate-y-4'
+      <div
+        className={`relative z-[10001] bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col transition-all duration-300 ${
+          isVisible ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-4"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className={`sticky top-0 px-6 py-4 flex items-center justify-between transition-all duration-500 ${
-          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
-        }`}
-        style={{ backgroundColor: "#8b0e0f" }}>
+        {/* Header – hamesha upar, scroll pe bhi */}
+        <div
+          className="shrink-0 px-6 py-4 flex items-center justify-between rounded-t-xl"
+          style={{ backgroundColor: "#8b0e0f" }}
+        >
           <div>
             <h2 className="text-xl font-bold text-white">Preliminary Estimate</h2>
             <p className="text-white text-sm mt-1 opacity-90">Estimate #{estimate.id?.slice(-6) || 'N/A'}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/20 rounded-full transition-all duration-200 text-white transform hover:rotate-90"
+            className="p-2 hover:bg-white/20 rounded-full transition-all duration-200 text-white transform hover:rotate-90 cursor-pointer"
           >
             <X className="w-6 h-6" />
           </button>
         </div>
 
+        <div className="flex-1 min-h-0 overflow-y-auto">
         {/* Property Details */}
         <div className={`px-6 py-4 border-b border-gray-200 transition-all duration-500 delay-75 ${
           isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'
@@ -225,9 +253,10 @@ function PreliminaryEstimateModal({ isOpen, onClose, estimate }: PreliminaryEsti
             *Preliminary estimate. Final pricing subject to on-site inspection.
           </p>
         </div>
+        </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+        <div className="shrink-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3 rounded-b-xl">
           <button
             onClick={onClose}
             className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition"
@@ -241,52 +270,93 @@ function PreliminaryEstimateModal({ isOpen, onClose, estimate }: PreliminaryEsti
 }
 
 export default function EstimatingPage() {
-  useProtectedRoute();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [estimates, setEstimates] = useState<any[]>([]);
+  const { isAuthenticated, isChecking } = useProtectedRoute();
   const [selectedEstimate, setSelectedEstimate] = useState<any>(null);
   const [isPreliminaryModalOpen, setIsPreliminaryModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
-  // Load estimates from localStorage
+  // User ke instant estimates – API se
+  const [instantEstimatesFromAPI, setInstantEstimatesFromAPI] = useState<{
+    data: any[];
+    meta: { totalRecords: number } | null;
+  }>({ data: [], meta: null });
+  const [loadingInstantEstimates, setLoadingInstantEstimates] = useState(false);
+
+  // Fetch user's instant estimates from API
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedEstimates = localStorage.getItem("customerEstimates");
-      if (savedEstimates) {
-        setEstimates(JSON.parse(savedEstimates));
-      }
-    }
-  }, []);
+    if (!isAuthenticated || isChecking) return;
+    setLoadingInstantEstimates(true);
+    getUserInstantEstimatesAPI()
+      .then((res: any) => {
+        setInstantEstimatesFromAPI({
+          data: res?.data ?? [],
+          meta: res?.meta ?? null,
+        });
+      })
+      .catch((err) => {
+        console.error("Instant estimates fetch error:", err);
+        setInstantEstimatesFromAPI({ data: [], meta: null });
+      })
+      .finally(() => setLoadingInstantEstimates(false));
+  }, [isAuthenticated, isChecking]);
 
-  const handleOpenModal = () => {
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-  };
-
-  const handleSaveEstimate = (estimateData: any) => {
-    // Save to localStorage
-    if (typeof window !== "undefined") {
-      const existingEstimates = JSON.parse(
-        localStorage.getItem("customerEstimates") || "[]"
-      );
-      const newEstimate = {
-        id: Date.now().toString(),
-        ...estimateData,
-        createdAt: new Date().toISOString(),
-      };
-      existingEstimates.push(newEstimate);
-      localStorage.setItem("customerEstimates", JSON.stringify(existingEstimates));
-      setEstimates(existingEstimates);
-    }
-    setIsModalOpen(false);
+  const refetchInstantEstimates = () => {
+    getUserInstantEstimatesAPI()
+      .then((res: any) => {
+        setInstantEstimatesFromAPI({
+          data: res?.data ?? [],
+          meta: res?.meta ?? null,
+        });
+      })
+      .catch((err) => console.error("Refetch instant estimates error:", err));
   };
 
   const handleViewPreliminaryEstimate = (estimate: any) => {
-    setSelectedEstimate(estimate);
+    // API shape ho to modal ke liye transform karo
+    const forModal = estimate?._id && estimate?.estimate_price ? apiItemToModalEstimate(estimate) : estimate;
+    setSelectedEstimate(forModal);
     setIsPreliminaryModalOpen(true);
   };
+
+  const handleDeleteEstimate = async (id: string) => {
+    if (!id || !window.confirm("Are you sure you want to delete this estimate?")) return;
+    setDeletingId(id);
+    try {
+      await deleteInstantEstimateAPI(id);
+      refetchInstantEstimates();
+    } catch (err) {
+      console.error("Delete estimate error:", err);
+      alert("Failed to delete estimate. Please try again.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const apiData = instantEstimatesFromAPI.data ?? [];
+  const totalFromAPI = instantEstimatesFromAPI.meta?.totalRecords ?? apiData.length;
+  const avgFromEstimatePrices = () => {
+    let count = 0;
+    let sum = 0;
+    apiData.forEach((est: any) => {
+      (est.estimate_price || []).forEach((ep: any) => {
+        const m = (ep.price_range || "").match(/\$?\s*([\d,]+)\s*-\s*([\d,]+)/);
+        if (m) {
+          const min = parseInt(String(m[1]).replace(/,/g, ""), 10);
+          const max = parseInt(String(m[2]).replace(/,/g, ""), 10);
+          sum += (min + max) / 2;
+          count += 1;
+        }
+      });
+    });
+    return count > 0 ? Math.round(sum / count) : 0;
+  };
+  const latestDate =
+    apiData.length > 0
+      ? new Date(
+          Math.max(...apiData.map((e: any) => new Date(e?.createdAt || 0).getTime()))
+        ).toLocaleDateString()
+      : "N/A";
 
   return (
     <CustomerDashboardLayout>
@@ -299,26 +369,26 @@ export default function EstimatingPage() {
               Get instant estimates for your roofing project
             </p>
           </div>
-          <button
-            onClick={handleOpenModal}
-            className="px-6 py-3 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+          <Link
+            href="/customer-panel/instant-estimate"
+            className="px-6 py-3 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 w-fit"
             style={{ backgroundColor: "#8b0e0f" }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#6d0b0c")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#8b0e0f")}
           >
             <TrendingUp className="w-5 h-5" />
             Get Free Estimate
-          </button>
+          </Link>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards – user ke instant estimates (API) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Estimates</p>
                 <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {estimates.length}
+                  {loadingInstantEstimates ? "…" : totalFromAPI}
                 </p>
               </div>
               <div className="p-3 bg-blue-100 rounded-lg">
@@ -332,17 +402,7 @@ export default function EstimatingPage() {
               <div>
                 <p className="text-sm text-gray-500">Average Estimate</p>
                 <p className="text-3xl font-bold text-gray-900 mt-2">
-                  ${estimates.length > 0
-                    ? Math.round(
-                        estimates.reduce((sum, e) => {
-                          const avg =
-                            (e.estimates?.[0]?.minPrice +
-                              e.estimates?.[0]?.maxPrice) /
-                            2;
-                          return sum + avg;
-                        }, 0) / estimates.length
-                      ).toLocaleString()
-                    : "0"}
+                  {loadingInstantEstimates ? "…" : `$${avgFromEstimatePrices().toLocaleString()}`}
                 </p>
               </div>
               <div className="p-3 bg-green-100 rounded-lg">
@@ -356,9 +416,7 @@ export default function EstimatingPage() {
               <div>
                 <p className="text-sm text-gray-500">Recent Estimate</p>
                 <p className="text-lg font-semibold text-gray-900 mt-2">
-                  {estimates.length > 0
-                    ? new Date(estimates[estimates.length - 1].createdAt).toLocaleDateString()
-                    : "N/A"}
+                  {loadingInstantEstimates ? "…" : latestDate}
                 </p>
               </div>
               <div className="p-3 bg-purple-100 rounded-lg">
@@ -368,30 +426,38 @@ export default function EstimatingPage() {
           </div>
         </div>
 
-        {/* Estimates Table */}
+        {/* Estimates Table – user ke instant estimates (API) */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden flex-1">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">
               Your Estimates
+              {totalFromAPI > 0 && (
+                <span className="text-sm font-normal text-gray-500 ml-2">({totalFromAPI} total)</span>
+              )}
             </h2>
           </div>
 
-          {estimates.length === 0 ? (
+          {loadingInstantEstimates ? (
+            <div className="p-12 text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3" />
+              <p className="text-gray-500">Loading your estimates…</p>
+            </div>
+          ) : apiData.length === 0 ? (
             <div className="p-12 text-center">
               <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 text-lg mb-2">No estimates yet</p>
               <p className="text-gray-400 mb-6">
-                Click "Get Free Estimate" to get started
+                Get your first estimate on the Instant Estimate page
               </p>
-              <button
-                onClick={handleOpenModal}
-                className="px-6 py-2 text-white rounded-lg transition"
+              <Link
+                href="/customer-panel/instant-estimate"
+                className="px-6 py-2 text-white rounded-lg transition cursor-pointer inline-block"
                 style={{ backgroundColor: "#8b0e0f" }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#6d0b0c")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#8b0e0f")}
               >
                 Get Your First Estimate
-              </button>
+              </Link>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -428,94 +494,234 @@ export default function EstimatingPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {estimates.map((estimate) => (
-                    <tr key={estimate.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-4">
-                        <div className="text-sm font-medium text-gray-900 max-w-[200px] truncate" title={estimate.address}>
-                          {estimate.address || "N/A"}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          estimate.buildingType === 'Residential' 
-                            ? 'bg-blue-100 text-blue-700' 
-                            : 'bg-purple-100 text-purple-700'
-                        }`}>
-                          {estimate.buildingType || "N/A"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-600">
-                          {estimate.currentRoofType || "N/A"}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-green-600">
-                          {estimate.desiredRoofType || "N/A"}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-600">
-                          {estimate.roofSteepness || "N/A"}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 font-medium">
-                          {estimate.totalArea ? Math.round(estimate.totalArea).toLocaleString() : "N/A"}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          estimate.projectTimeline === 'Now' 
-                            ? 'bg-red-100 text-red-700' 
-                            : estimate.projectTimeline === 'In 1-3 months'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {estimate.projectTimeline || "N/A"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          {new Date(estimate.createdAt).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleViewPreliminaryEstimate(estimate)}
-                            className="px-3 py-1.5 text-white text-xs font-medium rounded-lg transition flex items-center gap-1"
-                            style={{ backgroundColor: "#8b0e0f" }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
-                          >
-                            <Eye className="w-3 h-3" />
-                            Preliminary Estimate
-                          </button>
-                          <Link
-                            href={`/customer-panel/estimate-report/${estimate.id}`}
-                            className="px-3 py-1.5 border text-xs font-medium rounded-lg hover:bg-gray-50 transition"
-                          >
-                            Report
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {apiData.map((est: any) => {
+                    const addr = est.address || {};
+                    const addressStr = [addr.street, addr.city, addr.state, addr.zip_code].filter(Boolean).join(", ") || "N/A";
+                    const isExpanded = expandedRowId === est._id;
+                    return (
+                      <React.Fragment key={est._id}>
+                        <tr
+                          onClick={() => setExpandedRowId((prev) => (prev === est._id ? null : est._id))}
+                          className={`hover:bg-gray-50 cursor-pointer transition-colors ${isExpanded ? "bg-slate-50" : ""}`}
+                        >
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-400 flex-shrink-0">
+                                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                              </span>
+                              <div className="text-sm font-medium text-gray-900 max-w-[180px] truncate" title={addressStr}>
+                                {addressStr}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              est.building_type === "Residential"
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-purple-100 text-purple-700"
+                            }`}>
+                              {est.building_type || "N/A"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-600">
+                              {est.current_roof_material || "N/A"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-green-600">
+                              {est.roof_material || "N/A"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-600">
+                              {est.roof_teep || "N/A"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900 font-medium">
+                              {est.area ? String(est.area) : "N/A"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              est.timeline === "Now"
+                                ? "bg-red-100 text-red-700"
+                                : est.timeline === "1-3 months" || est.timeline?.includes("1-3")
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-gray-100 text-gray-700"
+                            }`}>
+                              {est.timeline || "N/A"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-500">
+                              {est.createdAt ? new Date(est.createdAt).toLocaleDateString() : "N/A"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleViewPreliminaryEstimate(est)}
+                                className="px-3 py-1.5 text-white text-xs font-medium rounded-lg transition flex items-center gap-1 cursor-pointer"
+                                style={{ backgroundColor: "#8b0e0f" }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#6d0b0c")}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#8b0e0f")}
+                              >
+                                <Eye className="w-3 h-3" />
+                                Preliminary Estimate
+                              </button>
+                              <Link
+                              target="_blank"
+                                href={`/customer-panel/estimate-report/${est._id}`}
+                                className="px-3 py-1.5 border text-xs font-medium rounded-lg hover:bg-gray-50 transition"
+                              >
+                                Report
+                              </Link>
+                              <button
+                                onClick={() => handleDeleteEstimate(est._id)}
+                                disabled={deletingId === est._id}
+                                className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Delete estimate"
+                                aria-label="Delete estimate"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr key={`${est._id}-detail`} className="bg-slate-50/80">
+                            <td colSpan={9} className="px-4 pb-4 pt-0 align-top">
+                              <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+                                  {/* Address & Contact */}
+                                  <div className="space-y-4">
+                                    <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                                      <MapPin className="w-4 h-4 text-gray-500" />
+                                      Address & Contact
+                                    </h4>
+                                    <div className="space-y-2 text-sm">
+                                      <p className="font-medium text-gray-900">{addressStr}</p>
+                                      <div className="flex items-center gap-2 text-gray-600">
+                                        <User className="w-4 h-4 text-gray-400" />
+                                        {[est.first_name, est.last_name].filter(Boolean).join(" ") || "—"}
+                                      </div>
+                                      {est.email && (
+                                        <div className="flex items-center gap-2 text-gray-600">
+                                          <Mail className="w-4 h-4 text-gray-400" />
+                                          <a href={`mailto:${est.email}`} className="text-blue-600 hover:underline">{est.email}</a>
+                                        </div>
+                                      )}
+                                      {est.mobile_number && (
+                                        <div className="flex items-center gap-2 text-gray-600">
+                                          <Phone className="w-4 h-4 text-gray-400" />
+                                          {est.mobile_number}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {/* Property & Roof */}
+                                  <div className="space-y-4">
+                                    <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                                      <Home className="w-4 h-4 text-gray-500" />
+                                      Property & Roof
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                      <div>
+                                        <p className="text-gray-500">Area</p>
+                                        <p className="font-medium text-gray-900">{est.area ?? "—"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-gray-500">Building</p>
+                                        <p className="font-medium text-gray-900">{est.building_type ?? "—"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-gray-500">Steepness</p>
+                                        <p className="font-medium text-gray-900">{est.roof_teep ?? "—"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-gray-500">Current roof</p>
+                                        <p className="font-medium text-gray-900">{est.current_roof_material ?? "—"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-gray-500">Layers</p>
+                                        <p className="font-medium text-gray-900">{est.current_roof_layer ?? "—"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-gray-500">Desired roof</p>
+                                        <p className="font-medium text-green-700">{est.roof_material ?? "—"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-gray-500">Timeline</p>
+                                        <p className="font-medium text-gray-900">{est.timeline ?? "—"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-gray-500">Financing</p>
+                                        <p className="font-medium text-gray-900">{est.interested_in_financing === "true" ? "Yes" : est.interested_in_financing ?? "—"}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {/* Estimate Prices */}
+                                  <div className="space-y-4 md:col-span-2 lg:col-span-1">
+                                    <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                                      <DollarSign className="w-4 h-4 text-gray-500" />
+                                      Estimate Prices
+                                    </h4>
+                                    <div className="space-y-2">
+                                      {(est.estimate_price || []).map((ep: any) => (
+                                        <div
+                                          key={ep._id || ep.title}
+                                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg text-sm"
+                                        >
+                                          <div>
+                                            <p className="font-medium text-gray-900">{ep.title}</p>
+                                            {ep.description && <p className="text-xs text-gray-500 mt-0.5">{ep.description}</p>}
+                                          </div>
+                                          <span className="font-semibold text-green-600 whitespace-nowrap ml-2">{ep.price_range}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="pt-2 flex items-center gap-2 text-xs text-gray-500">
+                                      <Calendar className="w-3.5 h-3.5" />
+                                      Created {est.createdAt ? new Date(est.createdAt).toLocaleString() : "—"}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleViewPreliminaryEstimate(est); }}
+                                    className="px-3 py-1.5 text-white text-xs font-medium rounded-lg cursor-pointer"
+                                    style={{ backgroundColor: "#8b0e0f" }}
+                                  >
+                                    <Eye className="w-3 h-3 inline mr-1" /> Preliminary
+                                  </button>
+                                  <Link
+                                    href={`/customer-panel/estimate-report/${est._id}`}
+                                    className="px-3 py-1.5 border rounded-lg text-xs font-medium hover:bg-gray-100"
+                                  >
+                                    Report
+                                  </Link>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteEstimate(est._id); }}
+                                    disabled={deletingId === est._id}
+                                    className="px-3 py-1.5 border border-red-200 text-red-600 rounded-lg text-xs font-medium hover:bg-red-50 cursor-pointer disabled:opacity-50"
+                                  >
+                                    <Trash2 className="w-3 h-3 inline mr-1" /> Delete
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
         </div>
-
-        {/* Estimate Modal */}
-        {isModalOpen && (
-          <EstimateModal
-            isOpen={isModalOpen}
-            onClose={handleCloseModal}
-            onSave={handleSaveEstimate}
-          />
-        )}
 
         {/* Preliminary Estimate Modal */}
         <PreliminaryEstimateModal

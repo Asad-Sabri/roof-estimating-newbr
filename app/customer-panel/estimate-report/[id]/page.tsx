@@ -10,6 +10,8 @@ import {
   Mail,
   BadgeCheck,
 } from "lucide-react";
+import { getUserInstantEstimatesAPI } from "@/services/instantEstimateAPI";
+import { getCompanyAPI, getCompanyUserAPI } from "@/services/companyAPI";
 
 type EstimateRecord = {
   id: string;
@@ -83,29 +85,37 @@ const DEFAULT_COMPANY: CompanyProfile = {
   interestRate: 6.5, // Default annual interest rate percentage
 };
 
-function useCompanyProfile(): [
-  CompanyProfile,
-  (profile: CompanyProfile) => void
-] {
-  const [profile, setProfile] = useState<CompanyProfile>(DEFAULT_COMPANY);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const saved = localStorage.getItem("companyProfile");
-      if (saved) {
-        setProfile({ ...DEFAULT_COMPANY, ...JSON.parse(saved) });
-      }
-    } catch {
-      setProfile(DEFAULT_COMPANY);
-    }
-  }, []);
-  const save = (p: CompanyProfile) => {
-    setProfile(p);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("companyProfile", JSON.stringify(p));
-    }
+/** API company object ko CompanyProfile shape me map – Add Company response (companyName, licenseNumber, website, email, mobile_number, address) */
+function formatCompanyAddress(addr: any): string {
+  if (!addr || typeof addr !== "object") return "";
+  return [addr.street, addr.city, addr.state, addr.country, addr.zip_code].filter(Boolean).join(", ");
+}
+
+function mapCompanyFromAPI(raw: any): CompanyProfile {
+  if (!raw) return DEFAULT_COMPANY;
+  // Support: { data: {...} } | { data: { company: {...} } } | { company: {...} } | {...}
+  const data = raw?.data ?? raw;
+  const r = data?.company && typeof data.company === "object" ? data.company : data;
+  if (!r || typeof r !== "object") return DEFAULT_COMPANY;
+  const address = r.address && typeof r.address === "object" ? r.address : undefined;
+  return {
+    ...DEFAULT_COMPANY,
+    companyName: r.companyName ?? r.company_name ?? DEFAULT_COMPANY.companyName,
+    licenseNumber: r.licenseNumber ?? r.license_number ?? DEFAULT_COMPANY.licenseNumber,
+    phone: r.mobile_number ?? r.phone ?? DEFAULT_COMPANY.phone,
+    email: r.email ?? DEFAULT_COMPANY.email,
+    website: r.website ?? DEFAULT_COMPANY.website,
+    addressLine: formatCompanyAddress(address) || r.addressLine ?? r.address_line ?? DEFAULT_COMPANY.addressLine,
+    logoUrl: r.logoUrl ?? r.logo_url ?? DEFAULT_COMPANY.logoUrl,
+    accentHex: r.accentHex ?? r.accent_hex ?? DEFAULT_COMPANY.accentHex,
+    disclaimer: r.disclaimer ?? DEFAULT_COMPANY.disclaimer,
+    contactPersonName: r.contactPersonName ?? r.contact_person_name ?? DEFAULT_COMPANY.contactPersonName,
+    contactPersonPhone: r.contactPersonPhone ?? r.contact_person_phone ?? DEFAULT_COMPANY.contactPersonPhone,
+    contactPersonEmail: r.contactPersonEmail ?? r.contact_person_email ?? DEFAULT_COMPANY.contactPersonEmail,
+    followUpText: r.followUpText ?? r.follow_up_text ?? DEFAULT_COMPANY.followUpText,
+    whatsIncluded: Array.isArray(r.whatsIncluded) ? r.whatsIncluded : Array.isArray(r.whats_included) ? r.whats_included : DEFAULT_COMPANY.whatsIncluded,
+    interestRate: r.interestRate ?? r.interest_rate ?? DEFAULT_COMPANY.interestRate,
   };
-  return [profile, save];
 }
 
 function currency(n: number | undefined) {
@@ -122,20 +132,104 @@ function calculateMonthlyPayment(principal: number, annualRate: number, years: n
   return principal * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / (Math.pow(1 + monthlyRate, numPayments) - 1);
 }
 
+/** API instant-estimate item ko EstimateRecord shape me map karta hai */
+function apiItemToEstimateRecord(est: any): EstimateRecord {
+  const addr = est.address || {};
+  const addressStr = [addr.street, addr.city, addr.state, addr.zip_code]
+    .filter(Boolean)
+    .join(", ");
+  const parsePriceRange = (pr: string) => {
+    const m = (pr || "").match(/\$?\s*([\d,]+)\s*-\s*([\d,]+)/);
+    if (!m) return { min: 0, max: 0 };
+    return {
+      min: parseInt(String(m[1]).replace(/,/g, ""), 10),
+      max: parseInt(String(m[2]).replace(/,/g, ""), 10),
+    };
+  };
+  const estimates = (est.estimate_price || []).map((ep: any) => {
+    const { min, max } = parsePriceRange(ep.price_range);
+    return { type: ep.title, minPrice: min, maxPrice: max, enabled: true };
+  });
+  return {
+    id: est._id,
+    address: addressStr || undefined,
+    totalArea: est.area != null ? parseFloat(String(est.area)) : undefined,
+    roofSteepness: est.roof_teep,
+    buildingType: est.building_type,
+    currentRoofType: est.current_roof_material,
+    roofLayers: String(est.current_roof_layer ?? ""),
+    desiredRoofType: est.roof_material,
+    projectTimeline: est.timeline,
+    firstName: est.first_name,
+    lastName: est.last_name,
+    email: est.email,
+    phone: est.mobile_number,
+    estimates,
+    createdAt: est.createdAt,
+  };
+}
+
 export default function EstimateReportPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const [company] = useCompanyProfile();
+  const [company, setCompany] = useState<CompanyProfile>(DEFAULT_COMPANY);
+  const [companyLoading, setCompanyLoading] = useState(true);
   const [estimate, setEstimate] = useState<EstimateRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Report par company: pehle GET /api/company (app/tenant company jo admin save karta hai), phir fallback GET /api/company/user – taake customer report me bhi updated company dikhe
+  useEffect(() => {
+    setCompanyLoading(true);
+    const apply = (res: any) => {
+      setCompany(mapCompanyFromAPI(res));
+      setCompanyLoading(false);
+    };
+    getCompanyAPI()
+      .then((res: any) => apply(res))
+      .catch(() => {
+        getCompanyUserAPI()
+          .then((res: any) => apply(res))
+          .catch(() => {
+            setCompany(DEFAULT_COMPANY);
+            setCompanyLoading(false);
+          });
+      });
+  }, [params?.id]);
 
   useEffect(() => {
+    if (!params?.id) {
+      setLoading(false);
+      return;
+    }
     if (typeof window === "undefined") return;
-    const all = JSON.parse(
-      localStorage.getItem("customerEstimates") || "[]"
-    ) as EstimateRecord[];
-    const rec =
-      all.find((e) => e.id === params?.id) || all[all.length - 1] || null;
-    setEstimate(rec);
+
+    const fromLocal = () => {
+      const all = JSON.parse(
+        localStorage.getItem("customerEstimates") || "[]"
+      ) as EstimateRecord[];
+      return all.find((e) => e.id === params.id) ?? null;
+    };
+
+    const rec = fromLocal();
+    if (rec) {
+      setEstimate(rec);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    getUserInstantEstimatesAPI()
+      .then((res: any) => {
+        const list = res?.data ?? [];
+        const found = list.find((e: any) => e._id === params.id);
+        if (found) {
+          setEstimate(apiItemToEstimateRecord(found));
+        } else {
+          setEstimate(null);
+        }
+      })
+      .catch(() => setEstimate(null))
+      .finally(() => setLoading(false));
   }, [params?.id]);
 
   const highlight = useMemo(() => {
@@ -162,6 +256,17 @@ export default function EstimateReportPage() {
     );
   }, [estimate, highlight]);
 
+  if (loading || companyLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mx-auto mb-3" />
+          <p className="text-gray-600">Loading report…</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!estimate) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
@@ -169,7 +274,7 @@ export default function EstimateReportPage() {
           <p className="text-gray-600 mb-4">No estimate found.</p>
           <button
             onClick={() => router.push("/customer-panel/estimating")}
-            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"
           >
             Go to Estimating
           </button>
@@ -220,44 +325,43 @@ export default function EstimateReportPage() {
       </div>
 
       <div className="max-w-5xl mx-auto bg-white shadow print:shadow-none print:border-0 my-6 print:my-0 rounded-xl print:rounded-none overflow-hidden">
+        {/* Company block – sirf wohi details jo API me hain (admin ne save ki): companyName, licenseNumber, address, phone, email, website */}
         <div className="px-8 py-6 flex items-center justify-between border-b">
           <div className="flex items-center gap-4">
-            {company.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={company.logoUrl}
-                alt="Company Logo"
-                className="h-12 w-12 rounded object-cover"
-              />
-            ) : null}
             <div>
               <h1 className="text-xl font-bold text-gray-900">
                 {company.companyName}
               </h1>
-              <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-                {company.licenseNumber && (
+              <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 mt-1">
+                {company.licenseNumber ? (
                   <span className="inline-flex items-center gap-1">
                     <BadgeCheck className="w-4 h-4 text-emerald-600" />
                     {company.licenseNumber}
                   </span>
-                )}
-                {company.addressLine && <span>{company.addressLine}</span>}
+                ) : null}
+                {company.addressLine ? <span>{company.addressLine}</span> : null}
               </div>
             </div>
           </div>
           <div className="text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4" />
-              <span>{company.phone}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4" />
-              <span>{company.email}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Globe className="w-4 h-4" />
-              <span>{company.website}</span>
-            </div>
+            {company.phone ? (
+              <div className="flex items-center gap-2">
+                <Phone className="w-4 h-4" />
+                <span>{company.phone}</span>
+              </div>
+            ) : null}
+            {company.email ? (
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                <span>{company.email}</span>
+              </div>
+            ) : null}
+            {company.website ? (
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4" />
+                <span>{company.website}</span>
+              </div>
+            ) : null}
           </div>
         </div>
 
