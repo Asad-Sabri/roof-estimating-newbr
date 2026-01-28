@@ -218,8 +218,8 @@ export default function DashboardPage() {
             >
               <ClipboardList size={18} /> View All Estimates
             </Link>
-          </motion.div>
-        </header  >
+          </motion.div> 
+        </header>
 
         {/* Overview Cards */}
         <motion.section
