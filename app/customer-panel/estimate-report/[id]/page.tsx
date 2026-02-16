@@ -382,15 +382,26 @@ export default function EstimateReportPage() {
         <div className="px-8 pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="rounded-lg overflow-hidden border bg-gray-50">
             {staticMapUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={staticMapUrl}
-                alt="Map"
+                alt="Property location"
                 className="w-full h-56 object-cover"
               />
             ) : (
-              <div className="w-full h-56 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
-                Map preview not available
+              <div className="w-full h-56 bg-gray-100 flex flex-col items-center justify-center gap-2 px-4">
+                <span className="text-gray-500 text-sm text-center">
+                  Map preview not available
+                </span>
+                {estimate.address && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(estimate.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-red-700 hover:text-red-800 underline"
+                  >
+                    View address on map
+                  </a>
+                )}
               </div>
             )}
           </div>

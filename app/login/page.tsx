@@ -537,7 +537,7 @@ export default function LoginPage() {
                     className="w-full px-6 py-3 text-white my-2 rounded-lg font-semibold shadow-md hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ backgroundColor: "#8b0e0f" }}
                   >
-                    {isPending ? "Logging in..." : "Sign In →"}
+                    {isPending ? "Logging in..." : "Login →"}
                   </button>
 
                   {/* New Customer? Get Free Estimate Button */}
@@ -626,7 +626,7 @@ export default function LoginPage() {
                     className="w-full px-6 py-3 text-white rounded-lg font-semibold shadow-md hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ backgroundColor: "#8b0e0f" }}
                   >
-                    {isPending ? "Logging in..." : "Sign In →"}
+                    {isPending ? "Logging in..." : "Login →"}
                   </button>
                 </Form>
               )}

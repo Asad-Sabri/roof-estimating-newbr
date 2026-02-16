@@ -29,10 +29,13 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
     data.pinConfirmed || false
   );
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [webglUnavailable, setWebglUnavailable] = useState(false);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
-  const addressRef = useRef<string>(data.address || ""); // Track previous address to prevent unnecessary reloads
+  const markerFixedRef = useRef<boolean>(false); // true after Continue (marker fixed, zoom won't move it)
+  const addressRef = useRef<string>(data.address || "");
 
-  // Update pinConfirmed when data changes
+  const showMap = !!(data.address && String(data.address).trim().length > 0);
+
   useEffect(() => {
     if (data.pinConfirmed !== undefined) {
       setPinConfirmed(data.pinConfirmed);
@@ -69,17 +72,36 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
     }
   }, [onInputChange]);
 
-  // Initialize map only once when map container is available (regardless of address)
+  // Initialize map only when address field has text (showMap) and container is mounted
   useEffect(() => {
-    // Only initialize if container exists and map not already initialized
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (!showMap || !mapContainerRef.current || mapRef.current) return;
 
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/satellite-streets-v12",
-      center: [0, 0], // World view center
-      zoom: 2, // Full zoom out
-    });
+    let map: mapboxgl.Map;
+    try {
+      map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: "mapbox://styles/mapbox/satellite-streets-v12",
+        center: [0, 0], // World view center
+        zoom: 2, // Full zoom out
+        // Allow WebGL even when performance is limited (e.g. software renderer) – helps on some PCs
+        failIfMajorPerformanceCaveat: false,
+      });
+    } catch (err) {
+      console.warn("Failed to initialize WebGL/Mapbox map:", err);
+      setWebglUnavailable(true);
+      return;
+    }
+
+    const onMapError = (e: any) => {
+      if (e?.error?.message?.includes("WebGL") || e?.error?.message?.includes("Failed to initialize")) {
+        setWebglUnavailable(true);
+        if (mapRef.current) {
+          try { mapRef.current.remove(); } catch (_) {}
+          mapRef.current = null;
+        }
+      }
+    };
+    map.on("error", onMapError);
 
     // Wait for style to load, then add building layer if not present
     map.on("style.load", () => {
@@ -108,11 +130,27 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
 
     mapRef.current = map;
 
-    return () => {
-      // Only cleanup on unmount - map should persist across address changes
-      // Cleanup will only run when component unmounts
-    };
-  }, [updateArea]); // Initialize map only once, don't depend on address
+    return () => {};
+  }, [updateArea, webglUnavailable, showMap]);
+
+  // Reverse geocode: lat,lng -> address string
+  const reverseGeocodeAddress = useCallback(
+    async (lng: number, lat: number): Promise<string> => {
+      const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+      if (!token) return "";
+      try {
+        const res = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&limit=1`
+        );
+        const data = await res.json();
+        if (data.features && data.features[0]) return data.features[0].place_name || "";
+      } catch (e) {
+        console.error("Reverse geocode error:", e);
+      }
+      return "";
+    },
+    []
+  );
 
   const autoDetectRoofGeometry = useCallback(
     async (lng: number, lat: number) => {
@@ -503,9 +541,8 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
         );
       }
 
-      // Fallback: Create a simple square polygon (temporary approximation)
-      // This is what currently exists - replace with Google Solar API data
-      const offset = 0; // ~15 meters offset for building outline
+      // Fallback: chota square polygon taake roof dikhe jab APIs fail hon (offset ~20m)
+      const offset = 0.00018; // ~20m in degrees, visible on map
       const polygonCoords = [
         [
           [lng - offset, lat - offset],
@@ -536,115 +573,140 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
     [updateArea]
   );
 
-  // Handle Continue button click - geocode and navigate to location
+  // Add or update marker at lat/lng; draggable until user clicks Continue again
+  const addOrUpdateMarker = useCallback(
+    (lng: number, lat: number, draggable: boolean) => {
+      if (!mapRef.current) return;
+      if (markerRef.current) {
+        try {
+          markerRef.current.remove();
+        } catch (_) {}
+        markerRef.current = null;
+      }
+      // Marker position: [lng, lat] – yahi coordinates map par dikhengi aur Continue ke baad isi jagah polygon banta hai
+      const marker = new mapboxgl.Marker({ draggable })
+        .setLngLat([lng, lat])
+        .addTo(mapRef.current);
+      markerRef.current = marker;
+      markerFixedRef.current = !draggable;
+
+      if (draggable) {
+        marker.on("dragend", () => {
+          const pos = marker.getLngLat();
+          const coords = { lng: pos.lng, lat: pos.lat };
+          setCoordinates({ lat: pos.lat, lng: pos.lng });
+          onInputChange("coordinates", coords);
+        });
+      }
+    },
+    [onInputChange]
+  );
+
+  // Continue: (1) no coords → geocode, show draggable marker; (2) has coords → fix marker, reverse geocode, AI polygon, complete step
   const handleContinue = async () => {
     if (!data.address) return;
 
-    setIsGeocoding(true);
-    addressRef.current = data.address;
-
-    const updateMapLocation = async () => {
-      // Wait for map to be initialized
-      if (!mapRef.current) {
-        setTimeout(() => updateMapLocation(), 200);
-        return;
-      }
-
-      // Wait for map to be loaded
-      if (!mapRef.current.loaded()) {
-        mapRef.current.once("load", updateMapLocation);
-        return;
-      }
-
-      try {
-        const geoRes = await geocodingClient
-          .forwardGeocode({ query: data.address!, limit: 1 })
-          .send();
-
-        if (geoRes.body.features.length > 0) {
-          const feature = geoRes.body.features[0];
-          // Use geometry center for more accurate location if available
-          let lng: number, lat: number;
-          if (
-            feature.geometry &&
-            feature.geometry.type === "Point" &&
-            feature.geometry.coordinates
-          ) {
-            [lng, lat] = feature.geometry.coordinates;
-          } else {
-            [lng, lat] = feature.center;
-          }
-
-          if (lng && lat) {
-            // Save address and coordinates to localStorage immediately
-            if (typeof window !== "undefined") {
-              const currentForm = JSON.parse(
-                localStorage.getItem("currentEstimateForm") || "{}"
-              );
-              currentForm.address = data.address;
-              currentForm.coordinates = { lat, lng };
-              localStorage.setItem(
-                "currentEstimateForm",
-                JSON.stringify(currentForm)
-              );
-            }
-
-            // Remove existing marker if any
-            if (markerRef.current) {
-              try {
-                (markerRef.current as mapboxgl.Marker).remove();
-              } catch (e) {
-                // Ignore errors
-              }
-              markerRef.current = null;
-            }
-
-            // Store exact coordinates for marker (fixed location from address)
-            const markerLng = lng;
-            const markerLat = lat;
-
-            // Update map center and zoom
-            mapRef.current!.flyTo({
-              center: [markerLng, markerLat] as [number, number],
-              zoom: 21,
-              duration: 2000,
-            });
-
-            // Wait for map to finish moving, then add marker and detect polygon
-            mapRef.current!.once("moveend", () => {
-              if (!mapRef.current) return;
-
-              // Add marker at exact coordinates immediately
-              const marker = new mapboxgl.Marker({
-                draggable: false,
-              })
-                .setLngLat([markerLng, markerLat])
-                .addTo(mapRef.current!);
-
-              markerRef.current = marker;
-
-              // Update coordinates state for display
-              const initialCoords = { lat: markerLat, lng: markerLng };
-              setCoordinates(initialCoords);
-
-              // Update coordinates in formData
-              onInputChange("coordinates", initialCoords);
-
-              // Auto-detect roof geometry immediately after marker is added
-              if (drawRef.current && mapRef.current) {
-                autoDetectRoofGeometry(markerLng, markerLat);
-              }
-            });
-          }
+    if (!coordinates) {
+      // First Continue: geocode address, show draggable marker at that location
+      setIsGeocoding(true);
+      const run = async () => {
+        if (!mapRef.current) {
+          setTimeout(run, 200);
+          return;
         }
-      } catch (err) {
-        console.error("Geocoding error:", err);
-      } finally {
-        setIsGeocoding(false);
-      }
-    };
+        if (!mapRef.current.loaded()) {
+          mapRef.current.once("load", run);
+          return;
+        }
+        try {
+          const geoRes = await geocodingClient
+            .forwardGeocode({ query: data.address!.trim(), limit: 1 })
+            .send();
+          if (geoRes.body.features.length > 0) {
+            const feature = geoRes.body.features[0];
+            let lng: number, lat: number;
+            if (
+              feature.geometry?.type === "Point" &&
+              feature.geometry.coordinates
+            ) {
+              [lng, lat] = feature.geometry.coordinates;
+            } else {
+              [lng, lat] = feature.center;
+            }
+            // Marker position – geocode se mili jagah (lng, lat)
+            if (lng != null && lat != null) {
+              mapRef.current!.flyTo({
+                center: [lng, lat],
+                zoom: 19,
+                duration: 1500,
+              });
+              mapRef.current!.once("moveend", () => {
+                addOrUpdateMarker(lng, lat, true); // marker is jagah par
+                const coords = { lat, lng };
+                setCoordinates(coords);
+                onInputChange("coordinates", coords);
+                if (typeof window !== "undefined") {
+                  const currentForm = JSON.parse(
+                    localStorage.getItem("currentEstimateForm") || "{}"
+                  );
+                  currentForm.address = data.address;
+                  currentForm.coordinates = coords;
+                  localStorage.setItem("currentEstimateForm", JSON.stringify(currentForm));
+                }
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Geocoding error:", err);
+        } finally {
+          setIsGeocoding(false);
+        }
+      };
+      run();
+      return;
+    }
 
-    updateMapLocation();
+    // Second Continue: fix marker, AI polygon (marker position par), phir step complete – address background me update
+    const marker = markerRef.current;
+    if (!marker) return;
+    const pos = marker.getLngLat();
+    // Marker position – isi [lng, lat] par ghar ka polygon banega
+    const lng = pos.lng;
+    const lat = pos.lat;
+
+    setIsGeocoding(true);
+    try {
+      marker.setDraggable(false);
+      markerFixedRef.current = true;
+
+      // Polygon ke liye drawRef zaroori hai – map load hone par set hota hai; thodi der wait karo agar null ho
+      let waited = 0;
+      while (!drawRef.current && mapRef.current && waited < 40) {
+        await new Promise((r) => setTimeout(r, 100));
+        waited++;
+      }
+      if (drawRef.current && mapRef.current) {
+        await autoDetectRoofGeometry(lng, lat);
+      }
+
+      setPinConfirmed(true);
+      onInputChange("pinConfirmed", true);
+
+      // Address field reverse geocode se background me update (user ko wait nahi karna)
+      reverseGeocodeAddress(lng, lat).then((addressStr) => {
+        if (addressStr) onInputChange("address", addressStr);
+        if (typeof window !== "undefined") {
+          const currentForm = JSON.parse(
+            localStorage.getItem("currentEstimateForm") || "{}"
+          );
+          currentForm.address = addressStr || data.address;
+          currentForm.coordinates = { lat, lng };
+          localStorage.setItem("currentEstimateForm", JSON.stringify(currentForm));
+        }
+      });
+    } finally {
+      setIsGeocoding(false);
+    }
   };
 
   const handleAddressChange = async (
@@ -670,9 +732,57 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
     }
   };
 
-  const handleSelectSuggestion = (suggestion: string) => {
+  const handleSelectSuggestion = async (suggestion: string) => {
     onInputChange("address", suggestion);
     setSuggestions([]);
+    // Geocode and show draggable marker at selected address
+    setIsGeocoding(true);
+    const run = async () => {
+      if (!mapRef.current) {
+        setTimeout(run, 300);
+        return;
+      }
+      if (!mapRef.current.loaded()) {
+        mapRef.current.once("load", run);
+        return;
+      }
+      try {
+        const geoRes = await geocodingClient
+          .forwardGeocode({ query: suggestion, limit: 1 })
+          .send();
+        if (geoRes.body.features.length > 0) {
+          const feature = geoRes.body.features[0];
+          let lng: number, lat: number;
+          if (
+            feature.geometry?.type === "Point" &&
+            feature.geometry.coordinates
+          ) {
+            [lng, lat] = feature.geometry.coordinates;
+          } else {
+            [lng, lat] = feature.center;
+          }
+          // Marker position – suggestion ki jagah (lng, lat)
+          if (lng != null && lat != null) {
+            mapRef.current!.flyTo({
+              center: [lng, lat],
+              zoom: 19,
+              duration: 1500,
+            });
+            mapRef.current!.once("moveend", () => {
+              addOrUpdateMarker(lng, lat, true); // marker is jagah par
+              const coords = { lat, lng };
+              setCoordinates(coords);
+              onInputChange("coordinates", coords);
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Geocoding error:", err);
+      } finally {
+        setIsGeocoding(false);
+      }
+    };
+    run();
   };
 
   return (
@@ -712,8 +822,8 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
               </div>
             )}
           </div>
-          {/* Continue Button - Show when address is entered but not yet confirmed */}
-          {data.address && !coordinates && (
+          {/* Continue: first click = geocode + show marker; second click = fix marker + update address + AI polygon + next */}
+          {data.address && (
             <button
               onClick={handleContinue}
               disabled={isGeocoding}
@@ -738,62 +848,47 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
         </p> */}
       </div>
 
-      {/* Map Container - Always render for map initialization */}
-      <div className="relative w-full h-96 md:h-[600px] rounded-lg overflow-hidden border border-gray-300">
-        <div ref={mapContainerRef} className="w-full h-full" />
-        {!data.address && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-            <p className="text-gray-500 text-sm">
-              Enter address above to view map
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Confirm Button and Area Display - Below Map */}
-      {coordinates && (
-        <div className="flex items-center justify-between gap-4 mt-4">
-          {/* Roof Area Display - Show next to button */}
-          {totalArea > 0 ? (
-            <div className="rounded-lg px-4 py-3 flex-1" style={{ backgroundColor: "rgba(139, 14, 15, 0.1)", border: "1px solid rgba(139, 14, 15, 0.3)" }}>
-              <p className="text-xs font-semibold mb-1" style={{ color: "#8b0e0f" }}>
-                AI Detected Roof Area
+      {/* Map only when address field has text */}
+      {!showMap ? (
+        <div className="w-full h-64 rounded-lg border border-gray-300 bg-gray-100 flex items-center justify-center">
+          <p className="text-gray-500 text-sm">Type address above to see map</p>
+        </div>
+      ) : (
+        <div className="relative w-full h-96 md:h-[600px] rounded-lg overflow-hidden border border-gray-300">
+          {webglUnavailable ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gray-100 p-6 text-center">
+              <p className="text-gray-700 font-medium">
+                Map is not available (WebGL could not be initialized).
               </p>
-              <p className="text-xl font-bold" style={{ color: "#8b0e0f" }}>
-                {totalArea.toFixed(2)}{" "}
-                <span className="text-base font-normal text-gray-600">
-                  sq ft
-                </span>
+              <p className="text-gray-500 text-sm max-w-md">
+                You can still enter your address above and click Continue to use your location.
               </p>
+              <button
+                type="button"
+                onClick={() => setWebglUnavailable(false)}
+                className="px-5 py-2.5 rounded-lg font-medium text-white hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: "#8b0e0e" }}
+              >
+                Try again
+              </button>
             </div>
           ) : (
-            <div className="flex-1 text-sm text-gray-500">
-              Detecting building roof...
-            </div>
+            <div ref={mapContainerRef} className="w-full h-full" />
           )}
+        </div>
+      )}
 
-          <button
-            onClick={() => {
-              setPinConfirmed(true);
-              onInputChange("pinConfirmed", true);
-            }}
-            className={`px-8 py-3 rounded-lg font-semibold transition-all whitespace-nowrap text-white ${
-              pinConfirmed ? "" : "bg-blue-800 hover:bg-blue-900"
-            }`}
-            style={pinConfirmed ? { backgroundColor: "#8b0e0f" } : {}}
-            onMouseEnter={(e) => {
-              if (pinConfirmed) {
-                e.currentTarget.style.backgroundColor = "#6d0b0c";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (pinConfirmed) {
-                e.currentTarget.style.backgroundColor = "#8b0e0f";
-              }
-            }}
-          >
-            {pinConfirmed ? "✓ Location Confirmed" : "Confirm Location"}
-          </button>
+      {/* Roof area – polygon banne ke baad sq ft me dikhao */}
+      {coordinates && (
+        <div className="rounded-lg px-4 py-3 border border-red-200 bg-red-50/50">
+          <p className="text-xs font-semibold mb-1" style={{ color: "#8b0e0f" }}>
+            AI Detected Roof Area
+          </p>
+          <p className="text-xl font-bold" style={{ color: "#8b0e0f" }}>
+            {totalArea > 0
+              ? `${totalArea.toFixed(2)} sq ft`
+              : "Detecting roof…"}
+          </p>
         </div>
       )}
     </div>
