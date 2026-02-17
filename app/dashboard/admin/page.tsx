@@ -572,6 +572,7 @@ import {
   Settings,
   DollarSign,
   Building2,
+  Building,
 } from "lucide-react";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import { handleLogout } from "@/utils/authHelper";
@@ -586,6 +587,7 @@ const navItems = [
   { name: "Job Progress", href: "/admin-panel/job-progress", icon: Briefcase },
   { name: "Estimates", href: "/admin-panel/estimates", icon: ClipboardList },
   { name: "Estimating Pricing", href: "/admin-panel/estimating-pricing", icon: DollarSign },
+  { name: "Companies", href: "/admin-panel/companies", icon: Building },
   { name: "Company Settings", href: "/admin-panel/company-settings", icon: Building2 },
   { name: "Customers", href: "/admin-panel/customers", icon: Users },
   { name: "Assign Role", href: "/admin-panel/assign-role", icon: Settings },

@@ -42,11 +42,40 @@ export const getCompanyByIdAPI = (id) => {
   );
 };
 
-/** POST /api/company – admin company settings save (create/update) */
+/** POST /api/company – admin company create */
 export const createCompanyAPI = (data) => {
   return handleAPIRequest(
     axiosInstance.post,
     "/api/company",
     data
+  );
+};
+
+/** GET /api/company – all companies (admin list) */
+export const getAllCompaniesAPI = () => {
+  return handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint, freshConfig()),
+    "/api/company",
+    null
+  );
+};
+
+/** PUT /api/company/:id – update company */
+export const updateCompanyAPI = (id, data) => {
+  if (!id) return Promise.reject(new Error("Company ID required"));
+  return handleAPIRequest(
+    (endpoint, body) => axiosInstance.put(endpoint, body),
+    `/api/company/${id}`,
+    data
+  );
+};
+
+/** DELETE /api/company/:id */
+export const deleteCompanyAPI = (id) => {
+  if (!id) return Promise.reject(new Error("Company ID required"));
+  return handleAPIRequest(
+    (endpoint) => axiosInstance.delete(endpoint, freshConfig()),
+    `/api/company/${id}`,
+    null
   );
 };

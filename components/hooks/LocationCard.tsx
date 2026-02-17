@@ -49,8 +49,8 @@ export default function LocationCard({
   if (!tempLocation) return null;
 
   return (
-    <div className="absolute top-30 left-1/2 -translate-x-1/2 z-50 bg-white p-3 rounded-xl shadow-2xl border-2 border-blue-800 w-80 text-center transition-all duration-300 pointer-events-auto">
-      <h2 className="mb-2 text-lg font-semibold text-blue-700">
+    <div className="absolute top-30 left-1/2 -translate-x-1/2 z-50 bg-white p-3 rounded-xl shadow-2xl border-2 border-[#8b0e0f] w-80 text-center transition-all duration-300 pointer-events-auto">
+      <h2 className="mb-2 text-lg font-semibold text-[#8b0e0f]">
         Is this your accurate location?
       </h2>
       <p className="mb-2 text-gray-700 text-sm">{address}</p>
@@ -60,11 +60,10 @@ export default function LocationCard({
       <div className="flex gap-2 justify-center">
         <button
           onClick={handleConfirmLocation}
-          className="bg-blue-800 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-blue-900 transition-colors"
+          className="bg-[#8b0e0f] text-white px-3 py-1.5 rounded-md text-sm font-medium hover:opacity-90 transition-colors"
         >
           Confirm Location
         </button>
-        {/* Show "Change Location" button when NOT in edit mode */}
         {!editMode && (
           <button
             onClick={handleChangeLocation}
@@ -73,9 +72,8 @@ export default function LocationCard({
             Change Location
           </button>
         )}
-        {/* Show "Click on map to move pin" when in edit mode - same row */}
         {editMode && (
-          <div className="px-3 py-1.5 rounded-md text-sm font-medium border border-yellow-400 bg-yellow-50 text-yellow-800">
+          <div className="px-3 py-1.5 rounded-md text-sm font-medium border border-[#8b0e0f]/40 bg-red-50 text-[#8b0e0f]">
             Click on map to move pin
           </div>
         )}
