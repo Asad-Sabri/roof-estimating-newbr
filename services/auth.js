@@ -15,6 +15,11 @@ export const roleListAPI = () =>
 
 export const signupAPI = (data) =>
   handleAPIRequest(axiosInstance.post, "/api/signup/", data);
+
+// ✅ Approve user (admin) – POST /api/approve-user body: { userId: "..." }
+export const approveUserAPI = (data) =>
+  handleAPIRequest(axiosInstance.post, "/api/approve-user", data);
+
 // ✅ Verify OTP after signup
 export const verifyOTPAPI = (data) =>
   handleAPIRequest(axiosInstance.post, "/api/verify-otp", data);
