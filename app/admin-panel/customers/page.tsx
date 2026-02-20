@@ -90,7 +90,7 @@ const emptyForm = {
   company: "",
   postal_code: "",
   account_type: "customer",
-  role_id: 1,
+  // role_id: 1,
 };
 
 // Backend expects mobile with + and digits (e.g. +923000000000)
@@ -167,7 +167,7 @@ export default function AdminCustomersPage() {
         last_name: form.last_name.trim(),
         email: form.email.trim(),
         password: form.password,
-        role_id: Number(form.role_id),
+        // role_id: Number(form.role_id),
         company: form.company?.trim() || "",
         postal_code: form.postal_code?.trim() || "",
         mobile_number: mobile,
@@ -379,7 +379,7 @@ export default function AdminCustomersPage() {
                       <option value="admin">Admin</option>
                     </select>
                   </div>
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Role ID *</label>
                     <select
                       value={form.role_id}
@@ -390,7 +390,7 @@ export default function AdminCustomersPage() {
                       <option value={2}>2 - Admin</option>
                       <option value={3}>3 - Other</option>
                     </select>
-                  </div>
+                  </div> */}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>

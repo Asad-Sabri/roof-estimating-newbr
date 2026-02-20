@@ -7,6 +7,8 @@ import Image from "next/image";
 import logo from "@/public/logo-latest.png";
 import { EstimateData, EstimateModalProps } from "./types";
 import { createInstantEstimateAPI } from "@/services/instantEstimateAPI";
+import { sendPdfsAPI } from "@/services/emailAPI";
+import { generateInstantEstimatePdf } from "@/utils/instantEstimatePdf";
 import { toast } from "react-toastify";
 import Step2Address from "./steps/Step2Address";
 import Step3RoofSteepness from "./steps/Step3RoofSteepness";
@@ -352,9 +354,23 @@ export default function EstimateModal({
 
       // Clear current form from localStorage
       localStorage.removeItem("currentEstimateForm");
-      
+
       toast.success(response.message || "Estimate submitted successfully!");
       onSave(finalData);
+
+      // Send PDF report to customer email
+      if (finalData.email?.trim()) {
+        try {
+          toast.info("Sending report to your email...");
+          const pdfBlob = await generateInstantEstimatePdf(finalData);
+          await sendPdfsAPI(pdfBlob, finalData.email.trim());
+          toast.success("Report sent to your email!");
+        } catch (emailErr: any) {
+          console.error("Email report failed:", emailErr);
+          const msg = emailErr?.response?.data?.message || emailErr?.message || "Could not email report.";
+          toast.error(msg);
+        }
+      }
 
       // Close modal - let parent component handle redirect
       onClose();
