@@ -44,16 +44,6 @@ const navItems = [
     href: "/customer-panel/job-progress",
     icon: Briefcase,
   },
-  {
-    name: "Project Details",
-    href: "/customer-panel/project-details",
-    icon: FileText,
-  },
-  {
-    name: "Request Estimate",
-    href: "/customer-panel/request-estimate",
-    icon: ClipboardPlus,
-  },
 ];
 
 export default function CustomerDashboardLayout({

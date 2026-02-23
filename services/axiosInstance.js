@@ -10,10 +10,13 @@ export const axiosInstance = axios.create({
 });
 
 
-  // ✅ Add Authorization token if available
+  // ✅ Add Authorization token if available; FormData pe Content-Type mat lagao (browser multipart + boundary set karega)
   axiosInstance.interceptors.request.use(
     (config) => {
       try {
+        if (config.data instanceof FormData) {
+          delete config.headers["Content-Type"];
+        }
         const cookies = parseCookies();
         let token = cookies.token;
 

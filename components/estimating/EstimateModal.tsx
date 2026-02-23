@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { X, ArrowRight, ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import logo from "@/public/logo-latest.png";
 import { EstimateData, EstimateModalProps } from "./types";
 import { createInstantEstimateAPI } from "@/services/instantEstimateAPI";
-import { sendPdfsAPI } from "@/services/emailAPI";
-import { generateInstantEstimatePdf } from "@/utils/instantEstimatePdf";
+import { getProfileAPI } from "@/services/auth";
 import { toast } from "react-toastify";
 import Step2Address from "./steps/Step2Address";
 import Step3RoofSteepness from "./steps/Step3RoofSteepness";
@@ -26,43 +26,50 @@ export default function EstimateModal({
   isOpen,
   onClose,
   onSave,
+  resetFormOnMount = false,
 }: EstimateModalProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<EstimateData>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Start at step 1 (address entry) - removed welcome screen
+  const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: getProfileAPI });
+  const userId = profile?.id ?? profile?._id ?? profile?.user_id ?? "";
+
   // Total steps: 11 (address, steepness, building, current roof, layers, desired roof, timeline, financing, description, contact, review)
   const totalSteps = 11;
 
   useEffect(() => {
-    // Load saved data from localStorage
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("currentEstimateForm");
-      if (saved) {
-        setFormData(JSON.parse(saved));
-      }
+    if (typeof window === "undefined") return;
 
+    if (resetFormOnMount) {
+      localStorage.removeItem("currentEstimateForm");
+      setCurrentStep(1);
+      setFormData({});
+      return;
+    }
 
-      // Load assignment data from URL params (QR code/link tracking)
-      const assignmentDataStr = localStorage.getItem("assignmentData");
-      if (assignmentDataStr) {
-        try {
-          const assignmentData = JSON.parse(assignmentDataStr);
-          setFormData((prev) => ({
-            ...prev,
-            promoter_id: assignmentData.promoter_id,
-            sales_rep_id: assignmentData.sales_rep_id,
-            marketing_channel: assignmentData.marketing_channel,
-            assignment_source: assignmentData.assignment_source,
-          }));
-        } catch (error) {
-          console.error("Error parsing assignment data:", error);
-        }
+    const saved = localStorage.getItem("currentEstimateForm");
+    if (saved) {
+      setFormData(JSON.parse(saved));
+    }
+
+    const assignmentDataStr = localStorage.getItem("assignmentData");
+    if (assignmentDataStr) {
+      try {
+        const assignmentData = JSON.parse(assignmentDataStr);
+        setFormData((prev) => ({
+          ...prev,
+          promoter_id: assignmentData.promoter_id,
+          sales_rep_id: assignmentData.sales_rep_id,
+          marketing_channel: assignmentData.marketing_channel,
+          assignment_source: assignmentData.assignment_source,
+        }));
+      } catch (error) {
+        console.error("Error parsing assignment data:", error);
       }
     }
-  }, []);
+  }, [resetFormOnMount]);
 
   useEffect(() => {
     // Save form data to localStorage on each change
@@ -297,15 +304,15 @@ export default function EstimateModal({
             },
           ];
 
-      // Prepare API payload according to exact API structure
-      const apiPayload = {
+      // Prepare API payload – include user_id so backend associates estimate with logged-in user (table me us user ke against dikhe)
+      const apiPayload: Record<string, unknown> = {
         first_name: formData.firstName || "",
         last_name: formData.lastName || "",
         email: formData.email || "",
         mobile_number: formData.phone || "",
         address: addressObj,
         area: String(formData.totalArea || 0),
-        roof_teep: formData.roofSteepness || "", // Note: API uses "roof_teep" (typo)
+        roof_teep: formData.roofSteepness || "",
         building_type: formData.buildingType || "",
         current_roof_material: formData.currentRoofType || "",
         current_roof_layer: formData.roofLayers === "I do not know" ? "" : formData.roofLayers || "",
@@ -314,6 +321,7 @@ export default function EstimateModal({
         interested_in_financing: mapFinancingInterest(formData.financingInterest),
         estimate_price: estimatePriceArray,
       };
+      if (userId) apiPayload.user_id = userId;
 
       // Call backend API
       toast.info("Submitting your estimate request...");
@@ -358,21 +366,7 @@ export default function EstimateModal({
       toast.success(response.message || "Estimate submitted successfully!");
       onSave(finalData);
 
-      // Send PDF report to customer email
-      if (finalData.email?.trim()) {
-        try {
-          toast.info("Sending report to your email...");
-          const pdfBlob = await generateInstantEstimatePdf(finalData);
-          await sendPdfsAPI(pdfBlob, finalData.email.trim());
-          toast.success("Report sent to your email!");
-        } catch (emailErr: any) {
-          console.error("Email report failed:", emailErr);
-          const msg = emailErr?.response?.data?.message || emailErr?.message || "Could not email report.";
-          toast.error(msg);
-        }
-      }
-
-      // Close modal - let parent component handle redirect
+      // Close modal - parent will redirect to measurements/estimates screen (no email send)
       onClose();
     } catch (error: any) {
       console.error("Error submitting estimate:", error);

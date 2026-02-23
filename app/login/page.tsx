@@ -18,7 +18,7 @@ import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 
 import logo from "../../public/logo-latest.png";
 
-type LoginTab = "customer" | "admin" | "super-admin";
+type LoginRole = "customer" | "admin" | "super-admin";
 
 const geocodingClient = mbxGeocoding({
   accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN!,
@@ -286,7 +286,6 @@ export default function LoginPage() {
   const dispatch = useDispatch();
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [activeTab, setActiveTab] = useState<LoginTab>("customer");
   const [showAddressModal, setShowAddressModal] = useState(false);
 
   // Check if user is already logged in
@@ -320,23 +319,26 @@ export default function LoginPage() {
   });
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (values: { email: string; password: string; role: string }) => {
+    mutationFn: (values: { email: string; password: string }) => {
       return loginAPI({
         email: values.email,
         password: values.password,
-        role: values.role,
+        role: "customer", // backend may expect role; redirect is based on response role
       });
     },
-    onSuccess: (data: any, variables) => {
+    onSuccess: (data: any) => {
       const { token, user } = data;
+
+      // Normalize backend role: customer | admin | super-admin
+      const rawRole = (user?.role ?? data?.role ?? "").toString().toLowerCase().replace(/\s+/g, "-");
+      const isSuperAdmin = rawRole === "super-admin" || rawRole === "superadmin";
+      const isAdmin = rawRole === "admin" || rawRole === "master-admin" || rawRole === "sub-admin";
+      const actualRole: LoginRole = isSuperAdmin ? "super-admin" : isAdmin ? "admin" : "customer";
 
       if (typeof window !== "undefined") {
         localStorage.setItem("token", token);
-        localStorage.setItem("loginRole", variables.role);
-
-        document.cookie = `token=${token}; path=/; max-age=${
-          30 * 24 * 60 * 60
-        }`;
+        localStorage.setItem("loginRole", actualRole);
+        document.cookie = `token=${token}; path=/; max-age=${30 * 24 * 60 * 60}`;
       }
 
       setCookie(null, "token", token, {
@@ -346,24 +348,26 @@ export default function LoginPage() {
         sameSite: "strict",
       });
 
-      if (typeof window !== "undefined") {
-        localStorage.setItem("token", token);
-      }
-
       dispatch(setCredentials({ user, token }));
       toast.success(data?.message || "Login successful!");
 
-      // Redirect based on role
-      if (variables.role === "super-admin") {
+      // Redirect by role: customer → customer panel, admin → admin panel, super-admin → super-admin
+      if (actualRole === "super-admin") {
         router.push("/super-admin/dashboard");
-      } else if (variables.role === "admin") {
+      } else if (actualRole === "admin") {
         router.push("/admin-panel/dashboard");
       } else {
         router.push("/customer-panel/dashboard");
       }
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || "Login failed");
+    onError: (error: any, variables: { email: string; password: string }) => {
+      const msg = error?.response?.data?.message || error?.response?.data?.detail || "";
+      if (msg.toLowerCase().includes("not verified") || msg.toLowerCase().includes("verify")) {
+        toast.info("Please verify your account with the OTP sent to your email.");
+        router.push(`/otp?email=${encodeURIComponent(variables.email || "")}`);
+        return;
+      }
+      toast.error(msg || "Login failed");
     },
   });
 
@@ -430,221 +434,98 @@ export default function LoginPage() {
             Sign in to your account to continue
           </p>
 
-          {/* Role Tabs */}
-          <div className="flex gap-3 mb-8 bg-gray-100 rounded-lg p-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab("customer")}
-              className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all ${
-                activeTab === "customer"
-                  ? "bg-white text-[#8b0e0f] shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Customer
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("admin")}
-              className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all ${
-                activeTab === "admin"
-                  ? "bg-white text-[#8b0e0f] shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("super-admin")}
-              className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all ${
-                activeTab === "super-admin"
-                  ? "bg-white text-[#8b0e0f] shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Super Admin
-            </button>
-          </div>
+          {/* Single Login Form - role is determined by API response, redirect by role */}
+          <Formik
+            initialValues={{ email: "", password: "" }}
+            validationSchema={validationSchema}
+            onSubmit={(values) => mutate({ email: values.email, password: values.password })}
+          >
+            {() => (
+              <Form className="space-y-6">
+                <div>
+                  <Field
+                    type="email"
+                    name="email"
+                    placeholder="Email"
+                    autoComplete="email"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-black focus:outline-none focus:border-[#8b0e0f]"
+                  />
+                  <ErrorMessage
+                    name="email"
+                    component="div"
+                    className="text-sm text-red-600 mt-1"
+                  />
+                </div>
 
-          {/* Customer Flow - Login Form for Existing Customers */}
-          {activeTab === "customer" && (
-            <Formik
-              initialValues={{ email: "", password: "" }}
-              validationSchema={validationSchema}
-              onSubmit={(values) =>
-                mutate({
-                  ...values,
-                  role: "customer",
-                })
-              }
-            >
-              {() => (
-                <Form className="space-y-6">
-                  <div>
-                    <Field
-                      type="email"
-                      name="email"
-                      placeholder="Email"
-                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-black focus:outline-none focus:border-[#8b0e0f]"
-                    />
-                    <ErrorMessage
-                      name="email"
-                      component="div"
-                      className="text-sm text-red-600 mt-1"
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <Field
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="Password"
-                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-12 text-black focus:outline-none focus:border-[#8b0e0f]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                    <ErrorMessage
-                      name="password"
-                      component="div"
-                      className="text-sm text-red-600 mt-1"
-                    />
-                  </div>
-
-                  <div className="flex justify-between items-center text-sm">
-                    <Link
-                      href="/forget"
-                      className="text-[#8b0e0f] hover:underline"
-                    >
-                      Forgot Password?
-                    </Link>
-                    <Link
-                      href="/forget-user-id"
-                      className="text-[#8b0e0f] hover:underline"
-                    >
-                      Forgot User ID?
-                    </Link>
-                  </div>
-
+                <div className="relative">
+                  <Field
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    placeholder="Password"
+                    autoComplete="current-password"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-12 text-black focus:outline-none focus:border-[#8b0e0f]"
+                  />
                   <button
-                    type="submit"
-                    disabled={isPending}
-                    className="w-full px-6 py-3 text-white my-2 rounded-lg font-semibold shadow-md hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: "#8b0e0f" }}
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
-                    {isPending ? "Logging in..." : "Login →"}
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
+                  <ErrorMessage
+                    name="password"
+                    component="div"
+                    className="text-sm text-red-600 mt-1"
+                  />
+                </div>
 
-                  {/* New Customer? Get Free Estimate Button */}
-                  <div className="text-center">
-                    <h4 className="text-lg font-bold text-gray-500 mb-3">Or</h4>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddressModal(true)}
-                      className="w-full px-6 py-3 border-2 border-[#8b0e0f] my-2 text-[#8b0e0f] rounded-lg font-semibold hover:bg-[#8b0e0f] hover:text-white transition-all"
-                    >
-                      If you are not registered
-                    </button>
-                  </div>
-                </Form>
-              )}
-            </Formik>
-          )}
+                <div className="flex justify-between items-center text-sm">
+                  <Link
+                    href="/forget"
+                    className="text-[#8b0e0f] hover:underline"
+                  >
+                    Forgot Password?
+                  </Link>
+                  <Link
+                    href="/forget-user-id"
+                    className="text-[#8b0e0f] hover:underline"
+                  >
+                    Forgot User ID?
+                  </Link>
+                </div>
 
-          {/* Admin & Super Admin Flow - Login Form */}
-          {(activeTab === "admin" || activeTab === "super-admin") && (
-            <Formik
-              initialValues={{ email: "", password: "" }}
-              validationSchema={validationSchema}
-              onSubmit={(values) =>
-                mutate({
-                  ...values,
-                  role: activeTab, // This will be "admin" or "super-admin" based on selected tab
-                })
-              }
-            >
-              {() => (
-                <Form className="space-y-6">
-                  <div>
-                    <Field
-                      type="email"
-                      name="email"
-                      placeholder="Email"
-                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-black focus:outline-none focus:border-[#8b0e0f]"
-                    />
-                    <ErrorMessage
-                      name="email"
-                      component="div"
-                      className="text-sm text-red-600 mt-1"
-                    />
-                  </div>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="w-full px-6 py-3 text-white my-2 rounded-lg font-semibold shadow-md hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: "#8b0e0f" }}
+                >
+                  {isPending ? "Logging in..." : "Login →"}
+                </button>
 
-                  <div className="relative">
-                    <Field
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="Password"
-                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-12 text-black focus:outline-none focus:border-[#8b0e0f]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                    <ErrorMessage
-                      name="password"
-                      component="div"
-                      className="text-sm text-red-600 mt-1"
-                    />
-                  </div>
-
-                  <div className="flex justify-between items-center text-sm">
-                    <Link
-                      href="/forget"
-                      className="text-[#8b0e0f] hover:underline"
-                    >
-                      Forgot Password?
-                    </Link>
-                    <Link
-                      href="/forget-user-id"
-                      className="text-[#8b0e0f] hover:underline"
-                    >
-                      Forgot User ID?
-                    </Link>
-                  </div>
-
+                <div className="text-center">
+                  <h4 className="text-lg font-bold text-gray-500 mb-3">Or</h4>
                   <button
-                    type="submit"
-                    disabled={isPending}
-                    className="w-full px-6 py-3 text-white rounded-lg font-semibold shadow-md hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: "#8b0e0f" }}
+                    type="button"
+                    onClick={() => setShowAddressModal(true)}
+                    className="w-full px-6 py-3 border-2 border-[#8b0e0f] my-2 text-[#8b0e0f] rounded-lg font-semibold hover:bg-[#8b0e0f] hover:text-white transition-all"
                   >
-                    {isPending ? "Logging in..." : "Login →"}
+                    If you are not registered
                   </button>
-                </Form>
-              )}
-            </Formik>
-          )}
+                </div>
+              </Form>
+            )}
+          </Formik>
 
-          {/* Sign Up Link - Only show for Admin/Super Admin */}
-          {(activeTab === "admin" || activeTab === "super-admin") && (
-            <p className="text-center text-sm text-gray-600 mt-6">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/signup"
-                className="text-[#8b0e0f] font-semibold hover:underline"
-              >
-                Sign Up Now
-              </Link>
-            </p>
-          )}
+          <p className="text-center text-sm text-gray-600 mt-6">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/signup"
+              className="text-[#8b0e0f] font-semibold hover:underline"
+            >
+              Sign Up Now
+            </Link>
+          </p>
         </div>
       </div>
 

@@ -124,7 +124,7 @@ export default function DashboardPage() {
   }>({ data: [], meta: null });
   const [loadingInstantEstimates, setLoadingInstantEstimates] = useState(false);
 
-  // Fetch user's instant estimates from API
+  // Fetch logged-in user's instant estimates – GET /api/instant-estimates/user
   useEffect(() => {
     if (!isAuthenticated || isChecking) return;
     setLoadingInstantEstimates(true);

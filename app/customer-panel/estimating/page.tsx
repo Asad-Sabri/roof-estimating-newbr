@@ -6,6 +6,11 @@ import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import Link from "next/link";
 import { FileText, TrendingUp, DollarSign, Calendar, X, Eye, MapPin, Home, Layers, Clock, CreditCard, Trash2, ChevronDown, ChevronRight, Mail, Phone, User } from "lucide-react";
 import { getUserInstantEstimatesAPI, deleteInstantEstimateAPI } from "@/services/instantEstimateAPI";
+import { generateEstimateReportPdfFromHtml } from "@/utils/estimateReportPdfFromHtml";
+import type { CompanyProfile } from "@/utils/estimateReportPdfFromHtml";
+import { sendPdfsAPI } from "@/services/emailAPI";
+import { getCompanyAPI, getCompanyUserAPI } from "@/services/companyAPI";
+import { toast } from "react-toastify";
 
 /** API item ko Preliminary modal ke expected shape me convert karta hai */
 function apiItemToModalEstimate(est: any) {
@@ -274,16 +279,16 @@ export default function EstimatingPage() {
   const [selectedEstimate, setSelectedEstimate] = useState<any>(null);
   const [isPreliminaryModalOpen, setIsPreliminaryModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [emailingId, setEmailingId] = useState<string | null>(null);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
-  // User ke instant estimates – API se
+  // User ke instant estimates – GET /api/instant-estimates/user (token se logged-in user ki list)
   const [instantEstimatesFromAPI, setInstantEstimatesFromAPI] = useState<{
     data: any[];
     meta: { totalRecords: number } | null;
   }>({ data: [], meta: null });
   const [loadingInstantEstimates, setLoadingInstantEstimates] = useState(false);
 
-  // Fetch user's instant estimates from API
   useEffect(() => {
     if (!isAuthenticated || isChecking) return;
     setLoadingInstantEstimates(true);
@@ -330,6 +335,105 @@ export default function EstimatingPage() {
       alert("Failed to delete estimate. Please try again.");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  /** API estimate ko PDF + send-email ke liye use karo – report PDF customer ke email par bhej deta hai */
+  const handleEmailReport = async (est: any) => {
+    const email = (est?.email || "").trim();
+    if (!email) {
+      toast.error("No email on this estimate. Add email in estimate details to send the report.");
+      return;
+    }
+    setEmailingId(est._id);
+    try {
+      toast.info("Sending report to your email...");
+      const addr = est.address || {};
+      const addressStr = [addr.street, addr.city, addr.state, addr.zip_code].filter(Boolean).join(", ");
+      const parsePriceRange = (pr: string) => {
+        const m = (pr || "").match(/\$?\s*([\d,]+)\s*-\s*([\d,]+)/);
+        if (!m) return { min: 0, max: 0 };
+        return { min: parseInt(String(m[1]).replace(/,/g, ""), 10), max: parseInt(String(m[2]).replace(/,/g, ""), 10) };
+      };
+      const estimates = (est.estimate_price || []).map((ep: any) => {
+        const { min, max } = parsePriceRange(ep.price_range);
+        return { type: ep.title, minPrice: min, maxPrice: max, enabled: true };
+      });
+      let company: CompanyProfile | null = null;
+      try {
+        const res = await getCompanyAPI();
+        const d = res?.data ?? res;
+        const c = d?.company ?? d;
+        if (c && typeof c === "object") {
+          const addr = c.address && typeof c.address === "object" ? c.address : {};
+          const addressLine = [addr.street, addr.city, addr.state, addr.country, addr.zip_code].filter(Boolean).join(", ");
+          company = {
+            companyName: c.companyName ?? c.company_name ?? "Superior Pro Roofing Systems",
+            licenseNumber: c.licenseNumber ?? c.license_number,
+            phone: c.mobile_number ?? c.phone,
+            email: c.email,
+            website: c.website,
+            addressLine: addressLine || (c.addressLine ?? c.address_line),
+            disclaimer: c.disclaimer,
+            contactPersonName: c.contactPersonName ?? c.contact_person_name,
+            contactPersonPhone: c.contactPersonPhone ?? c.contact_person_phone,
+            contactPersonEmail: c.contactPersonEmail ?? c.contact_person_email,
+            followUpText: c.followUpText ?? c.follow_up_text,
+          };
+        }
+      } catch {
+        try {
+          const res = await getCompanyUserAPI();
+          const d = res?.data ?? res;
+          const c = d?.company ?? d;
+          if (c && typeof c === "object") {
+            const addr = c.address && typeof c.address === "object" ? c.address : {};
+            const addressLine = [addr.street, addr.city, addr.state, addr.country, addr.zip_code].filter(Boolean).join(", ");
+            company = {
+              companyName: c.companyName ?? c.company_name ?? "Superior Pro Roofing Systems",
+              licenseNumber: c.licenseNumber ?? c.license_number,
+              phone: c.mobile_number ?? c.phone,
+              email: c.email,
+              website: c.website,
+              addressLine: addressLine || (c.addressLine ?? c.address_line),
+              disclaimer: c.disclaimer,
+              contactPersonName: c.contactPersonName ?? c.contact_person_name,
+              contactPersonPhone: c.contactPersonPhone ?? c.contact_person_phone,
+              contactPersonEmail: c.contactPersonEmail ?? c.contact_person_email,
+              followUpText: c.followUpText ?? c.follow_up_text,
+            };
+          }
+        } catch { /* use default in PDF */ }
+      }
+      const coords = est.coordinates || (est.latitude != null && est.longitude != null ? { lat: est.latitude, lng: est.longitude } : undefined);
+      const mapUrl =
+        coords && process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+          ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/pin-l+ff0000(${coords.lng},${coords.lat})/${coords.lng},${coords.lat},20/640x360@2x?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
+          : "";
+      const estimateRecord = {
+        id: est._id,
+        address: addressStr,
+        totalArea: est.area != null ? parseFloat(String(est.area)) : undefined,
+        roofSteepness: est.roof_teep,
+        buildingType: est.building_type,
+        currentRoofType: est.current_roof_material,
+        roofLayers: est.current_roof_layer != null ? String(est.current_roof_layer) : undefined,
+        desiredRoofType: est.roof_material,
+        firstName: est.first_name,
+        lastName: est.last_name,
+        email: est.email,
+        phone: est.mobile_number,
+        estimates,
+      };
+      const pdfBlob = await generateEstimateReportPdfFromHtml({ estimate: estimateRecord, company, mapUrl });
+      await sendPdfsAPI(pdfBlob, email);
+      toast.success("Report sent to your email!");
+    } catch (err: any) {
+      console.error("Email report error:", err);
+      const msg = err?.response?.data?.message || err?.message || "Could not send report. Please try again.";
+      toast.error(msg);
+    } finally {
+      setEmailingId(null);
     }
   };
 
@@ -571,13 +675,15 @@ export default function EstimatingPage() {
                                 <Eye className="w-3 h-3" />
                                 Preliminary Estimate
                               </button>
-                              <Link
-                              target="_blank"
-                                href={`/customer-panel/estimate-report/${est._id}`}
-                                className="px-3 py-1.5 border text-xs font-medium rounded-lg hover:bg-gray-50 transition"
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleEmailReport(est); }}
+                                disabled={emailingId === est._id}
+                                title="Send report PDF to your email"
+                                className="px-3 py-1.5 border border-[#8b0e0f] text-[#8b0e0f] text-xs font-medium rounded-lg hover:bg-red-50 transition flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                Report
-                              </Link>
+                                <Mail className="w-3 h-3" />
+                                {emailingId === est._id ? "Sending…" : "Email report"}
+                              </button>
                               <button
                                 onClick={() => handleDeleteEstimate(est._id)}
                                 disabled={deletingId === est._id}
@@ -696,12 +802,15 @@ export default function EstimatingPage() {
                                   >
                                     <Eye className="w-3 h-3 inline mr-1" /> Preliminary
                                   </button>
-                                  <Link
-                                    href={`/customer-panel/estimate-report/${est._id}`}
-                                    className="px-3 py-1.5 border rounded-lg text-xs font-medium hover:bg-gray-100"
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleEmailReport(est); }}
+                                    disabled={emailingId === est._id}
+                                    title="Send report PDF to your email"
+                                    className="px-3 py-1.5 border border-[#8b0e0f] text-[#8b0e0f] rounded-lg text-xs font-medium hover:bg-red-50 cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
                                   >
-                                    Report
-                                  </Link>
+                                    <Mail className="w-3 h-3" />
+                                    {emailingId === est._id ? "Sending…" : "Email report"}
+                                  </button>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); handleDeleteEstimate(est._id); }}
                                     disabled={deletingId === est._id}

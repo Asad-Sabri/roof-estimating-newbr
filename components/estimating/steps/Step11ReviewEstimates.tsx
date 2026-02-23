@@ -1,11 +1,57 @@
 "use client";
 
+import { useState } from "react";
+import { toast } from "react-toastify";
 import { StepProps } from "../types";
+import { generateEstimateReportPdfFromHtml } from "@/utils/estimateReportPdfFromHtml";
+import { sendPdfsAPI } from "@/services/emailAPI";
 
 export default function Step11ReviewEstimates({
   data,
   onInputChange,
 }: StepProps) {
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const handleSendReportToEmail = async () => {
+    const email = (data.email || "").trim();
+    if (!email) {
+      toast.error("Please go back and enter your email to receive the report.");
+      return;
+    }
+    setIsSendingEmail(true);
+    try {
+      toast.info("Sending report to your email...");
+      const coords = data.coordinates;
+      const mapUrl =
+        coords && process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+          ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/pin-l+ff0000(${coords.lng},${coords.lat})/${coords.lng},${coords.lat},20/640x360@2x?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
+          : "";
+      const estimateRecord = {
+        address: data.address,
+        totalArea: data.totalArea,
+        roofSteepness: data.roofSteepness,
+        buildingType: data.buildingType,
+        currentRoofType: data.currentRoofType,
+        roofLayers: data.roofLayers,
+        desiredRoofType: data.desiredRoofType,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        estimates: data.estimates,
+      };
+      const pdfBlob = await generateEstimateReportPdfFromHtml({ estimate: estimateRecord, mapUrl });
+      await sendPdfsAPI(pdfBlob, email);
+      toast.success("Report sent to your email!");
+    } catch (err: any) {
+      console.error("Email report failed:", err);
+      const msg = err?.response?.data?.message || err?.message || "Could not send report. Please try again.";
+      toast.error(msg);
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   // Use estimates from data if available, otherwise use default
   const estimates = data.estimates || [
     {
@@ -125,20 +171,34 @@ export default function Step11ReviewEstimates({
         </p>
       </div>
 
-      {/* Email Me & Text Me Buttons */}
+      {/* Click email to send report */}
+      {data.email?.trim() && (
+        <p className="text-sm text-gray-600 mt-4">
+          Send instant estimate report to{" "}
+          <button
+            type="button"
+            onClick={handleSendReportToEmail}
+            disabled={isSendingEmail}
+            className="text-[#8b0e0f] font-semibold underline hover:no-underline focus:outline-none disabled:opacity-50"
+          >
+            {data.email.trim()}
+          </button>
+          {isSendingEmail && " — Sending..."}
+        </p>
+      )}
+
+      {/* Send report to my email */}
       <div className="flex flex-col sm:flex-row gap-3 mt-6">
         <button
-          onClick={() => {
-            // Email functionality - will be connected to backend later
-            const emailBody = `Dear ${data.firstName || "Customer"},\n\nThank you for requesting an estimate. Here are your preliminary estimates:\n\n${estimates.filter(e => e.enabled !== false).map(e => `${e.type}: $${e.minPrice.toLocaleString()} - $${e.maxPrice.toLocaleString()}`).join("\n")}\n\nBest regards,\nSuperior Pro Roofing Systems`;
-            window.location.href = `mailto:${data.email || ""}?subject=Preliminary Roof Estimate&body=${encodeURIComponent(emailBody)}`;
-          }}
-          className="flex-2 px-6 py-3 border-2 border-gray-300 text-red-700  rounded-lg font-semibold hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+          type="button"
+          onClick={handleSendReportToEmail}
+          disabled={isSendingEmail}
+          className="flex-2 px-6 py-3 border-2 border-gray-300 text-red-700 rounded-lg font-semibold hover:bg-red-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
-          Email Me / Text Me
+          {isSendingEmail ? "Sending..." : "Send report to my email"}
         </button>
         {/* <button
           onClick={() => {

@@ -43,6 +43,8 @@ export interface EstimateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: EstimateData) => void;
+  /** When true, do not restore from localStorage and start at step 1 with empty form (e.g. on /measurements page load/refresh) */
+  resetFormOnMount?: boolean;
 }
 
 export interface StepProps {
