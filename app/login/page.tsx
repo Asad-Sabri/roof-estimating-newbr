@@ -329,10 +329,16 @@ export default function LoginPage() {
     onSuccess: (data: any) => {
       const { token, user } = data;
 
-      // Normalize backend role: customer | admin | super-admin
-      const rawRole = (user?.role ?? data?.role ?? "").toString().toLowerCase().replace(/\s+/g, "-");
-      const isSuperAdmin = rawRole === "super-admin" || rawRole === "superadmin";
-      const isAdmin = rawRole === "admin" || rawRole === "master-admin" || rawRole === "sub-admin";
+      // Normalize backend role: customer | admin | super-admin (super admin pehle check karo)
+      const rawRole = (user?.role ?? data?.role ?? "").toString().toLowerCase().replace(/\s+/g, "-").replace(/_/g, "-");
+      const isSuperAdmin =
+        rawRole === "super-admin" ||
+        rawRole === "superadmin" ||
+        user?.is_super_admin === true ||
+        user?.isSuperAdmin === true ||
+        data?.is_super_admin === true ||
+        data?.isSuperAdmin === true;
+      const isAdmin = !isSuperAdmin && (rawRole === "admin" || rawRole === "master-admin" || rawRole === "sub-admin");
       const actualRole: LoginRole = isSuperAdmin ? "super-admin" : isAdmin ? "admin" : "customer";
 
       if (typeof window !== "undefined") {

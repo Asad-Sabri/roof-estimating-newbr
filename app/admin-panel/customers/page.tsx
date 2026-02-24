@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import AdminDashboardLayout from "@/app/dashboard/admin/page";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
-import { signupAPI, approveUserAPI } from "@/services/auth";
+import { signupAPI, approveUserAPI, getProfileAPI } from "@/services/auth";
+import { assignCustomerToAdminAPI } from "@/services/superAdminAPI";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -167,10 +168,10 @@ export default function AdminCustomersPage() {
         last_name: form.last_name.trim(),
         email: form.email.trim(),
         password: form.password,
-        // role_id: Number(form.role_id),
         company: form.company?.trim() || "",
         postal_code: form.postal_code?.trim() || "",
         mobile_number: mobile,
+        role: "customer",
       };
       const response: any = await signupAPI(payload);
       const data = response?.data ?? response;
@@ -190,6 +191,19 @@ export default function AdminCustomersPage() {
       setForm(emptyForm);
       setModalOpen(false);
       toast.success("Customer created. They can login after you approve.");
+      if (userId) {
+        try {
+          const profileRes: any = await getProfileAPI();
+          const profile = profileRes?.data ?? profileRes;
+          const adminId = profile?._id ?? profile?.id ?? profile?.user_id;
+          if (adminId) {
+            await assignCustomerToAdminAPI(userId, adminId);
+            toast.success("Customer assigned to you.");
+          }
+        } catch {
+          // Assign may be super-admin only; customer is still created
+        }
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? err?.response?.data?.detail ?? err?.message ?? "Failed to create customer.";
       toast.error(msg);
