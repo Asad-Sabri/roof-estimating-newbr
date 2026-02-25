@@ -78,12 +78,13 @@ const CustomReportPageHeader: React.FC<{
   customerName,
 }) => {
   const finalHeaderStyle: React.CSSProperties = {
-    backgroundColor: CARD_HEADER_BG_COLOR,
+    backgroundColor: "#FFFFFF",
+    border: `2px solid ${ACCENT_COLOR}`,
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: "15px 10px 10px 10px", 
-    borderRadius: "8px", 
+    padding: "15px 10px 10px 10px",
+    borderRadius: "8px",
     margin: "5px 0 20px 0",
   };
 
@@ -103,13 +104,14 @@ const CustomReportPageHeader: React.FC<{
         />
       </div>
 
-      <div style={{ textAlign: "right", color: "#fff" }}>
+      <div style={{ textAlign: "right", color: ACCENT_COLOR }}>
         <p
           style={{
             margin: 0,
             fontSize: titleFontSize,
             fontWeight: "bold",
             marginBottom: isCoverPage ? "5px" : "0",
+            color: ACCENT_COLOR,
           }}
         >
           {headerText}
@@ -117,16 +119,16 @@ const CustomReportPageHeader: React.FC<{
 
         {isCoverPage && (
           <>
-            <p style={{ margin: 0, fontSize: "12px" }}>
+            <p style={{ margin: 0, fontSize: "12px", color: "#333" }}>
               Prepared For:{" "}
-              <strong>
+              <strong style={{ color: ACCENT_COLOR }}>
                 {isFullReport
                   ? "Superior Pro Roofs"
                   : customerName || "Superior Pro Roofs"}
               </strong>
             </p>
-            <p style={{ margin: 0, fontSize: "12px" }}>
-              Date: <strong>{new Date().toLocaleDateString()}</strong>
+            <p style={{ margin: 0, fontSize: "12px", color: "#333" }}>
+              Date: <strong style={{ color: ACCENT_COLOR }}>{new Date().toLocaleDateString()}</strong>
             </p>
           </>
         )}
@@ -567,54 +569,22 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         </PageWrapper>
 
-        {/* Page 2: Black Simple Diagram (Top View) */}
+        {/* Page 2: Top View (single snapshot – aerial/map or schematic) */}
         <PageWrapper page={++internalPageCounter}>
           <CustomReportPageHeader
-            title="Roof Outline Diagram"
+            title="Top View"
             isCoverPage={false}
             titleFontSize="20px"
-            isFullReport={false} 
+            isFullReport={false}
             customerName={customerName}
           />
-          {topViewImage && ( 
+          {(mapImage || topViewImage) && (
             <div style={cardContainerStyle}>
-              <CardTitleHeader title="Top Down Schematic View" />
+              <CardTitleHeader title="Top View" />
               <div style={cardContentStyle}>
                 <img
-                  src={topViewImage}
-                  alt="Roof Outline Diagram"
-                  style={{
-                    width: "100%",
-                    height: "auto",
-                    maxHeight: "700px",
-                    objectFit: "contain",
-                    borderRadius: "6px",
-                    display: "block",
-                    border: `1px solid #333`,
-                  }}
-                  crossOrigin="anonymous"
-                />
-              </div>
-            </div>
-          )}
-        </PageWrapper>
-
-        {/* Page 3: Top View (Aerial Map View) */}
-        <PageWrapper page={++internalPageCounter}>
-          <CustomReportPageHeader
-            title="Aerial Map View (Top View)"
-            isCoverPage={false}
-            titleFontSize="20px"
-            isFullReport={false} 
-            customerName={customerName}
-          />
-          {mapImage && (
-            <div style={cardContainerStyle}>
-              <CardTitleHeader title="High-Resolution Map Imagery" />
-              <div style={cardContentStyle}>
-                <img
-                  src={mapImage}
-                  alt="Map Screenshot"
+                  src={mapImage || topViewImage || ""}
+                  alt="Top View"
                   style={{
                     width: "100%",
                     height: "auto",
@@ -631,7 +601,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           )}
         </PageWrapper>
 
-        {/* Page 4: Side Views (Angled Images) */}
+        {/* Page 3: Side Views (Angled Images) */}
         <PageWrapper page={++internalPageCounter}>
           <CustomReportPageHeader
             title="Side Angles View"
@@ -691,7 +661,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
           </div>
         </PageWrapper>
 
-        {/* 💥 Page 5: Measurement Lengths Diagram (Using New Reusable Component) */}
+        {/* Page 4: Measurement Lengths Diagram */}
         <MeasurementLengthsPage
             data={data}
             isFullReport={false} // Customer Report
@@ -773,8 +743,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
                 <div style={{ ...cardContentStyle, fontSize: "12px" }}>
                   {[
                     "Color-Coded View",
-                    "Top View (Simple Diagram)",
-                    "Aerial Map View (Top View)",
+                    "Top View",
                     "Side Views (4 Angles)",
                     "Lengths Diagram",
                     "Pitches Summary",
@@ -848,58 +817,26 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             </div>
           </PageWrapper>
 
-          {/* Page 2: Top View (Simple Diagram - Schematic) */}
+          {/* Page 2: Top View (single snapshot) */}
           <PageWrapper page={++pageCounter}>
             <CustomReportPageHeader
-              title="Top View (Simple Diagram)"
+              title="Top View"
               isCoverPage={false}
               titleFontSize="20px"
               isFullReport={isFullReport}
               customerName={customerName}
             />
-            {topViewImage && ( 
+            {(mapImage || topViewImage) && (
               <div style={cardContainerStyle}>
-                <CardTitleHeader title="Top Down Schematic View" />
+                <CardTitleHeader title="Top View" />
                 <div style={cardContentStyle}>
                   <img
-                    src={topViewImage}
-                    alt="Top View Simple Diagram"
+                    src={mapImage || topViewImage || ""}
+                    alt="Top View"
                     style={{
                       width: "100%",
                       height: "auto",
-                      maxHeight: "650px", 
-                      objectFit: "contain",
-                      borderRadius: "6px",
-                      display: "block",
-                      border: `1px solid #333`, 
-                    }}
-                    crossOrigin="anonymous"
-                  />
-                </div>
-              </div>
-            )}
-          </PageWrapper>
-
-          {/* Page 3: Top View (Aerial Map View) */}
-          <PageWrapper page={++pageCounter}>
-            <CustomReportPageHeader
-              title="Aerial Map View (Top View)"
-              isCoverPage={false}
-              titleFontSize="20px"
-              isFullReport={isFullReport}
-              customerName={customerName}
-            />
-            {mapImage && (
-              <div style={cardContainerStyle}>
-                <CardTitleHeader title="High-Resolution Map Imagery" />
-                <div style={cardContentStyle}>
-                  <img
-                    src={mapImage}
-                    alt="Map Screenshot"
-                    style={{
-                      width: "100%",
-                      height: "auto",
-                      maxHeight: "650px", 
+                      maxHeight: "650px",
                       objectFit: "contain",
                       borderRadius: "6px",
                       display: "block",
@@ -912,8 +849,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             )}
           </PageWrapper>
 
-
-          {/* Page 4: Side Views (Angled Images) */}
+          {/* Page 3: Side Views (Angled Images) */}
           <PageWrapper page={++pageCounter}>
             <CustomReportPageHeader
               title="Side Views (4 Angles)"
@@ -973,7 +909,7 @@ const PDFTemplate: React.FC<PDFTemplateProps> = ({
             </div>
           </PageWrapper>
 
-          {/* 💥 Page 5: Measurement Lengths Diagram (Reusable Component) */}
+          {/* Page 4: Measurement Lengths Diagram */}
           {/* Your requested page, using the new reusable component */}
           <MeasurementLengthsPage
             data={data}

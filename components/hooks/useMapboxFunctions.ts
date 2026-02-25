@@ -56,44 +56,17 @@ export function useMapboxFunctions() {
     }
     
     if (!pinMarkerRef.current) {
-      // Create new marker
-      const marker = new mapboxgl.Marker({
-        draggable,
-        color: '#FF0000',
-      })
+      // Same marker as Step2Address: default Mapbox pin
+      const marker = new mapboxgl.Marker({ draggable })
         .setLngLat(location)
         .addTo(mapRef.current);
-      
-      // Wait for marker to be added to DOM, then style it
-      setTimeout(() => {
-        const markerElement = marker.getElement();
-        if (markerElement) {
-          // Force marker to be visible
-          markerElement.style.cssText = `
-            z-index: 9999 !important;
-            position: absolute !important;
-            pointer-events: auto !important;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-          `;
-          // Set all parent containers
-          let parent = markerElement.parentElement;
-          while (parent) {
-            if (parent.classList.contains('mapboxgl-marker-container') || parent.classList.contains('mapboxgl-marker')) {
-              parent.style.cssText = `
-                z-index: 9999 !important;
-                position: relative !important;
-                display: block !important;
-                visibility: visible !important;
-              `;
-            }
-            parent = parent.parentElement;
-          }
-          console.log('Marker created and visible:', markerElement);
-        }
-      }, 100);
-      
+      // Zoom in/out par marker hamesha dikhe – sirf z-index taake map canvas ke upar rahe
+      const el = marker.getElement();
+      if (el) {
+        el.style.zIndex = "9999";
+        const container = el.closest(".mapboxgl-marker-container");
+        if (container && container instanceof HTMLElement) container.style.zIndex = "9999";
+      }
       // Add drag listener if draggable
       if (draggable) {
         marker.on("drag", (ev) => {
@@ -104,55 +77,49 @@ export function useMapboxFunctions() {
       
       pinMarkerRef.current = marker;
     } else {
-      // Update existing marker
       pinMarkerRef.current.setLngLat(location);
       pinMarkerRef.current.setDraggable(draggable);
-      
-      // Ensure z-index is set
-      setTimeout(() => {
-        const markerElement = pinMarkerRef.current?.getElement();
-        if (markerElement) {
-          markerElement.style.cssText = `
-            z-index: 9999 !important;
-            position: absolute !important;
-            pointer-events: auto !important;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-          `;
-          let parent = markerElement.parentElement;
-          while (parent) {
-            if (parent.classList.contains('mapboxgl-marker-container') || parent.classList.contains('mapboxgl-marker')) {
-              parent.style.cssText = `
-                z-index: 9999 !important;
-                position: relative !important;
-                display: block !important;
-                visibility: visible !important;
-              `;
-            }
-            parent = parent.parentElement;
-          }
-        }
-      }, 50);
+      const el = pinMarkerRef.current.getElement();
+      if (el) {
+        el.style.zIndex = "9999";
+        const container = el.closest(".mapboxgl-marker-container");
+        if (container && container instanceof HTMLElement) container.style.zIndex = "9999";
+      }
     }
   }, []);
   
-  // Function to get location from localStorage
+  // Function to get location from localStorage (projectLocation or latest project from projects array)
   const getLocationFromStorage = useCallback((): [number, number] | null => {
     if (typeof window === "undefined") return null;
-    
+    // 1) Prefer projectLocation (exact coords user confirmed)
     const savedLoc = localStorage.getItem("projectLocation");
-    if (!savedLoc) return null;
-    
-    try {
-      const coords = JSON.parse(savedLoc);
-      if (coords && typeof coords.lat === "number" && typeof coords.lng === "number") {
-        return [coords.lng, coords.lat];
+    if (savedLoc) {
+      try {
+        const coords = JSON.parse(savedLoc);
+        if (coords && typeof coords.lat === "number" && typeof coords.lng === "number") {
+          return [coords.lng, coords.lat];
+        }
+      } catch (err) {
+        console.warn("Error parsing projectLocation from localStorage", err);
       }
-    } catch (err) {
-      console.warn("Error parsing projectLocation from localStorage", err);
     }
-    
+    // 2) Fallback: request-estimate saves to "projects" only – use latest project's lat/lng
+    const projectsRaw = localStorage.getItem("projects");
+    if (projectsRaw) {
+      try {
+        const projects = JSON.parse(projectsRaw);
+        if (Array.isArray(projects) && projects.length > 0) {
+          const last = projects[projects.length - 1];
+          const lat = last.lat ?? last.latitude;
+          const lng = last.lng ?? last.longitude;
+          if (typeof lat === "number" && typeof lng === "number") {
+            return [lng, lat];
+          }
+        }
+      } catch (err) {
+        console.warn("Error parsing projects from localStorage", err);
+      }
+    }
     return null;
   }, []);
   
@@ -591,14 +558,6 @@ export function useMapboxFunctions() {
     // Update marker position based on confirmation status
     setMarkerAtLocation(tempLocation, !isLocationConfirmed);
   }, [tempLocation, isLocationConfirmed, setMarkerAtLocation]);
-  // useMapboxFunctions.ts (Add this new useEffect)
-  useEffect(() => {
-    if (tempLocation) {
-      console.log("Current Marker Location (Lng, Lat):", tempLocation);
-    }
-  }, [tempLocation]);
-
-
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
     const map = new mapboxgl.Map({
@@ -696,79 +655,65 @@ export function useMapboxFunctions() {
         });
       }
       
-      // Check for saved location from localStorage (projectLocation) - direct access to avoid function dependency
+      // Use exact coords: projectLocation first, then latest project from "projects" (request-estimate saves there)
+      let savedLocation: [number, number] | null = null;
       if (typeof window !== "undefined") {
         const savedLoc = localStorage.getItem("projectLocation");
         if (savedLoc) {
           try {
             const coords = JSON.parse(savedLoc);
             if (coords && typeof coords.lat === "number" && typeof coords.lng === "number") {
-              const savedLocation: [number, number] = [coords.lng, coords.lat];
-              
-              // Set temp location to saved coordinates
-              setTempLocation(savedLocation);
-              setPinLocation(savedLocation);
-              
-              // Fly to the saved location
-              map.flyTo({ center: savedLocation, zoom: 20, essential: true });
-              
-              // Show location card - marker will be fixed (not draggable) until "Change Location" is clicked
-              setShowLocationCard(true);
-              setIsLocationConfirmed(true); // Fixed at location
-              setIsEditMode(false);
-              
-              // Set marker at saved location (not draggable - fixed) - wait for map to be fully ready
-              setTimeout(() => {
-                if (mapRef.current && mapRef.current.loaded()) {
-                  if (!pinMarkerRef.current) {
-                    const marker = new mapboxgl.Marker({
-                      draggable: false,
-                      color: '#FF0000',
-                    })
-                      .setLngLat(savedLocation)
-                      .addTo(mapRef.current);
-                    
-                    // Wait a bit for marker to be added to DOM
-                    setTimeout(() => {
-                      const markerElement = marker.getElement();
-                      if (markerElement) {
-                        markerElement.style.cssText = `
-                          z-index: 9999 !important;
-                          position: absolute !important;
-                          pointer-events: auto !important;
-                          display: block !important;
-                          visibility: visible !important;
-                          opacity: 1 !important;
-                        `;
-                        let parent = markerElement.parentElement;
-                        while (parent) {
-                          if (parent.classList.contains('mapboxgl-marker-container') || parent.classList.contains('mapboxgl-marker')) {
-                            parent.style.cssText = `
-                              z-index: 9999 !important;
-                              position: relative !important;
-                              display: block !important;
-                              visibility: visible !important;
-                            `;
-                          }
-                          parent = parent.parentElement;
-                        }
-                        console.log('Marker added and styled:', markerElement);
-                      }
-                    }, 50);
-                    
-                    pinMarkerRef.current = marker;
-                  } else {
-                    pinMarkerRef.current.setLngLat(savedLocation);
-                    pinMarkerRef.current.setDraggable(false);
-                  }
-                }
-              }, 300);
-              
-              return; // Exit early if we have saved location
+              savedLocation = [coords.lng, coords.lat];
             }
           } catch (err) {
-            console.warn("Error parsing saved location", err);
+            console.warn("Error parsing projectLocation", err);
           }
+        }
+        if (!savedLocation) {
+          const projectsRaw = localStorage.getItem("projects");
+          if (projectsRaw) {
+            try {
+              const projects = JSON.parse(projectsRaw);
+              if (Array.isArray(projects) && projects.length > 0) {
+                const last = projects[projects.length - 1];
+                const lat = last.lat ?? last.latitude;
+                const lng = last.lng ?? last.longitude;
+                if (typeof lat === "number" && typeof lng === "number") {
+                  savedLocation = [lng, lat];
+                }
+              }
+            } catch (err) {
+              console.warn("Error parsing projects", err);
+            }
+          }
+        }
+        if (savedLocation) {
+          setTempLocation(savedLocation);
+          setPinLocation(savedLocation);
+          map.flyTo({ center: savedLocation, zoom: 20, essential: true });
+          setShowLocationCard(true);
+          setIsLocationConfirmed(true);
+          setIsEditMode(false);
+          setTimeout(() => {
+            if (mapRef.current && mapRef.current.loaded()) {
+              if (!pinMarkerRef.current) {
+                const marker = new mapboxgl.Marker({ draggable: false })
+                  .setLngLat(savedLocation!)
+                  .addTo(mapRef.current);
+                const el = marker.getElement();
+                if (el) {
+                  el.style.zIndex = "9999";
+                  const container = el.closest(".mapboxgl-marker-container");
+                  if (container && container instanceof HTMLElement) container.style.zIndex = "9999";
+                }
+                pinMarkerRef.current = marker;
+              } else {
+                pinMarkerRef.current.setLngLat(savedLocation!);
+                pinMarkerRef.current.setDraggable(false);
+              }
+            }
+          }, 300);
+          return;
         }
       }
       

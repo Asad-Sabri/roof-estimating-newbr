@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { motion } from "framer-motion";
 import {
   Building2,
@@ -10,6 +10,8 @@ import {
   X,
   Loader2,
   Search,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import AdminDashboardLayout from "@/app/dashboard/admin/page";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
@@ -78,23 +80,31 @@ export default function AdminCompaniesPage() {
   const [form, setForm] = useState<CreateCompanyPayload>(emptyForm);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchCompanies = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      const extractList = (r: any): Company[] => {
+        if (!r || typeof r !== "object") return [];
+        if (Array.isArray(r)) return r as Company[];
+        if (Array.isArray(r.data)) return r.data as Company[];
+        if (Array.isArray(r.companies)) return r.companies as Company[];
+        if (r.data && Array.isArray((r.data as any).companies)) return (r.data as { companies: Company[] }).companies;
+        if ("_id" in r && r._id) return [r as Company];
+        return [];
+      };
       const res = await getAllCompaniesAPI();
-      let list: Company[] = [];
-      if (Array.isArray(res)) list = res;
-      else if (res?.data && Array.isArray(res.data)) list = res.data;
-      else if (res?.companies && Array.isArray(res.companies)) list = res.companies;
-      else if (res && typeof res === "object" && "_id" in res) list = [res as Company];
+      const list = extractList(res);
       setCompanies(list);
     } catch (e: unknown) {
       const msg =
-        e && typeof e === "object" && "message" in e
-          ? String((e as { message: string }).message)
-          : "Failed to load companies";
+        e && typeof e === "object" && "response" in e && (e as { response?: { data?: { message?: string } } }).response?.data?.message
+          ? (e as { response: { data: { message: string } } }).response.data.message
+          : e && typeof e === "object" && "message" in e
+            ? String((e as { message: string }).message)
+            : "Failed to load companies";
       setError(msg);
       setCompanies([]);
     } finally {
@@ -293,71 +303,172 @@ export default function AdminCompaniesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filtered.map((c) => (
-                    <tr key={c._id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {c.companyName || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {c.licenseNumber || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {c.website ? (
-                          <a
-                            href={
-                              c.website.startsWith("http")
-                                ? c.website
-                                : `https://${c.website}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[#8b0e0f] hover:underline truncate max-w-[120px] block"
-                          >
-                            {c.website}
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {c.email || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {c.mobile_number || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate">
-                        {formatAddress(c.address)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {formatDate(c.createdAt)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(c._id)}
-                            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-[#8b0e0f]"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(c._id)}
-                            disabled={deleteLoadingId === c._id}
-                            className="p-2 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-50"
-                            title="Delete"
-                          >
-                            {deleteLoadingId === c._id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
+                  {filtered.map((c) => {
+                    const isExpanded = expandedId === c._id;
+                    const addr = c.address && typeof c.address === "object" ? c.address : {};
+                    return (
+                      <Fragment key={c._id}>
+                        <tr
+                          className="hover:bg-gray-50"
+                        >
+                          <td className="px-4 py-3">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedId((id) => (id === c._id ? null : c._id))}
+                              className="flex items-center gap-2 text-left font-medium text-gray-900 hover:text-[#8b0e0f]"
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="w-4 h-4 shrink-0" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 shrink-0" />
+                              )}
+                              {c.companyName || "—"}
+                            </button>
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {c.licenseNumber || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {c.website ? (
+                              <a
+                                href={
+                                  c.website.startsWith("http")
+                                    ? c.website
+                                    : `https://${c.website}`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#8b0e0f] hover:underline truncate max-w-[120px] block"
+                              >
+                                {c.website}
+                              </a>
                             ) : (
-                              <Trash2 className="w-4 h-4" />
+                              "—"
                             )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {c.email || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {c.mobile_number || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate">
+                            {formatAddress(c.address)}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">
+                            {formatDate(c.createdAt)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); openEdit(c._id); }}
+                                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-[#8b0e0f]"
+                                title="Edit"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(c._id); }}
+                                disabled={deleteLoadingId === c._id}
+                                className="p-2 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                title="Delete"
+                              >
+                                {deleteLoadingId === c._id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="bg-gray-50">
+                            <td colSpan={9} className="px-4 py-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Company Name</span>
+                                  <span className="text-gray-900">{c.companyName || "—"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">License Number</span>
+                                  <span className="text-gray-900">{c.licenseNumber || "—"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Website</span>
+                                  {c.website ? (
+                                    <a href={c.website.startsWith("http") ? c.website : `https://${c.website}`} target="_blank" rel="noopener noreferrer" className="text-[#8b0e0f] hover:underline">{c.website}</a>
+                                  ) : "—"}
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Email</span>
+                                  <span className="text-gray-900">{c.email || "—"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Mobile</span>
+                                  <span className="text-gray-900">{c.mobile_number || "—"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Created</span>
+                                  <span className="text-gray-900">{formatDate(c.createdAt)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Updated</span>
+                                  <span className="text-gray-900">{formatDate((c as any).updatedAt)}</span>
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <span className="text-gray-500 block mb-1">Address</span>
+                                  <span className="text-gray-900">
+                                    {[addr.street, addr.city, addr.state, addr.country, addr.zip_code].filter(Boolean).join(", ") || "—"}
+                                  </span>
+                                </div>
+                                {(c as any).disclaimer && (
+                                  <div className="sm:col-span-2 lg:col-span-3">
+                                    <span className="text-gray-500 block mb-1">Disclaimer</span>
+                                    <span className="text-gray-900 whitespace-pre-wrap">{(c as any).disclaimer}</span>
+                                  </div>
+                                )}
+                                {(c as any).followUpText && (
+                                  <div className="sm:col-span-2 lg:col-span-3">
+                                    <span className="text-gray-500 block mb-1">Follow-up Text</span>
+                                    <span className="text-gray-900 whitespace-pre-wrap">{(c as any).followUpText}</span>
+                                  </div>
+                                )}
+                                {(c as any).contactPersonName && (
+                                  <>
+                                    <div>
+                                      <span className="text-gray-500 block mb-1">Contact Person</span>
+                                      <span className="text-gray-900">{(c as any).contactPersonName}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500 block mb-1">Contact Phone</span>
+                                      <span className="text-gray-900">{(c as any).contactPersonPhone || "—"}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500 block mb-1">Contact Email</span>
+                                      <span className="text-gray-900">{(c as any).contactPersonEmail || "—"}</span>
+                                    </div>
+                                  </>
+                                )}
+                                {Array.isArray((c as any).whatsIncluded) && (c as any).whatsIncluded.length > 0 && (
+                                  <div className="sm:col-span-2 lg:col-span-3">
+                                    <span className="text-gray-500 block mb-1">What&apos;s Included</span>
+                                    <ul className="list-disc pl-4 text-gray-900">
+                                      {((c as any).whatsIncluded as string[]).map((item: string, i: number) => (
+                                        <li key={i}>{item}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

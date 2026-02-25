@@ -7,9 +7,7 @@ import Link from "next/link";
 import { FileText, TrendingUp, DollarSign, Calendar, X, Eye, MapPin, Home, Layers, Clock, CreditCard, Trash2, ChevronDown, ChevronRight, Mail, Phone, User } from "lucide-react";
 import { getUserInstantEstimatesAPI, deleteInstantEstimateAPI } from "@/services/instantEstimateAPI";
 import { generateEstimateReportPdfFromHtml } from "@/utils/estimateReportPdfFromHtml";
-import type { CompanyProfile } from "@/utils/estimateReportPdfFromHtml";
 import { sendPdfsAPI } from "@/services/emailAPI";
-import { getCompanyAPI, getCompanyUserAPI } from "@/services/companyAPI";
 import { toast } from "react-toastify";
 
 /** API item ko Preliminary modal ke expected shape me convert karta hai */
@@ -359,52 +357,6 @@ export default function EstimatingPage() {
         const { min, max } = parsePriceRange(ep.price_range);
         return { type: ep.title, minPrice: min, maxPrice: max, enabled: true };
       });
-      let company: CompanyProfile | null = null;
-      try {
-        const res = await getCompanyAPI();
-        const d = res?.data ?? res;
-        const c = d?.company ?? d;
-        if (c && typeof c === "object") {
-          const addr = c.address && typeof c.address === "object" ? c.address : {};
-          const addressLine = [addr.street, addr.city, addr.state, addr.country, addr.zip_code].filter(Boolean).join(", ");
-          company = {
-            companyName: c.companyName ?? c.company_name ?? "Superior Pro Roofing Systems",
-            licenseNumber: c.licenseNumber ?? c.license_number,
-            phone: c.mobile_number ?? c.phone,
-            email: c.email,
-            website: c.website,
-            addressLine: addressLine || (c.addressLine ?? c.address_line),
-            disclaimer: c.disclaimer,
-            contactPersonName: c.contactPersonName ?? c.contact_person_name,
-            contactPersonPhone: c.contactPersonPhone ?? c.contact_person_phone,
-            contactPersonEmail: c.contactPersonEmail ?? c.contact_person_email,
-            followUpText: c.followUpText ?? c.follow_up_text,
-          };
-        }
-      } catch {
-        try {
-          const res = await getCompanyUserAPI();
-          const d = res?.data ?? res;
-          const c = d?.company ?? d;
-          if (c && typeof c === "object") {
-            const addr = c.address && typeof c.address === "object" ? c.address : {};
-            const addressLine = [addr.street, addr.city, addr.state, addr.country, addr.zip_code].filter(Boolean).join(", ");
-            company = {
-              companyName: c.companyName ?? c.company_name ?? "Superior Pro Roofing Systems",
-              licenseNumber: c.licenseNumber ?? c.license_number,
-              phone: c.mobile_number ?? c.phone,
-              email: c.email,
-              website: c.website,
-              addressLine: addressLine || (c.addressLine ?? c.address_line),
-              disclaimer: c.disclaimer,
-              contactPersonName: c.contactPersonName ?? c.contact_person_name,
-              contactPersonPhone: c.contactPersonPhone ?? c.contact_person_phone,
-              contactPersonEmail: c.contactPersonEmail ?? c.contact_person_email,
-              followUpText: c.followUpText ?? c.follow_up_text,
-            };
-          }
-        } catch { /* use default in PDF */ }
-      }
       const coords = est.coordinates || (est.latitude != null && est.longitude != null ? { lat: est.latitude, lng: est.longitude } : undefined);
       const mapUrl =
         coords && process.env.NEXT_PUBLIC_MAPBOX_TOKEN
@@ -425,7 +377,7 @@ export default function EstimatingPage() {
         phone: est.mobile_number,
         estimates,
       };
-      const pdfBlob = await generateEstimateReportPdfFromHtml({ estimate: estimateRecord, company, mapUrl });
+      const pdfBlob = await generateEstimateReportPdfFromHtml({ estimate: estimateRecord, mapUrl });
       await sendPdfsAPI(pdfBlob, email);
       toast.success("Report sent to your email!");
     } catch (err: any) {

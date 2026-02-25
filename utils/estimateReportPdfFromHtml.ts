@@ -1,12 +1,14 @@
 /**
  * Generate estimate report PDF from the same HTML design as the report page.
  * Design HTML me rehta hai, isse perfectly same PDF milti hai.
+ * PDF me real-time company details ke liye GET /api/company/user ya GET /api/company use hota hai.
  */
 
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { EstimateReportContent } from "@/components/estimating/EstimateReportContent";
 import type { EstimateRecord, CompanyProfile } from "@/components/estimating/EstimateReportContent";
+import { getCompanyUserAPI, getCompanyAPI } from "@/services/companyAPI";
 
 export type { EstimateRecord, CompanyProfile };
 
@@ -26,6 +28,57 @@ const DEFAULT_COMPANY: CompanyProfile = {
     "You can anticipate prompt follow-up from [Person XXX] at [Phone XXX-XXX-XXXX] and [Email GM@SuperiorRoofingCali.com] to schedule or confirm your inspection and discuss your estimate.\nVery truly yours,\nShafic XXXXX.",
 };
 
+function formatAddress(addr: any): string {
+  if (!addr || typeof addr !== "object") return "";
+  return [addr.street, addr.city, addr.state, addr.country, addr.zip_code].filter(Boolean).join(", ");
+}
+
+/** GET API se company fetch karke CompanyProfile return – PDF / email report ke liye real-time details */
+export async function fetchCompanyForReportPdf(): Promise<CompanyProfile> {
+  try {
+    const res = await getCompanyUserAPI();
+    const r = res?.data ?? res?.settings ?? res;
+    if (r && typeof r === "object") return mapApiToCompanyProfile(r);
+  } catch {
+    // fallback
+  }
+  try {
+    const res = await getCompanyAPI();
+    const data = res?.data ?? res;
+    const r = data?.company && typeof data.company === "object" ? data.company : data;
+    if (r && typeof r === "object") return mapApiToCompanyProfile(r);
+  } catch {
+    // use default
+  }
+  return DEFAULT_COMPANY;
+}
+
+function mapApiToCompanyProfile(r: any): CompanyProfile {
+  const address = r.address && typeof r.address === "object" ? r.address : undefined;
+  const addressLine = formatAddress(address) || r.addressLine ?? r.address_line ?? DEFAULT_COMPANY.addressLine;
+  const whatsIncludedRaw = r.whatsIncluded ?? r.whats_included;
+  const whatsIncluded = Array.isArray(whatsIncludedRaw)
+    ? whatsIncludedRaw
+    : typeof whatsIncludedRaw === "string"
+      ? whatsIncludedRaw.split("\n").map((s: string) => s.trim()).filter(Boolean)
+      : undefined;
+  return {
+    ...DEFAULT_COMPANY,
+    companyName: r.companyName ?? r.company_name ?? DEFAULT_COMPANY.companyName,
+    licenseNumber: r.licenseNumber ?? r.license_number ?? DEFAULT_COMPANY.licenseNumber,
+    phone: r.mobile_number ?? r.phone ?? DEFAULT_COMPANY.phone,
+    email: r.email ?? DEFAULT_COMPANY.email,
+    website: r.website ?? DEFAULT_COMPANY.website,
+    addressLine,
+    disclaimer: r.disclaimer ?? DEFAULT_COMPANY.disclaimer,
+    contactPersonName: r.contactPersonName ?? r.contact_person_name ?? DEFAULT_COMPANY.contactPersonName,
+    contactPersonPhone: r.contactPersonPhone ?? r.contact_person_phone ?? DEFAULT_COMPANY.contactPersonPhone,
+    contactPersonEmail: r.contactPersonEmail ?? r.contact_person_email ?? DEFAULT_COMPANY.contactPersonEmail,
+    followUpText: r.followUpText ?? r.follow_up_text ?? DEFAULT_COMPANY.followUpText,
+    whatsIncluded: whatsIncluded && whatsIncluded.length > 0 ? whatsIncluded : undefined,
+  };
+}
+
 export interface GenerateReportPdfInput {
   estimate: EstimateRecord;
   company?: CompanyProfile | null;
@@ -38,8 +91,8 @@ export interface GenerateReportPdfInput {
 export async function generateEstimateReportPdfFromHtml(
   input: GenerateReportPdfInput
 ): Promise<Blob> {
-  const { estimate, company, mapUrl } = input;
-  const companyResolved: CompanyProfile = company || DEFAULT_COMPANY;
+  const { estimate, company: companyInput, mapUrl } = input;
+  const companyResolved: CompanyProfile = companyInput ?? await fetchCompanyForReportPdf();
 
   const [html2pdf] = await Promise.all([import("html2pdf.js")]);
   const html2pdfDefault = (html2pdf as any).default || html2pdf;

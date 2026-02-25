@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   User,
@@ -17,7 +17,8 @@ import {
 import AdminDashboardLayout from "@/app/dashboard/admin/page";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import { signupAPI, approveUserAPI, getProfileAPI } from "@/services/auth";
-import { assignCustomerToAdminAPI } from "@/services/superAdminAPI";
+import { getCompanyCustomersAPI, getCompaniesByAdminAPI } from "@/services/companyAPI";
+import { assignCustomerToAdminAPI, deleteCustomerAPI } from "@/services/superAdminAPI";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -32,54 +33,37 @@ type Customer = {
   totalProposals: number;
   totalPayments: number;
   approved?: boolean;
+  assignedToId?: string | null;
+  createdById?: string | null;
 };
 
-const mockData: Customer[] = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john@example.com",
-    phone: "123-456-7890",
-    status: "Active",
-    totalJobs: 5,
-    totalProposals: 3,
-    totalPayments: 2,
-    approved: true,
-  },
-  {
-    id: 2,
-    name: "Sarah Lee",
-    email: "sarah@example.com",
-    phone: "987-654-3210",
-    status: "Inactive",
-    totalJobs: 2,
-    totalProposals: 1,
-    totalPayments: 0,
-    approved: true,
-  },
-  {
-    id: 3,
-    name: "Michael Smith",
-    email: "michael@example.com",
-    phone: "222-333-4444",
-    status: "Active",
-    totalJobs: 8,
-    totalProposals: 5,
-    totalPayments: 4,
-    approved: true,
-  },
-  {
-    id: 4,
-    name: "Emma Wilson",
-    email: "emma@example.com",
-    phone: "111-999-8888",
-    status: "Active",
-    totalJobs: 1,
-    totalProposals: 1,
-    totalPayments: 1,
-    approved: true,
-  },
-];
+function normalizeCustomersList(res: any): Customer[] {
+  let list: any[] = [];
+  if (Array.isArray(res)) list = res;
+  else if (res?.data && Array.isArray(res.data)) list = res.data;
+  else if (res?.customers && Array.isArray(res.customers)) list = res.customers;
+  else if (res && typeof res === "object") list = [res];
+  return list.map((c: any) => {
+    const at = c.assignedTo ?? c.assigned_to;
+    const assignedToId = at?._id ?? (typeof at === "string" ? at : null) ?? null;
+    const createdBy = c.createdBy ?? c.created_by;
+    const createdById = createdBy?._id ?? (typeof createdBy === "string" ? createdBy : null) ?? null;
+    return {
+      _id: c._id ?? c.id,
+      id: typeof c.id === "number" ? c.id : undefined,
+      name: c.name ?? (([c.first_name, c.last_name].filter(Boolean).join(" ") || c.email) || "—"),
+      email: c.email ?? "—",
+      phone: c.phone ?? c.mobile_number ?? c.mobile ?? "—",
+      status: (c.status ?? (c.is_active === false ? "Inactive" : "Active")) as "Active" | "Inactive",
+      totalJobs: c.totalJobs ?? c.total_jobs ?? 0,
+      totalProposals: c.totalProposals ?? c.total_proposals ?? 0,
+      totalPayments: c.totalPayments ?? c.total_payments ?? 0,
+      approved: c.approved ?? c.is_approved ?? true,
+      assignedToId: assignedToId || undefined,
+      createdById: createdById || undefined,
+    };
+  });
+}
 
 const emptyForm = {
   first_name: "",
@@ -88,10 +72,8 @@ const emptyForm = {
   email: "",
   mobile_number: "",
   password: "",
-  company: "",
+  company_id: "",
   postal_code: "",
-  account_type: "customer",
-  // role_id: 1,
 };
 
 // Backend expects mobile with + and digits (e.g. +923000000000)
@@ -108,30 +90,55 @@ function isValidMobile(value: string): boolean {
 
 export default function AdminCustomersPage() {
   useProtectedRoute();
-  const [customers, setCustomers] = useState<Customer[]>(mockData);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [createLoading, setCreateLoading] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [adminCompanies, setAdminCompanies] = useState<{ _id: string; companyName?: string; name?: string }[]>([]);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("customers_admin");
-    if (saved) {
-      try {
-        setCustomers(JSON.parse(saved));
-      } catch {
-        localStorage.setItem("customers_admin", JSON.stringify(mockData));
-      }
-    } else {
-      localStorage.setItem("customers_admin", JSON.stringify(mockData));
+  const fetchAdminCompanies = useCallback(async () => {
+    try {
+      const profileRes: any = await getProfileAPI();
+      const profile = profileRes?.data ?? profileRes;
+      const adminId = profile?._id ?? profile?.id ?? profile?.user_id;
+      if (!adminId) return;
+      const res = await getCompaniesByAdminAPI(adminId);
+      let list: { _id: string; companyName?: string; name?: string }[] = [];
+      if (Array.isArray(res)) list = res;
+      else if (res?.data && Array.isArray(res.data)) list = res.data;
+      else if (res?.companies && Array.isArray(res.companies)) list = res.companies;
+      setAdminCompanies(list);
+    } catch {
+      setAdminCompanies([]);
+    }
+  }, []);
+
+  const fetchCustomers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getCompanyCustomersAPI();
+      const list = normalizeCustomersList(res);
+      setCustomers(list);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message ?? e?.message ?? "Failed to load customers.";
+      setError(msg);
+      setCustomers([]);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (customers.length > 0) {
-      localStorage.setItem("customers_admin", JSON.stringify(customers));
-    }
-  }, [customers]);
+    fetchCustomers();
+  }, [fetchCustomers]);
+
+  useEffect(() => {
+    fetchAdminCompanies();
+  }, [fetchAdminCompanies]);
 
   const toggleStatus = (id: number) => {
     setCustomers((prev) =>
@@ -143,9 +150,20 @@ export default function AdminCustomersPage() {
     );
   };
 
-  const deleteCustomer = (id: number) => {
+  const deleteCustomer = (id: number | string) => {
     if (!confirm("Are you sure you want to delete this customer?")) return;
-    setCustomers((prev) => prev.filter((c) => c.id !== id));
+    const idStr = typeof id === "string" ? id : undefined;
+    const idNum = typeof id === "number" ? id : undefined;
+    if (idStr) {
+      deleteCustomerAPI(idStr)
+        .then(() => {
+          toast.success("Customer deleted.");
+          fetchCustomers();
+        })
+        .catch((e: any) => toast.error(e?.response?.data?.message ?? e?.message ?? "Delete failed."));
+      return;
+    }
+    setCustomers((prev) => prev.filter((c) => c.id !== idNum));
   };
 
   const handleCreateCustomer = async (e: React.FormEvent) => {
@@ -161,14 +179,13 @@ export default function AdminCustomersPage() {
     }
     setCreateLoading(true);
     try {
-      const payload = {
-        account_type: form.account_type,
+      const payload: Record<string, string> = {
         first_name: form.first_name.trim(),
         middle_name: form.middle_name?.trim() || "",
         last_name: form.last_name.trim(),
         email: form.email.trim(),
         password: form.password,
-        company: form.company?.trim() || "",
+        company: form.company_id?.trim() || "",
         postal_code: form.postal_code?.trim() || "",
         mobile_number: mobile,
         role: "customer",
@@ -204,6 +221,7 @@ export default function AdminCustomersPage() {
           // Assign may be super-admin only; customer is still created
         }
       }
+      await fetchCustomers();
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? err?.response?.data?.detail ?? err?.message ?? "Failed to create customer.";
       toast.error(msg);
@@ -228,6 +246,17 @@ export default function AdminCustomersPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <AdminDashboardLayout>
+        <div className="flex items-center justify-center min-h-[40vh] gap-2">
+          <Loader2 className="w-8 h-8 animate-spin text-[#8b0e0f]" />
+          <span className="text-gray-600">Loading customers...</span>
+        </div>
+      </AdminDashboardLayout>
+    );
+  }
+
   return (
     <AdminDashboardLayout>
       <motion.main
@@ -241,7 +270,10 @@ export default function AdminCustomersPage() {
             <User /> Customers
           </h1>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-black font-bold">{customers.length} Customers</span>
+            {error && (
+              <span className="text-xs text-red-600 font-medium">{error}</span>
+            )}
+            <span className="text-xs text-black font-bold">{customers.length} Customers (yours only)</span>
             <button
               type="button"
               onClick={() => setModalOpen(true)}
@@ -324,21 +356,21 @@ export default function AdminCustomersPage() {
                         <Edit size={16} /> Edit
                       </button>
                       {typeof c.id === "number" && (
-                        <>
-                          <button
-                            onClick={() => toggleStatus(c.id!)}
-                            className="flex items-center gap-1 px-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
-                          >
-                            {c.status === "Active" ? <ToggleLeft size={16} /> : <ToggleRight size={16} />}
-                            {c.status === "Active" ? "Deactivate" : "Activate"}
-                          </button>
-                          <button
-                            onClick={() => deleteCustomer(c.id!)}
-                            className="flex items-center gap-1 px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-                          >
-                            <Trash2 size={16} /> Delete
-                          </button>
-                        </>
+                        <button
+                          onClick={() => toggleStatus(c.id!)}
+                          className="flex items-center gap-1 px-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
+                        >
+                          {c.status === "Active" ? <ToggleLeft size={16} /> : <ToggleRight size={16} />}
+                          {c.status === "Active" ? "Deactivate" : "Activate"}
+                        </button>
+                      )}
+                      {(c._id || typeof c.id === "number") && (
+                        <button
+                          onClick={() => deleteCustomer(c._id ?? c.id!)}
+                          className="flex items-center gap-1 px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                        >
+                          <Trash2 size={16} /> Delete
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -381,30 +413,20 @@ export default function AdminCustomersPage() {
                 </button>
               </div>
               <form onSubmit={handleCreateCustomer} className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Account Type *</label>
-                    <select
-                      value={form.account_type}
-                      onChange={(e) => setForm((p) => ({ ...p, account_type: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent bg-white"
-                    >
-                      <option value="customer">Customer</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                  {/* <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Role ID *</label>
-                    <select
-                      value={form.role_id}
-                      onChange={(e) => setForm((p) => ({ ...p, role_id: Number(e.target.value) }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent bg-white"
-                    >
-                      <option value={1}>1 - Customer</option>
-                      <option value={2}>2 - Admin</option>
-                      <option value={3}>3 - Other</option>
-                    </select>
-                  </div> */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">My Company</label>
+                  <select
+                    value={form.company_id}
+                    onChange={(e) => setForm((p) => ({ ...p, company_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent bg-white"
+                  >
+                    <option value="">Select company (optional)</option>
+                    {adminCompanies.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.companyName ?? c.name ?? c._id}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -470,16 +492,6 @@ export default function AdminCustomersPage() {
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">Min 6 characters. Customer will use this to login.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
-                  <input
-                    type="text"
-                    value={form.company}
-                    onChange={(e) => setForm((p) => ({ ...p, company: e.target.value }))}
-                    placeholder="MyCompany"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
-                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>

@@ -32,12 +32,40 @@ export const getCompanyUserAPI = () => {
   );
 };
 
+/** GET /api/company/for-customer – customer panel / instant estimate report ke liye company details */
+export const getCompanyForCustomerAPI = () => {
+  return handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint, freshConfig()),
+    "/api/company/for-customer",
+    null
+  );
+};
+
+/** GET /api/company/customers – admin: sirf wo customers jo us admin ne banaye ya assign kiye */
+export const getCompanyCustomersAPI = () => {
+  return handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint, freshConfig()),
+    "/api/company/customers",
+    null
+  );
+};
+
 /** GET /api/company/:id – company by ID (jab companyId ho, e.g. estimate/user se) */
 export const getCompanyByIdAPI = (id) => {
   if (!id) return Promise.reject(new Error("Company ID required"));
   return handleAPIRequest(
     (endpoint) => axiosInstance.get(endpoint, freshConfig()),
     `/api/company/${id}`,
+    null
+  );
+};
+
+/** GET /api/company/:adminId – us admin ki sari companies (admin panel list + customer form dropdown) */
+export const getCompaniesByAdminAPI = (adminId) => {
+  if (!adminId) return Promise.reject(new Error("Admin ID required"));
+  return handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint, freshConfig()),
+    `/api/company/${adminId}`,
     null
   );
 };
@@ -66,6 +94,24 @@ export const updateCompanyAPI = (id, data) => {
   return handleAPIRequest(
     (endpoint, body) => axiosInstance.put(endpoint, body),
     `/api/company/${id}`,
+    data
+  );
+};
+
+/** GET /api/company/settings – admin: fetch own company settings (real-time) */
+export const getCompanySettingsAPI = () => {
+  return handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint, freshConfig()),
+    "/api/company/settings",
+    null
+  );
+};
+
+/** PUT /api/company/settings – admin: update own company settings */
+export const putCompanySettingsAPI = (data) => {
+  return handleAPIRequest(
+    (endpoint, body) => axiosInstance.put(endpoint, body),
+    "/api/company/settings",
     data
   );
 };

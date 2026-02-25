@@ -7,12 +7,16 @@ export const BASE_RATE_PER_SQ_FT = 4.5;
 export const RATE_PER_LINEAR_FOOT_TRIM = 1.5;
 export const MINIMUM_JOB_FEE = 1500;
 
+// Theme: #8b0e0f (brand red)
+export const THEME_RED = "#8b0e0f";
+export const THEME_RED_DARK = "#6d0b0c";
+
 // NEW DESIGN CONSTANTS
-export const PAGE_BG_COLOR = "#F7F7F7"; // Thora dark white background
-export const CARD_BG_COLOR = "#FFFFFF"; // Har page content white card mein
-export const CARD_HEADER_BG_COLOR = "#0f2346"; // Dark Blue (for Headers)
-export const ACCENT_COLOR = "#1f497d"; // Secondary Accent Blue/Color for borders
-export const RED_DISCLAIMER_COLOR = "#a30000"; // Dark Red
+export const PAGE_BG_COLOR = "#F7F7F7";
+export const CARD_BG_COLOR = "#FFFFFF";
+export const CARD_HEADER_BG_COLOR = THEME_RED;
+export const ACCENT_COLOR = THEME_RED;
+export const RED_DISCLAIMER_COLOR = THEME_RED;
 
 // --- STYLE OBJECTS ---
 

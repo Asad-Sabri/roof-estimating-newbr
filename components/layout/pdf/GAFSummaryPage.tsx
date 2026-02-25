@@ -4,10 +4,9 @@ import React from "react";
 // Assumed imports from your PDFTemplate
 import { GAFSummary } from "./processRoofData";
 import { PolygonData } from "./constants";
-import { cardContainerStyle, CardTitleHeader } from "./PDFTemplateStyles";
+import { cardContainerStyle, CardTitleHeader, CARD_HEADER_BG_COLOR } from "./PDFTemplateStyles";
 
-// --- STYLE CONSTANTS (PDFTemplate se lenge) ---
-const CARD_HEADER_BG_COLOR = "#0f2346";
+// --- STYLE CONSTANTS ---
 const HEADER_ACCENT_COLOR = "#f3f3f3";
 const ACCENT_COLOR = "#f3f3f3";
 const HEADER_FONT_SIZE = "18px";

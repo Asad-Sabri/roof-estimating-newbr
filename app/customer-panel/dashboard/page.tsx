@@ -173,7 +173,7 @@ export default function DashboardPage() {
   const openJobProgress = (id: number) =>
     router.push(`/customer-panel/job-progress`);
   const openRequestEstimate = () =>
-    router.push(`/customer-panel/instant-estimate`);
+    router.push(`/customer-panel/request-estimate`);
 
   return (
     <CustomerDashboardLayout>
@@ -209,7 +209,7 @@ export default function DashboardPage() {
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d0b0c"}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#8b0e0f"}
             >
-              <PlusCircle size={18} /> Request New Instant Estimate
+              <PlusCircle size={18} /> Request Estimate (Create Project)
             </button>
 
             <Link

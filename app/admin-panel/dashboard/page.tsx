@@ -9,6 +9,7 @@ import {
   BarChart3,
   ClipboardPlus,
   ArrowRight,
+  FolderOpen,
 } from "lucide-react";
 import Link from "next/link";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
@@ -21,7 +22,8 @@ const stats = [
   { name: "Proposals Sent", value: "220", icon: FileText, color: "from-purple-500 to-pink-600", link: "/admin-panel/proposals" },
   { name: "Payments Received", value: "$85,000", icon: CreditCard, color: "from-yellow-500 to-orange-600", link: "/admin-panel/payments" },
   { name: "Job Progress Updates", value: "150", icon: BarChart3, color: "from-cyan-500 to-teal-600", link: "/admin-panel/job-progress" },
-  { name: "Estimates Requested", value: "50", icon: ClipboardPlus, color: "from-red-500 to-pink-600", link: "/admin-panel/estimates" },
+  { name: "Request Estimates", value: "50", icon: ClipboardPlus, color: "from-red-500 to-pink-600", link: "/admin-panel/estimates" },
+  { name: "Project Details", value: "Projects", icon: FolderOpen, color: "from-emerald-500 to-teal-600", link: "/admin-panel/project-details" },
 ];
 
 // ✅ Recent Activities
@@ -138,7 +140,14 @@ export default function AdminDashboardPage() {
               className="flex flex-col items-center justify-center gap-2 bg-red-50 border border-red-100 rounded-xl p-4 hover:bg-red-100 transition"
             >
               <ClipboardPlus className="h-6 w-6 text-red-600" />
-              <span className="text-sm font-medium">Review Estimates</span>
+              <span className="text-sm font-medium">Request Estimates</span>
+            </Link>
+            <Link
+              href="/admin-panel/project-details"
+              className="flex flex-col items-center justify-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl p-4 hover:bg-emerald-100 transition"
+            >
+              <FolderOpen className="h-6 w-6 text-emerald-600" />
+              <span className="text-sm font-medium">Project Details</span>
             </Link>
           </div>
         </div>

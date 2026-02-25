@@ -49,14 +49,14 @@ function normalizeCustomersList(res: any): Customer[] {
     const at = c.assignedTo ?? c.assigned_to;
     const assignedToId = at?._id ?? (typeof at === "string" ? at : null);
     const assignedToName =
-      (at && typeof at === "object" && at.name) ||
+      (at && typeof at === "object" && (at.name ?? ([at.first_name, at.last_name].filter(Boolean).join(" ").trim() || ""))) ||
       (typeof at === "string" ? at : null) ||
       c.admin_name ||
       "—";
     return {
       _id: c._id ?? c.id,
       id: c.id ?? 0,
-      name: c.name ?? [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email ?? "—",
+      name: c.name ?? (([c.first_name, c.last_name].filter(Boolean).join(" ") || c.email) ?? "—"),
       email: c.email ?? "—",
       phone: c.phone ?? c.mobile_number ?? c.mobile ?? "—",
       address: addr || "—",
@@ -80,7 +80,7 @@ function normalizeAdminsForOptions(res: any): AdminOption[] {
   else if (res && typeof res === "object") list = [res];
   return list.map((a: any) => ({
     _id: a._id ?? a.id,
-    name: a.name ?? [a.first_name, a.last_name].filter(Boolean).join(" ") || a.email ?? "—",
+    name: a.name ?? (([a.first_name, a.last_name].filter(Boolean).join(" ") || a.email) ?? "—"),
   }));
 }
 
@@ -177,21 +177,23 @@ export default function SuperAdminCustomersPage() {
     });
     try {
       const res = await getCustomerByIdAPI(id);
-      const c = res?.data ?? res;
-      if (c) {
-        setForm({
-          first_name: c.first_name ?? "",
-          last_name: c.last_name ?? "",
-          middle_name: c.middle_name ?? "",
-          email: c.email ?? "",
-          mobile_number: c.mobile_number ?? "",
-          password: "",
-          is_active: c.is_active !== false,
-          assignedToId: c.assignedTo?._id ?? c.assignedTo ?? null,
-        });
+      const c = res?.data ?? res?.customer ?? res?.user ?? res;
+      if (c && typeof c === "object") {
+        const at = c.assignedTo ?? c.assigned_to;
+        const assignedId = at?._id ?? (typeof at === "string" ? at : null) ?? null;
+        setForm((prev) => ({
+          ...prev,
+          first_name: (c.first_name != null && c.first_name !== "") ? c.first_name : prev.first_name,
+          last_name: (c.last_name != null && c.last_name !== "") ? c.last_name : prev.last_name,
+          middle_name: c.middle_name != null ? c.middle_name : prev.middle_name,
+          email: (c.email != null && c.email !== "") ? c.email : prev.email,
+          mobile_number: (c.mobile_number != null && c.mobile_number !== "") ? c.mobile_number : prev.mobile_number,
+          is_active: c.is_active != null ? c.is_active : prev.is_active,
+          assignedToId: assignedId != null ? assignedId : prev.assignedToId,
+        }));
       }
     } catch {
-      // keep form from list
+      // form already set from list
     }
   };
 
@@ -312,7 +314,7 @@ export default function SuperAdminCustomersPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <Users className="text-green-600" size={32} />
+              <Users className="text-[#8b0e0f]" size={32} />
               Customers Management
             </h1>
             <p className="text-gray-600 mt-1">View and manage all customer accounts</p>
@@ -320,7 +322,8 @@ export default function SuperAdminCustomersPage() {
           <button
             type="button"
             onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition shadow-md"
+            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition shadow-md"
+            style={{ backgroundColor: "#8b0e0f" }}
           >
             <Plus size={20} />
             Create Customer
@@ -341,7 +344,7 @@ export default function SuperAdminCustomersPage() {
               placeholder="Search customers by name, email, phone, or address..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
             />
           </div>
         </div>
@@ -369,19 +372,19 @@ export default function SuperAdminCustomersPage() {
           <div className="overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center py-16">
-                <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-[#8b0e0f]" />
               </div>
             ) : (
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="border-b border-gray-200 text-white" style={{ backgroundColor: "#8b0e0f" }}>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Contact</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Address</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Assigned To</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Created</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -424,7 +427,7 @@ export default function SuperAdminCustomersPage() {
                           <button
                             type="button"
                             onClick={() => openAssign(customer)}
-                            className="text-indigo-600 hover:text-indigo-900"
+                            className="text-[#8b0e0f] hover:opacity-80"
                             title="Assign to Admin"
                           >
                             <UserPlus size={18} />
@@ -432,14 +435,14 @@ export default function SuperAdminCustomersPage() {
                           <button
                             type="button"
                             onClick={() => openEdit(customer)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-[#8b0e0f] hover:opacity-80"
                             title="Edit"
                           >
                             <Edit size={18} />
                           </button>
                           <button
                             type="button"
-                            onClick={() => setDeleteConfirm(customer._id || undefined)}
+                            onClick={() => setDeleteConfirm(customer._id ?? null)}
                             className="text-red-600 hover:text-red-900"
                             title="Delete"
                           >
@@ -487,7 +490,7 @@ export default function SuperAdminCustomersPage() {
                     required
                     value={form.first_name}
                     onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -497,7 +500,7 @@ export default function SuperAdminCustomersPage() {
                     required
                     value={form.last_name}
                     onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                   />
                 </div>
               </div>
@@ -507,7 +510,7 @@ export default function SuperAdminCustomersPage() {
                   type="text"
                   value={form.middle_name}
                   onChange={(e) => setForm((f) => ({ ...f, middle_name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                 />
               </div>
               <div>
@@ -517,7 +520,7 @@ export default function SuperAdminCustomersPage() {
                   required
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                   readOnly={modal === "edit"}
                 />
               </div>
@@ -527,7 +530,7 @@ export default function SuperAdminCustomersPage() {
                   type="text"
                   value={form.mobile_number}
                   onChange={(e) => setForm((f) => ({ ...f, mobile_number: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                 />
               </div>
               <div>
@@ -538,7 +541,7 @@ export default function SuperAdminCustomersPage() {
                   type="password"
                   value={form.password}
                   onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                   required={modal === "create"}
                   minLength={6}
                 />
@@ -549,8 +552,8 @@ export default function SuperAdminCustomersPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Assigned to Admin</label>
                     <select
                       value={form.assignedToId ?? ""}
-                      onChange={(e) => setForm((f) => ({ ...f, assignedToId: e.target.value || null }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                      onChange={(e) => setForm((f) => ({ ...f, assignedToId: e.target.value ? e.target.value : null }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                     >
                       <option value="">— Unassign —</option>
                       {admins.map((a) => (
@@ -585,7 +588,8 @@ export default function SuperAdminCustomersPage() {
                 <button
                   type="submit"
                   disabled={formLoading}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 text-white rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ backgroundColor: "#8b0e0f" }}
                 >
                   {formLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                   {modal === "create" ? "Create" : "Update"}
@@ -612,7 +616,7 @@ export default function SuperAdminCustomersPage() {
                 <select
                   value={assignAdminId}
                   onChange={(e) => setAssignAdminId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                 >
                   <option value="">— Unassign —</option>
                   {admins.map((a) => (
@@ -633,7 +637,8 @@ export default function SuperAdminCustomersPage() {
                 <button
                   type="submit"
                   disabled={assignLoading}
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 text-white rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ backgroundColor: "#8b0e0f" }}
                 >
                   {assignLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                   Save
@@ -661,7 +666,7 @@ export default function SuperAdminCustomersPage() {
               </button>
               <button
                 type="button"
-                onClick={() => handleDelete(deleteConfirm)}
+                onClick={() => deleteConfirm && handleDelete(deleteConfirm)}
                 disabled={deleteLoading}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >

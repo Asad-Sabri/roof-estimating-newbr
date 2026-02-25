@@ -29,9 +29,13 @@ export const deleteAdminAPI = (id) =>
 
 // —— CUSTOMERS ——
 
-/** GET /api/customers – all customers list */
+/** GET /api/customers – all customers list (super-admin) */
 export const getCustomersAPI = () =>
   handleAPIRequest((endpoint) => axiosInstance.get(endpoint), "/api/customers", null);
+
+/** GET /api/admin/customers – current admin ke against jitne customers hain (assigned/created) wohi list */
+export const getAdminCustomersAPI = () =>
+  handleAPIRequest((endpoint) => axiosInstance.get(endpoint), "/api/admin/customers", null);
 
 /** GET /api/customers/:id – one customer by id */
 export const getCustomerByIdAPI = (id) =>

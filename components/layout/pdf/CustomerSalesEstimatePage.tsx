@@ -1,12 +1,11 @@
 // components/layout/pdf/CustomerSalesEstimatePage.tsx
 
 import React from "react";
-import { cardContainerStyle, CardTitleHeader } from "./PDFTemplateStyles";
+import { cardContainerStyle, CardTitleHeader, CARD_HEADER_BG_COLOR } from "./PDFTemplateStyles";
 
-// --- STYLE CONSTANTS (PDFTemplate se lenge) ---
-const CARD_HEADER_BG_COLOR = "#0f2346";
+// --- STYLE CONSTANTS ---
 const ACCENT_COLOR = "#f3f3f3";
-const RED_DISCLAIMER_COLOR = "#a30000"; // Dark red for caution
+const RED_DISCLAIMER_COLOR = "#8b0e0f";
 const cardContentStyle: React.CSSProperties = {
   padding: "15px",
   fontFamily: "Arial",

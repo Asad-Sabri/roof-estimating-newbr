@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Printer, ArrowLeft } from "lucide-react";
 import { getUserInstantEstimatesAPI } from "@/services/instantEstimateAPI";
-import { getCompanyAPI, getCompanyUserAPI } from "@/services/companyAPI";
+import { getCompanyForCustomerAPI } from "@/services/companyAPI";
 import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 import { EstimateReportContent } from "@/components/estimating/EstimateReportContent";
 import type { EstimateRecord, CompanyProfile } from "@/components/estimating/EstimateReportContent";
@@ -40,6 +40,12 @@ function mapCompanyFromAPI(raw: any): CompanyProfile {
   const r = data?.company && typeof data.company === "object" ? data.company : data;
   if (!r || typeof r !== "object") return DEFAULT_COMPANY;
   const address = r.address && typeof r.address === "object" ? r.address : undefined;
+  const whatsIncludedRaw = r.whatsIncluded ?? r.whats_included;
+  const whatsIncluded = Array.isArray(whatsIncludedRaw)
+    ? whatsIncludedRaw
+    : typeof whatsIncludedRaw === "string"
+      ? whatsIncludedRaw.split("\n").map((s: string) => s.trim()).filter(Boolean)
+      : undefined;
   return {
     ...DEFAULT_COMPANY,
     companyName: r.companyName ?? r.company_name ?? DEFAULT_COMPANY.companyName,
@@ -53,6 +59,7 @@ function mapCompanyFromAPI(raw: any): CompanyProfile {
     contactPersonPhone: r.contactPersonPhone ?? r.contact_person_phone ?? DEFAULT_COMPANY.contactPersonPhone,
     contactPersonEmail: r.contactPersonEmail ?? r.contact_person_email ?? DEFAULT_COMPANY.contactPersonEmail,
     followUpText: r.followUpText ?? r.follow_up_text ?? DEFAULT_COMPANY.followUpText,
+    whatsIncluded: whatsIncluded && whatsIncluded.length > 0 ? whatsIncluded : undefined,
   };
 }
 
@@ -101,23 +108,17 @@ export default function EstimateReportPage() {
   const [estimate, setEstimate] = useState<EstimateRecord | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Report par company: pehle GET /api/company (app/tenant company jo admin save karta hai), phir fallback GET /api/company/user – taake customer report me bhi updated company dikhe
+  // Report par company: GET /api/company/for-customer – instant estimate report ke liye company details
   useEffect(() => {
     setCompanyLoading(true);
-    const apply = (res: any) => {
-      setCompany(mapCompanyFromAPI(res));
-      setCompanyLoading(false);
-    };
-    getCompanyAPI()
-      .then((res: any) => apply(res))
+    getCompanyForCustomerAPI()
+      .then((res: any) => {
+        setCompany(mapCompanyFromAPI(res));
+      })
       .catch(() => {
-        getCompanyUserAPI()
-          .then((res: any) => apply(res))
-          .catch(() => {
-            setCompany(DEFAULT_COMPANY);
-            setCompanyLoading(false);
-          });
-      });
+        setCompany(DEFAULT_COMPANY);
+      })
+      .finally(() => setCompanyLoading(false));
   }, [params?.id]);
 
   useEffect(() => {
@@ -144,10 +145,21 @@ export default function EstimateReportPage() {
     setLoading(true);
     getUserInstantEstimatesAPI()
       .then((res: any) => {
-        const list = res?.data ?? [];
-        const found = list.find((e: any) => e._id === params.id);
+        const list = res?.data ?? res ?? [];
+        const arr = Array.isArray(list) ? list : [];
+        const found = arr.find((e: any) => e._id === params.id);
         if (found) {
-          setEstimate(apiItemToEstimateRecord(found));
+          const record = apiItemToEstimateRecord(found);
+          setEstimate(record);
+          // Refresh par same data dikhe: localStorage me save karo
+          try {
+            const stored = JSON.parse(localStorage.getItem("customerEstimates") || "[]") as EstimateRecord[];
+            const idx = stored.findIndex((e) => e.id === record.id || e.id === params.id);
+            const next = idx >= 0 ? stored.map((e, i) => (i === idx ? record : e)) : [...stored, record];
+            localStorage.setItem("customerEstimates", JSON.stringify(next));
+          } catch {
+            // ignore
+          }
         } else {
           setEstimate(null);
         }

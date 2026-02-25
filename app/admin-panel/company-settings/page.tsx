@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Save, Building2, Edit2 } from "lucide-react";
 import AdminDashboardLayout from "@/app/dashboard/admin/page";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
-import { getCompanyUserAPI, createCompanyAPI } from "@/services/companyAPI";
+import { getCompanySettingsAPI, putCompanySettingsAPI } from "@/services/companyAPI";
 
 type AddressShape = {
   street?: string;
@@ -76,11 +76,18 @@ export default function CompanySettingsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    getCompanyUserAPI()
+    getCompanySettingsAPI()
       .then((res: any) => {
-        const r = res?.data ?? res;
+        const r = res?.data ?? res?.settings ?? res;
         if (r && typeof r === "object") {
           const address = r.address && typeof r.address === "object" ? r.address : undefined;
+          const addressLine = formatAddressLine(address) || r.addressLine ?? r.address_line ?? DEFAULT_COMPANY.addressLine;
+          const whatsIncludedRaw = r.whatsIncluded ?? r.whats_included;
+          const whatsIncluded = Array.isArray(whatsIncludedRaw)
+            ? whatsIncludedRaw
+            : typeof whatsIncludedRaw === "string"
+              ? whatsIncludedRaw.split("\n").map((s: string) => s.trim()).filter(Boolean)
+              : DEFAULT_COMPANY.whatsIncluded;
           setProfile({
             ...DEFAULT_COMPANY,
             companyName: r.companyName ?? r.company_name ?? DEFAULT_COMPANY.companyName,
@@ -89,7 +96,14 @@ export default function CompanySettingsPage() {
             email: r.email ?? DEFAULT_COMPANY.email,
             website: r.website ?? DEFAULT_COMPANY.website,
             address,
-            addressLine: formatAddressLine(address) || r.addressLine ?? r.address_line ?? DEFAULT_COMPANY.addressLine,
+            addressLine,
+            contactPersonName: r.contactPersonName ?? r.contact_person_name ?? DEFAULT_COMPANY.contactPersonName,
+            contactPersonPhone: r.contactPersonPhone ?? r.contact_person_phone ?? DEFAULT_COMPANY.contactPersonPhone,
+            contactPersonEmail: r.contactPersonEmail ?? r.contact_person_email ?? DEFAULT_COMPANY.contactPersonEmail,
+            followUpText: r.followUpText ?? r.follow_up_text ?? DEFAULT_COMPANY.followUpText,
+            whatsIncluded,
+            disclaimer: r.disclaimer ?? DEFAULT_COMPANY.disclaimer,
+            interestRate: r.interestRate ?? r.interest_rate ?? DEFAULT_COMPANY.interestRate,
           });
         }
       })
@@ -136,8 +150,15 @@ export default function CompanySettingsPage() {
         email: profile.email,
         mobile_number: profile.phone,
         address: profile.address ?? (profile.addressLine ? { street: profile.addressLine, city: "", state: "", country: "", zip_code: "" } : undefined),
+        contactPersonName: profile.contactPersonName,
+        contactPersonPhone: profile.contactPersonPhone,
+        contactPersonEmail: profile.contactPersonEmail,
+        followUpText: profile.followUpText,
+        whatsIncluded: profile.whatsIncluded,
+        disclaimer: profile.disclaimer,
+        interestRate: profile.interestRate,
       };
-      await createCompanyAPI(payload);
+      await putCompanySettingsAPI(payload);
       setHasChanges(false);
       alert("Company settings saved successfully!");
     } catch (err: any) {

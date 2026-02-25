@@ -113,8 +113,8 @@ export default function SuperAdminAdminsPage() {
     setFormError(null);
     setModal("edit");
     setForm({
-      first_name: admin.first_name ?? admin.name?.split(" ")[0] ?? "",
-      last_name: admin.last_name ?? admin.name?.split(" ").slice(1).join(" ") ?? "",
+      first_name: admin.first_name ?? (admin.name?.split(" ")[0] || "") ?? "",
+      last_name: admin.last_name ?? (admin.name?.split(" ").slice(1).join(" ") || "") ?? "",
       middle_name: "",
       email: admin.email ?? "",
       mobile_number: admin.mobile_number ?? "",
@@ -123,20 +123,20 @@ export default function SuperAdminAdminsPage() {
     });
     try {
       const res = await getAdminByIdAPI(id);
-      const a = res?.data ?? res;
-      if (a) {
+      const a = res?.data ?? res?.admin ?? res?.user ?? res;
+      if (a && typeof a === "object") {
         setForm({
-          first_name: a.first_name ?? "",
-          last_name: a.last_name ?? "",
+          first_name: a.first_name ?? (admin.first_name ?? admin.name?.split(" ")[0] ?? "") ?? "",
+          last_name: a.last_name ?? (admin.last_name ?? admin.name?.split(" ").slice(1).join(" ") ?? "") ?? "",
           middle_name: a.middle_name ?? "",
-          email: a.email ?? "",
-          mobile_number: a.mobile_number ?? "",
+          email: a.email ?? admin.email ?? "",
+          mobile_number: a.mobile_number ?? admin.mobile_number ?? "",
           password: "",
           is_active: a.is_active !== false,
         });
       }
     } catch {
-      // keep form from list
+      // form already set from list
     }
   };
 
@@ -226,7 +226,7 @@ export default function SuperAdminAdminsPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <Shield className="text-blue-600" size={32} />
+              <Shield className="text-[#8b0e0f]" size={32} />
               Admins Management
             </h1>
             <p className="text-gray-600 mt-1">Manage all admin accounts and permissions</p>
@@ -234,7 +234,8 @@ export default function SuperAdminAdminsPage() {
           <button
             type="button"
             onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md"
+            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition shadow-md"
+            style={{ backgroundColor: "#8b0e0f" }}
           >
             <Plus size={20} />
             Create New Admin
@@ -255,7 +256,7 @@ export default function SuperAdminAdminsPage() {
               placeholder="Search admins by name, email, or company..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
             />
           </div>
         </div>
@@ -273,7 +274,7 @@ export default function SuperAdminAdminsPage() {
           </div>
           <div className="bg-white rounded-lg shadow-md p-4">
             <p className="text-sm text-gray-600">Master Admins</p>
-            <p className="text-2xl font-bold text-blue-600">
+            <p className="text-2xl font-bold text-[#8b0e0f]">
               {admins.filter((a) => (a.role || "").toLowerCase().includes("master")).length}
             </p>
           </div>
@@ -289,18 +290,18 @@ export default function SuperAdminAdminsPage() {
           <div className="overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center py-16">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-[#8b0e0f]" />
               </div>
             ) : (
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="border-b border-gray-200 text-white" style={{ backgroundColor: "#8b0e0f" }}>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Admin</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Company</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Created</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -319,7 +320,7 @@ export default function SuperAdminAdminsPage() {
                         <span
                           className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                             (admin.role || "").toLowerCase().includes("master")
-                              ? "bg-blue-100 text-blue-800"
+                              ? "bg-red-50 text-[#8b0e0f]"
                               : "bg-purple-100 text-purple-800"
                           }`}
                         >
@@ -345,14 +346,14 @@ export default function SuperAdminAdminsPage() {
                           <button
                             type="button"
                             onClick={() => openEdit(admin)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-[#8b0e0f] hover:opacity-80"
                             title="Edit"
                           >
                             <Edit size={18} />
                           </button>
                           <button
                             type="button"
-                            onClick={() => setDeleteConfirm(admin._id || undefined)}
+                            onClick={() => setDeleteConfirm(admin._id ?? null)}
                             className="text-red-600 hover:text-red-900"
                             title="Delete"
                           >
@@ -400,7 +401,7 @@ export default function SuperAdminAdminsPage() {
                     required
                     value={form.first_name}
                     onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -410,7 +411,7 @@ export default function SuperAdminAdminsPage() {
                     required
                     value={form.last_name}
                     onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                   />
                 </div>
               </div>
@@ -420,7 +421,7 @@ export default function SuperAdminAdminsPage() {
                   type="text"
                   value={form.middle_name}
                   onChange={(e) => setForm((f) => ({ ...f, middle_name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                 />
               </div>
               <div>
@@ -430,7 +431,7 @@ export default function SuperAdminAdminsPage() {
                   required
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                   readOnly={modal === "edit"}
                 />
               </div>
@@ -440,7 +441,7 @@ export default function SuperAdminAdminsPage() {
                   type="text"
                   value={form.mobile_number}
                   onChange={(e) => setForm((f) => ({ ...f, mobile_number: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                 />
               </div>
               <div>
@@ -451,7 +452,7 @@ export default function SuperAdminAdminsPage() {
                   type="password"
                   value={form.password}
                   onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                   required={modal === "create"}
                   minLength={6}
                 />
@@ -479,7 +480,8 @@ export default function SuperAdminAdminsPage() {
                 <button
                   type="submit"
                   disabled={formLoading}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 text-white rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ backgroundColor: "#8b0e0f" }}
                 >
                   {formLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                   {modal === "create" ? "Create" : "Update"}
@@ -505,7 +507,7 @@ export default function SuperAdminAdminsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => handleDelete(deleteConfirm)}
+                onClick={() => deleteConfirm && handleDelete(deleteConfirm)}
                 disabled={deleteLoading}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >

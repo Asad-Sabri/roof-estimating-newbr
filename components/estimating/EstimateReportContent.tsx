@@ -29,6 +29,7 @@ export type EstimateRecord = {
     maxPrice: number;
     enabled?: boolean;
   }>;
+  createdAt?: string;
 };
 
 export type CompanyProfile = {
@@ -43,6 +44,7 @@ export type CompanyProfile = {
   contactPersonPhone?: string;
   contactPersonEmail?: string;
   followUpText?: string;
+  whatsIncluded?: string[];
 };
 
 const WHATS_INCLUDED_LEFT = [
@@ -304,16 +306,33 @@ export function EstimateReportContent({
             What's Included
           </div>
           <div className={`px-3 py-3 sm:px-4 sm:py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 ${textSize}`} style={{ color: "#374151" }}>
-            <ul className="list-disc list-inside space-y-1">
-              {WHATS_INCLUDED_LEFT.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-            <ul className="list-disc list-inside space-y-1">
-              {WHATS_INCLUDED_RIGHT.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
+            {company.whatsIncluded && company.whatsIncluded.length > 0 ? (
+              <>
+                <ul className="list-disc list-inside space-y-1">
+                  {company.whatsIncluded.slice(0, Math.ceil(company.whatsIncluded.length / 2)).map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
+                <ul className="list-disc list-inside space-y-1">
+                  {company.whatsIncluded.slice(Math.ceil(company.whatsIncluded.length / 2)).map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <>
+                <ul className="list-disc list-inside space-y-1">
+                  {WHATS_INCLUDED_LEFT.map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
+                <ul className="list-disc list-inside space-y-1">
+                  {WHATS_INCLUDED_RIGHT.map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         </div>
       </div>
