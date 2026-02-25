@@ -5,10 +5,7 @@ import logoSrc from "../../../public/logo-latest.png";
 import { GAFSummary } from "./processRoofData";
 import { RoofMeasurementsDiagram } from "./RoofMeasurementsDiagram";
 import { LineData, PolygonData, LINE_COLORS } from "./constants";
-import {
-  calculateCombinedSummary,
-  CombinedSummary, // Import CombinedSummary interface (assuming it exists)
-} from "./calculateCombinedSummary";
+import { calculateCombinedSummary } from "./calculateCombinedSummary";
 import {
   calculateMaterialQuantities,
   MaterialQuantities,
@@ -319,7 +316,7 @@ const MeasurementLengthsPage: React.FC<MeasurementLengthsPageProps> = ({
     pageCounter
 }) => {
     // calculateCombinedSummary is assumed to be imported
-    const combinedSummary: CombinedSummary = calculateCombinedSummary(data.lines, data.polygons);
+    const combinedSummary = calculateCombinedSummary(data.lines, data.polygons);
 
     return (
         // PageWrapper ko bahar se pass kiye gaye pageCounter par depend karega

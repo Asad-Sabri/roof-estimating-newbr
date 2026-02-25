@@ -36,7 +36,7 @@ function normalizeAdminsList(res: any): Admin[] {
   return list.map((a: any) => ({
     _id: a._id ?? a.id,
     id: a.id ?? 0,
-    name: a.name ?? [a.first_name, a.last_name].filter(Boolean).join(" ") || a.email ?? "—",
+    name: (a.name ?? ([a.first_name, a.last_name].filter(Boolean).join(" ") || a.email)) ?? "—",
     email: a.email ?? "—",
     company: a.company ?? a.companyName ?? a.company_name ?? "—",
     role: a.role ?? a.user_type ?? "Admin",

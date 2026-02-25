@@ -80,13 +80,13 @@ export default function Step10ContactInfo({ data, onInputChange }: StepProps) {
               } else {
                 setEmailError("");
               }
+              e.currentTarget.style.boxShadow = "";
             }}
             placeholder="john@example.com"
             className={`w-full px-4 py-3 border rounded-lg text-black focus:outline-none ${
               emailError ? "border-red-300" : "border-gray-300"
             }`}
             onFocus={(e) => e.currentTarget.style.boxShadow = "0 0 0 2px #8b0e0f"}
-            onBlur={(e) => e.currentTarget.style.boxShadow = ""}
             required
           />
           {emailError && (

@@ -52,26 +52,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, isChecking } = useProtectedRoute(); // Protect this route
   const queryClient = useQueryClient();
-  
-  // Get user profile to check role
-  const userProfile: any = queryClient.getQueryData(["profile"]) || {};
-  const userRole = userProfile?.role || (typeof window !== "undefined" ? localStorage.getItem("loginRole") : null) || "customer";
-
-  // Don't render anything if not authenticated
-  if (isChecking) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null; // Will redirect via hook
-  }
 
   const [jobs] = useState<Job[]>([
     {
@@ -117,14 +97,12 @@ export default function DashboardPage() {
     { id: "INV-499", amount: 1200, status: "Paid", date: "2025-09-05" },
   ]);
 
-  // User ke instant estimates – API se
   const [instantEstimatesFromAPI, setInstantEstimatesFromAPI] = useState<{
     data: any[];
     meta: { totalRecords: number } | null;
   }>({ data: [], meta: null });
   const [loadingInstantEstimates, setLoadingInstantEstimates] = useState(false);
 
-  // Fetch logged-in user's instant estimates – GET /api/instant-estimates/user
   useEffect(() => {
     if (!isAuthenticated || isChecking) return;
     setLoadingInstantEstimates(true);
@@ -141,6 +119,24 @@ export default function DashboardPage() {
       })
       .finally(() => setLoadingInstantEstimates(false));
   }, [isAuthenticated, isChecking]);
+
+  const userProfile: any = queryClient.getQueryData(["profile"]) || {};
+  const userRole = userProfile?.role || (typeof window !== "undefined" ? localStorage.getItem("loginRole") : null) || "customer";
+
+  if (isChecking) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const statusColor = (status: JobStatus) => {
     switch (status) {

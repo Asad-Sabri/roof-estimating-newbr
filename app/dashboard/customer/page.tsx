@@ -51,11 +51,14 @@ export default function CustomerDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isChecking } = useProtectedRoute(); // Protect all customer dashboard pages
+  const { isAuthenticated, isChecking } = useProtectedRoute();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  
-  // Don't render anything if checking or not authenticated
+  const queryClient = useQueryClient();
+  const dispatch = useDispatch();
+
+  const userProfile: any = queryClient.getQueryData(["profile"]) || {};
+
   if (isChecking) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -68,13 +71,8 @@ export default function CustomerDashboardLayout({
   }
 
   if (!isAuthenticated) {
-    return null; // Will redirect via hook
+    return null;
   }
-
-  const queryClient = useQueryClient();
-  const dispatch = useDispatch();
-
-  const userProfile: any = queryClient.getQueryData(["profile"]) || {};
 
   const handleLogoutFunction = () => {
     dispatch(logout()); // Clear Redux state

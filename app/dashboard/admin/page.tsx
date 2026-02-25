@@ -598,18 +598,29 @@ export default function AdminDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isChecking } = useProtectedRoute(); // Protect all admin dashboard pages
+  const { isAuthenticated, isChecking } = useProtectedRoute();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const dispatch = useDispatch();
-  
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setSidebarOpen(false);
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, []);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
   const handleLogoutFunction = () => {
-    dispatch(logout()); // Clear Redux state
+    dispatch(logout());
     handleLogout();
     setSidebarOpen(false);
   };
-  
-  // Don't render anything if checking or not authenticated
+
   if (isChecking) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -622,22 +633,8 @@ export default function AdminDashboardLayout({
   }
 
   if (!isAuthenticated) {
-    return null; // Will redirect via hook
+    return null;
   }
-
-  // Close sidebar on Escape
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setSidebarOpen(false);
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, []);
-
-  // Close sidebar when route changes (useful after clicking a link)
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [pathname]);
 
   return (
     <div className="lg:flex min-h-screen bg-gray-100 text-gray-900">

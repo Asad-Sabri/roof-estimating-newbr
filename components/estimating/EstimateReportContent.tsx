@@ -303,7 +303,7 @@ export function EstimateReportContent({
       >
         <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #e5e7eb" }}>
           <div className={`px-3 py-2 font-semibold ${textSize}`} style={{ background: "#f9fafb", color: "#111827", borderBottom: "1px solid #e5e7eb" }}>
-            What's Included
+            What&apos;s Included
           </div>
           <div className={`px-3 py-3 sm:px-4 sm:py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 ${textSize}`} style={{ color: "#374151" }}>
             {company.whatsIncluded && company.whatsIncluded.length > 0 ? (

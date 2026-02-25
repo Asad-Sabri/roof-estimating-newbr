@@ -62,7 +62,7 @@ export const createRoofSVG = (
         </svg>`;
     }
 
-    const bbox = turf.bbox(turf.featureCollection(features));
+    const bbox = turf.bbox(turf.featureCollection(features as Parameters<typeof turf.featureCollection>[0]));
     const [minX, minY, maxX, maxY] = bbox;
 
     const dataWidth = maxX - minX;

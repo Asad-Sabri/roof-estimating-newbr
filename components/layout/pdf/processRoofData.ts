@@ -44,6 +44,8 @@ export const calculateGAFSummary = (
   parapetArea: string,
 ): GAFSummary => {
   const summary: GAFSummary = {
+    dominantPitch: undefined,
+    facetCount: 0,
     eaves: 0,
     rakes: 0,
     ridges: 0,

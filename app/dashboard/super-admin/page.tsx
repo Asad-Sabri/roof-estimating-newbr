@@ -42,12 +42,10 @@ export default function SuperAdminDashboardLayout({
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
 
-  // Check if user is Super Admin
   useEffect(() => {
     if (typeof window !== "undefined") {
       const loginRole = localStorage.getItem("loginRole");
       if (loginRole !== "super-admin") {
-        // Redirect if not super admin
         if (loginRole === "admin") {
           window.location.href = "/admin-panel/dashboard";
         } else {
@@ -56,6 +54,18 @@ export default function SuperAdminDashboardLayout({
       }
     }
   }, []);
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setSidebarOpen(false);
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, []);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   const handleLogoutFunction = () => {
     dispatch(logout());
@@ -77,18 +87,6 @@ export default function SuperAdminDashboardLayout({
   if (!isAuthenticated) {
     return null;
   }
-
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setSidebarOpen(false);
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, []);
-
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [pathname]);
 
   return (
     <div className="lg:flex min-h-screen bg-gray-100 text-gray-900">

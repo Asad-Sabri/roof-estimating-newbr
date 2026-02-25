@@ -393,7 +393,7 @@ export function useMapboxFunctions() {
       }
       const bounds = map.getBounds();
       if (!bounds) return;
-      const bbox: turf.BBox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+      const bbox: [number, number, number, number] = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
       const cellSide = 10;
       const options = { units: 'meters' } as any;
       const grid = turf.squareGrid(bbox, cellSide, options);
@@ -533,11 +533,11 @@ export function useMapboxFunctions() {
   useEffect(() => {
     if (!mapRef.current) return;
     const map = mapRef.current;
-    let onClickMoveMap: (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => void;
-    
+    let onClickMoveMap: (e: mapboxgl.MapMouseEvent) => void;
+
     // Enable map clicks when location card is shown, location is not confirmed, and in edit mode
     if (showLocationCard && !isLocationConfirmed && isEditMode) {
-      onClickMoveMap = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
+      onClickMoveMap = (e: mapboxgl.MapMouseEvent) => {
         const { lng, lat } = e.lngLat;
         const newLocation: [number, number] = [lng, lat];
         setTempLocation(newLocation);
