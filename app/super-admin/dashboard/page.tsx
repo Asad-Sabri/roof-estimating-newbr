@@ -31,7 +31,7 @@ const stats = [
     link: "/super-admin/customers" 
   },
   { 
-    name: "Active Companies", 
+    name: "Active Subscribers", 
     value: "8", 
     icon: Building2, 
     color: "from-purple-600 to-purple-700", 
@@ -176,7 +176,7 @@ export default function SuperAdminDashboardPage() {
                 className="flex items-center gap-3 p-4 bg-purple-50 border border-purple-100 rounded-lg hover:bg-purple-100 transition"
               >
                 <Building2 className="h-5 w-5 text-purple-600" />
-                <span className="font-medium">View All Companies</span>
+                <span className="font-medium">View All Subscribers</span>
               </Link>
             </div>
           </div>

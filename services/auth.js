@@ -41,6 +41,10 @@ export const createProjectAPI = (data) =>
 export const getUserProjectsAPI = () =>
   handleAPIRequest(axiosInstance.get, "/api/roof-estimate-projects/user");
 
+/** GET /api/roof-estimate-projects/ – all projects (super admin) */
+export const getAllProjectsAPI = () =>
+  handleAPIRequest(axiosInstance.get, "/api/roof-estimate-projects");
+
 export const deleteUserProjectsAPI = (id) =>
   handleAPIRequest(axiosInstance.delete, `/api/roof-estimate-projects/${id}`);
 

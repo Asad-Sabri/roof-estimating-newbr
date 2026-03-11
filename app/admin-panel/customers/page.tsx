@@ -6,7 +6,6 @@ import {
   User,
   Edit,
   Trash2,
-  Eye,
   ToggleLeft,
   ToggleRight,
   Plus,
@@ -14,11 +13,11 @@ import {
   CheckCircle,
   Loader2,
 } from "lucide-react";
-import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import { signupAPI, approveUserAPI, getProfileAPI } from "@/services/auth";
-import { getCompanyCustomersAPI, getCompaniesByAdminAPI } from "@/services/companyAPI";
-import { assignCustomerToAdminAPI, deleteCustomerAPI } from "@/services/superAdminAPI";
+import { getMyCustomersAPI } from "@/services/companyAPI";
+import { assignCustomerToAdminAPI, deleteCustomerAPI, updateCustomerAPI, getCustomerByIdAPI } from "@/services/superAdminAPI";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -97,30 +96,15 @@ export default function AdminCustomersPage() {
   const [form, setForm] = useState(emptyForm);
   const [createLoading, setCreateLoading] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
-  const [adminCompanies, setAdminCompanies] = useState<{ _id: string; companyName?: string; name?: string }[]>([]);
-
-  const fetchAdminCompanies = useCallback(async () => {
-    try {
-      const profileRes: any = await getProfileAPI();
-      const profile = profileRes?.data ?? profileRes;
-      const adminId = profile?._id ?? profile?.id ?? profile?.user_id;
-      if (!adminId) return;
-      const res = await getCompaniesByAdminAPI(adminId);
-      let list: { _id: string; companyName?: string; name?: string }[] = [];
-      if (Array.isArray(res)) list = res;
-      else if (res?.data && Array.isArray(res.data)) list = res.data;
-      else if (res?.companies && Array.isArray(res.companies)) list = res.companies;
-      setAdminCompanies(list);
-    } catch {
-      setAdminCompanies([]);
-    }
-  }, []);
-
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState(emptyForm);
+  const [updateLoading, setUpdateLoading] = useState(false);
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getCompanyCustomersAPI();
+      const res = await getMyCustomersAPI();
       const list = normalizeCustomersList(res);
       setCustomers(list);
     } catch (e: any) {
@@ -135,10 +119,6 @@ export default function AdminCustomersPage() {
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
-
-  useEffect(() => {
-    fetchAdminCompanies();
-  }, [fetchAdminCompanies]);
 
   const toggleStatus = (id: number) => {
     setCustomers((prev) =>
@@ -207,7 +187,7 @@ export default function AdminCustomersPage() {
       setCustomers((prev) => [newCustomer, ...prev]);
       setForm(emptyForm);
       setModalOpen(false);
-      toast.success("Customer created. They can login after you approve.");
+      toast.success("Customer created. They can log in now.");
       if (userId) {
         try {
           const profileRes: any = await getProfileAPI();
@@ -227,6 +207,73 @@ export default function AdminCustomersPage() {
       toast.error(msg);
     } finally {
       setCreateLoading(false);
+    }
+  };
+
+  const openEditModal = async (c: Customer) => {
+    const id = c._id ?? (typeof c.id === "string" ? c.id : null);
+    if (!id) return;
+    setEditingId(id);
+    setEditModalOpen(true);
+    setUpdateLoading(false);
+    try {
+      const res: any = await getCustomerByIdAPI(id);
+      const d = res?.data ?? res;
+      const first = d?.first_name ?? (c.name?.split(" ")[0] ?? "");
+      const last = d?.last_name ?? (c.name?.split(" ").slice(1).join(" ") ?? "");
+      setEditForm({
+        first_name: first,
+        middle_name: d?.middle_name ?? "",
+        last_name: last,
+        email: d?.email ?? c.email ?? "",
+        mobile_number: d?.mobile_number ?? d?.mobile ?? c.phone ?? "",
+        password: "",
+        company_id: d?.company_id ?? d?.company ?? "",
+        postal_code: d?.postal_code ?? "",
+      });
+    } catch {
+      setEditForm({
+        ...emptyForm,
+        email: c.email,
+        mobile_number: c.phone,
+        last_name: c.name?.split(" ").slice(1).join(" ") ?? "",
+        first_name: c.name?.split(" ")[0] ?? "",
+      });
+    }
+  };
+
+  const handleUpdateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingId) return;
+    if (!editForm.first_name?.trim() || !editForm.last_name?.trim() || !editForm.email?.trim() || !editForm.mobile_number?.trim()) {
+      toast.error("Please fill all required fields.");
+      return;
+    }
+    const mobile = normalizeMobile(editForm.mobile_number);
+    if (!isValidMobile(editForm.mobile_number)) {
+      toast.error("Enter a valid mobile number with country code (e.g. +923001234567).");
+      return;
+    }
+    setUpdateLoading(true);
+    try {
+      const payload: Record<string, string> = {
+        first_name: editForm.first_name.trim(),
+        middle_name: editForm.middle_name?.trim() || "",
+        last_name: editForm.last_name.trim(),
+        email: editForm.email.trim(),
+        postal_code: editForm.postal_code?.trim() || "",
+        mobile_number: mobile,
+      };
+      await updateCustomerAPI(editingId, payload);
+      toast.success("Customer updated.");
+      setEditModalOpen(false);
+      setEditingId(null);
+      setEditForm(emptyForm);
+      await fetchCustomers();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? err?.message ?? "Update failed.");
+    } finally {
+      setUpdateLoading(false);
     }
   };
 
@@ -348,15 +395,21 @@ export default function AdminCustomersPage() {
                     <td className="p-3">{c.totalJobs}</td>
                     <td className="p-3">{c.totalProposals}</td>
                     <td className="p-3">{c.totalPayments}</td>
-                    <td className="p-3 flex gap-2 flex-wrap">
-                      <button className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
-                        <Eye size={16} /> View
-                      </button>
-                      <button className="flex items-center gap-1 px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700">
-                        <Edit size={16} /> Edit
-                      </button>
+                    <td className="p-3 flex gap-2 flex-wrap items-center">
+                      {c._id && (
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(c)}
+                          className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                          title="Edit"
+                          aria-label="Edit"
+                        >
+                          <Edit size={18} />
+                        </button>
+                      )}
                       {typeof c.id === "number" && (
                         <button
+                          type="button"
                           onClick={() => toggleStatus(c.id!)}
                           className="flex items-center gap-1 px-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
                         >
@@ -366,10 +419,13 @@ export default function AdminCustomersPage() {
                       )}
                       {(c._id || typeof c.id === "number") && (
                         <button
+                          type="button"
                           onClick={() => deleteCustomer(c._id ?? c.id!)}
-                          className="flex items-center gap-1 px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="Delete"
+                          aria-label="Delete"
                         >
-                          <Trash2 size={16} /> Delete
+                          <Trash2 size={18} />
                         </button>
                       )}
                     </td>
@@ -413,21 +469,6 @@ export default function AdminCustomersPage() {
                 </button>
               </div>
               <form onSubmit={handleCreateCustomer} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">My Company</label>
-                  <select
-                    value={form.company_id}
-                    onChange={(e) => setForm((p) => ({ ...p, company_id: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent bg-white"
-                  >
-                    <option value="">Select company (optional)</option>
-                    {adminCompanies.map((c) => (
-                      <option key={c._id} value={c._id}>
-                        {c.companyName ?? c.name ?? c._id}
-                      </option>
-                    ))}
-                  </select>
-                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
@@ -519,6 +560,118 @@ export default function AdminCustomersPage() {
                   >
                     {createLoading ? <Loader2 size={18} className="animate-spin" /> : null}
                     {createLoading ? "Creating..." : "Create Customer"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Edit Customer Modal */}
+        {editModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            onClick={() => !updateLoading && setEditModalOpen(false)}
+            role="dialog"
+            aria-modal="true"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+            >
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Edit Customer</h2>
+                <button
+                  type="button"
+                  onClick={() => !updateLoading && setEditModalOpen(false)}
+                  className="p-2 rounded-lg hover:bg-gray-100"
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleUpdateCustomer} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                    <input
+                      type="text"
+                      value={editForm.first_name}
+                      onChange={(e) => setEditForm((p) => ({ ...p, first_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                    <input
+                      type="text"
+                      value={editForm.last_name}
+                      onChange={(e) => setEditForm((p) => ({ ...p, last_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                  <input
+                    type="text"
+                    value={editForm.middle_name}
+                    onChange={(e) => setEditForm((p) => ({ ...p, middle_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
+                  <input
+                    type="tel"
+                    value={editForm.mobile_number}
+                    onChange={(e) => setEditForm((p) => ({ ...p, mobile_number: e.target.value }))}
+                    placeholder="+923001234567"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Include country code with + (e.g. +923001234567)</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
+                  <input
+                    type="text"
+                    value={editForm.postal_code}
+                    onChange={(e) => setEditForm((p) => ({ ...p, postal_code: e.target.value }))}
+                    placeholder="54000"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditModalOpen(false)}
+                    disabled={updateLoading}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={updateLoading}
+                    className="flex-1 px-4 py-2 rounded-lg bg-[#8b0e0f] text-white hover:opacity-90 disabled:opacity-70 flex items-center justify-center gap-2"
+                  >
+                    {updateLoading ? <Loader2 size={18} className="animate-spin" /> : null}
+                    {updateLoading ? "Updating..." : "Update Customer"}
                   </button>
                 </div>
               </form>

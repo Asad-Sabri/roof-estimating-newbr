@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -8,32 +9,38 @@ import {
   X,
   LogOut,
   LayoutDashboard,
-  Users,
-  Shield,
-  Building2,
-  Settings,
-  BarChart3,
   FileText,
+  CreditCard,
+  Briefcase,
+  ClipboardList,
+  ClipboardCheck,
+  Users,
+  Settings,
+  DollarSign,
+  Building2,
   FolderOpen,
 } from "lucide-react";
-import { handleLogout } from "@/utils/authHelper";
-import { useQueryClient } from "@tanstack/react-query";
-import logo from "../../../public/logo-latest.png";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import { handleLogout } from "@/utils/authHelper";
 import { useDispatch } from "react-redux";
 import { logout } from "@/redux/slices/authSlice";
+import logo from "../../public/logo-latest.png";
 
 const navItems = [
-  { name: "Dashboard", href: "/super-admin/dashboard", icon: LayoutDashboard },
-  { name: "Admins", href: "/super-admin/admins", icon: Shield },
-  { name: "Customers", href: "/super-admin/customers", icon: Users },
-  { name: "Subscribers", href: "/super-admin/companies", icon: Building2 },
-  { name: "All Estimate Projects", href: "/super-admin/project-details", icon: FolderOpen },
-  { name: "Reports", href: "/super-admin/reports", icon: BarChart3 },
-  { name: "Settings", href: "/super-admin/settings", icon: Settings },
+  { name: "Dashboard", href: "/admin-panel/dashboard", icon: LayoutDashboard },
+  { name: "Proposals", href: "/admin-panel/proposals", icon: FileText },
+  { name: "Payments", href: "/admin-panel/payments", icon: CreditCard },
+  { name: "Job Progress", href: "/admin-panel/job-progress", icon: Briefcase },
+  { name: "Request Estimates", href: "/admin-panel/request-estimate", icon: ClipboardList },
+  { name: "Preliminary Estimates", href: "/admin-panel/preliminary-estimates", icon: ClipboardCheck },
+  { name: "Project Details", href: "/admin-panel/project-details", icon: FolderOpen },
+  { name: "Estimating Pricing", href: "/admin-panel/estimating-pricing", icon: DollarSign },
+  { name: "Subscribers", href: "/admin-panel/companies", icon: Building2 },
+  { name: "Customers", href: "/admin-panel/customers", icon: Users },
+  { name: "Assign Role", href: "/admin-panel/assign-role", icon: Settings },
 ];
 
-export default function SuperAdminDashboardLayout({
+export default function AdminDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -41,21 +48,7 @@ export default function SuperAdminDashboardLayout({
   const { isAuthenticated, isChecking } = useProtectedRoute();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const queryClient = useQueryClient();
   const dispatch = useDispatch();
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const loginRole = localStorage.getItem("loginRole");
-      if (loginRole !== "super-admin") {
-        if (loginRole === "admin") {
-          window.location.href = "/admin-panel/dashboard";
-        } else {
-          window.location.href = "/customer-panel/dashboard";
-        }
-      }
-    }
-  }, []);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -92,7 +85,6 @@ export default function SuperAdminDashboardLayout({
 
   return (
     <div className="lg:flex min-h-screen bg-gray-100 text-gray-900">
-      {/* Overlay (shown on mobile when sidebar is open) */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-20 lg:hidden"
@@ -101,15 +93,12 @@ export default function SuperAdminDashboardLayout({
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed z-30 inset-y-0 left-0 transform bg-white shadow-lg w-64 transition-transform duration-300 ease-in-out 
     ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
         aria-label="Sidebar"
       >
-        {/* Sidebar content container with scroll */}
         <div className="h-screen flex flex-col overflow-y-auto">
-          {/* Header */}
           <div className="h-35 flex items-center justify-center border-b bg-white">
             <Image
               src={logo}
@@ -121,7 +110,6 @@ export default function SuperAdminDashboardLayout({
             />
           </div>
 
-          {/* Navigation items */}
           <nav className="flex-1 p-4 space-y-1">
             {navItems.map((item) => {
               const isActive = pathname?.startsWith(item.href);
@@ -130,7 +118,7 @@ export default function SuperAdminDashboardLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  onClick={() => setSidebarOpen(false)} // close on mobile when a nav link is clicked
+                  onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors duration-200
               ${
                 isActive
@@ -146,7 +134,6 @@ export default function SuperAdminDashboardLayout({
             })}
           </nav>
 
-          {/* Footer (Logout button stays fixed at bottom of scroll area) */}
           <div className="p-4 border-t">
             <button
               onClick={handleLogoutFunction}
@@ -160,9 +147,7 @@ export default function SuperAdminDashboardLayout({
         </div>
       </aside>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col lg:ml-64 overflow-x-auto">
-        {/* Navbar */}
         <header className="h-16 bg-white shadow flex items-center justify-between px-4 lg:px-6 sticky top-0 z-10">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -177,20 +162,21 @@ export default function SuperAdminDashboardLayout({
             )}
           </button>
           <h1 className="font-semibold text-lg tracking-wide truncate text-center lg:text-left">
-            {/* Super Admin Portal */}
+            {/* Roof Estimate CRM */}
           </h1>
           <div className="flex items-center space-x-4 text-left">
             <span className="hidden sm:inline text-sm text-gray-600">
-              Super Admin
+              Admin
             </span>
-            <div className="w-10 h-10 rounded-full border shadow-sm bg-[#8b0e0f] flex items-center justify-center">
-              <Shield className="text-white" size={20} />
-            </div>
+            <img
+              src="https://i.pravatar.cc/40?img=5"
+              alt="profile"
+              className="w-10 h-10 rounded-full border shadow-sm"
+            />
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 p-4 overflow-y-auto lg:p-6 bg-gray-50">
+        <main className="flex-1 p-4 overflow-y-auto lg:p-6 bg-gray-50 ">
           {children}
         </main>
       </div>

@@ -41,11 +41,48 @@ export const getCompanyForCustomerAPI = () => {
   );
 };
 
+/** GET /api/company/subscribers – customer: saari subscribers (companies) ki list */
+export const getSubscribersListAPI = () => {
+  return handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint, freshConfig()),
+    "/api/company/subscribers",
+    null
+  );
+};
+
+/** POST /api/subscribe – customer kisi subscriber ko subscribe kare (assignedTo = adminId) */
+export const subscribeAPI = (adminId) => {
+  if (!adminId) return Promise.reject(new Error("Admin ID required"));
+  return handleAPIRequest(
+    (endpoint, body) => axiosInstance.post(endpoint, body),
+    "/api/subscribe",
+    { adminId }
+  );
+};
+
+/** POST /api/subscribe with adminId: null – customer unsubscribe (agar backend support kare) */
+export const unsubscribeAPI = () => {
+  return handleAPIRequest(
+    (endpoint, body) => axiosInstance.post(endpoint, body),
+    "/api/subscribe",
+    { adminId: null }
+  );
+};
+
 /** GET /api/company/customers – admin: sirf wo customers jo us admin ne banaye ya assign kiye */
 export const getCompanyCustomersAPI = () => {
   return handleAPIRequest(
     (endpoint) => axiosInstance.get(endpoint, freshConfig()),
     "/api/company/customers",
+    null
+  );
+};
+
+/** GET /api/my-customers – logged-in admin ke against sare customers */
+export const getMyCustomersAPI = () => {
+  return handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint, freshConfig()),
+    "/api/my-customers",
     null
   );
 };
@@ -70,12 +107,23 @@ export const getCompaniesByAdminAPI = (adminId) => {
   );
 };
 
+/** Ensure contact fields sent in both camelCase and snake_case for backend compatibility */
+function withContactSnakeCase(data) {
+  if (!data || typeof data !== "object") return data;
+  return {
+    ...data,
+    contact_person_name: data.contactPersonName ?? data.contact_person_name,
+    contact_person_phone: data.contactPersonPhone ?? data.contact_person_phone,
+    contact_person_email: data.contactPersonEmail ?? data.contact_person_email,
+  };
+}
+
 /** POST /api/company – admin company create */
 export const createCompanyAPI = (data) => {
   return handleAPIRequest(
     axiosInstance.post,
     "/api/company",
-    data
+    withContactSnakeCase(data)
   );
 };
 
@@ -94,7 +142,7 @@ export const updateCompanyAPI = (id, data) => {
   return handleAPIRequest(
     (endpoint, body) => axiosInstance.put(endpoint, body),
     `/api/company/${id}`,
-    data
+    withContactSnakeCase(data)
   );
 };
 

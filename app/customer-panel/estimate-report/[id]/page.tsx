@@ -63,6 +63,20 @@ function mapCompanyFromAPI(raw: any): CompanyProfile {
   };
 }
 
+/** Normalize coordinates from API (object, array, or lat/lng fields) to { lat, lng } */
+function normalizeCoords(est: any): { lat: number; lng: number } | undefined {
+  const c = est.coordinates;
+  if (c && typeof c === "object") {
+    if (Array.isArray(c) && c.length >= 2) return { lng: Number(c[0]), lat: Number(c[1]) };
+    const lat = c.lat ?? c.latitude;
+    const lng = c.lng ?? c.longitude;
+    if (lat != null && lng != null) return { lat: Number(lat), lng: Number(lng) };
+  }
+  if (est.latitude != null && est.longitude != null)
+    return { lat: Number(est.latitude), lng: Number(est.longitude) };
+  return undefined;
+}
+
 /** API instant-estimate item ko EstimateRecord shape me map karta hai */
 function apiItemToEstimateRecord(est: any): EstimateRecord {
   const addr = est.address || {};
@@ -81,9 +95,11 @@ function apiItemToEstimateRecord(est: any): EstimateRecord {
     const { min, max } = parsePriceRange(ep.price_range);
     return { type: ep.title, minPrice: min, maxPrice: max, enabled: true };
   });
+  const coordinates = normalizeCoords(est);
   return {
     id: est._id,
     address: addressStr || undefined,
+    coordinates,
     totalArea: est.area != null ? parseFloat(String(est.area)) : undefined,
     roofSteepness: est.roof_teep,
     buildingType: est.building_type,
@@ -169,8 +185,10 @@ export default function EstimateReportPage() {
   }, [params?.id]);
 
   const [resolvedCoordinates, setResolvedCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  // When API didn't provide coordinates, geocode address so we can show map snapshot
   useEffect(() => {
-    if (!estimate?.address || estimate.coordinates || !process.env.NEXT_PUBLIC_MAPBOX_TOKEN) return;
+    if (!estimate?.address || !process.env.NEXT_PUBLIC_MAPBOX_TOKEN) return;
+    if (estimate.coordinates?.lat != null && estimate.coordinates?.lng != null) return;
     let cancelled = false;
     geocodingClient
       .forwardGeocode({ query: estimate.address, limit: 1 })

@@ -5,7 +5,7 @@ import * as Yup from "yup";
 import { motion } from "framer-motion";
 import { Loader2, CheckCircle, MapPin } from "lucide-react";
 import { useState } from "react";
-import CustomerDashboardLayout from "@/app/dashboard/customer/page";
+import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
 import { useRouter } from "next/navigation";
 import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 import { createProjectAPI } from "../../../services/auth";

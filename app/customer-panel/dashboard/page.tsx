@@ -18,7 +18,7 @@ import {
   MapPin,
   DollarSign,
 } from "lucide-react";
-import CustomerDashboardLayout from "@/app/dashboard/customer/page";
+import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
 import { useQueryClient } from "@tanstack/react-query";
 import { getUserInstantEstimatesAPI } from "@/services/instantEstimateAPI";
 

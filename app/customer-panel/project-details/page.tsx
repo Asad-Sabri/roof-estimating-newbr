@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { getUserProjectsAPI } from "@/services/auth";
-import CustomerDashboardLayout from "@/app/dashboard/customer/page";
+import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
 import { Search, Eye, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";

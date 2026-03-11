@@ -1,6 +1,6 @@
 "use client";
 
-import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
 import {
   Users,
   Briefcase,

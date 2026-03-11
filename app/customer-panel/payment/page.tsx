@@ -15,7 +15,7 @@ import {
   Lock,
 } from "lucide-react";
 import jsPDF from "jspdf"; // default import
-import CustomerDashboardLayout from "@/app/dashboard/customer/page";
+import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
 
 /* --------------------------- Types --------------------------- */
 interface PaymentForm {

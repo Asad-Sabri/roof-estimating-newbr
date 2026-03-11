@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import CustomerDashboardLayout from "@/app/dashboard/customer/page";
+import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import Link from "next/link";
 import { FileText, TrendingUp, DollarSign, Calendar, X, Eye, MapPin, Home, Layers, Clock, CreditCard, Trash2, ChevronDown, ChevronRight, Mail, Phone, User } from "lucide-react";
-import { getUserInstantEstimatesAPI, deleteInstantEstimateAPI } from "@/services/instantEstimateAPI";
+import { getUserInstantEstimatesAPI, deleteInstantEstimateAPI, requestFullReportAPI } from "@/services/instantEstimateAPI";
 import { generateEstimateReportPdfFromHtml } from "@/utils/estimateReportPdfFromHtml";
 import { sendPdfsAPI } from "@/services/emailAPI";
 import { toast } from "react-toastify";
@@ -42,9 +42,11 @@ interface PreliminaryEstimateModalProps {
   isOpen: boolean;
   onClose: () => void;
   estimate: any;
+  onRequestFullReport?: (estimateId: string) => void;
+  requestFullReportLoading?: boolean;
 }
 
-function PreliminaryEstimateModal({ isOpen, onClose, estimate }: PreliminaryEstimateModalProps) {
+function PreliminaryEstimateModal({ isOpen, onClose, estimate, onRequestFullReport, requestFullReportLoading }: PreliminaryEstimateModalProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
 
@@ -239,15 +241,19 @@ function PreliminaryEstimateModal({ isOpen, onClose, estimate }: PreliminaryEsti
                     <span className="font-bold text-green-600 text-xl">$199</span>
                   </div>
                 </div>
-                <button className={`w-full px-6 py-3 text-white font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-105 hover:shadow-lg ${
-                  isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                }`}
-                style={{ transitionDelay: '450ms', backgroundColor: "#155dfc" }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1249c9"}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#155dfc"}
+                <button
+                  type="button"
+                  disabled={requestFullReportLoading || !estimate?.id}
+                  onClick={() => estimate?.id && onRequestFullReport?.(estimate.id)}
+                  className={`w-full px-6 py-3 text-white font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-105 hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 ${
+                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                  }`}
+                  style={{ transitionDelay: '450ms', backgroundColor: "#155dfc" }}
+                  onMouseEnter={(e) => { if (!requestFullReportLoading) e.currentTarget.style.backgroundColor = "#1249c9"; }}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#155dfc"}
                 >
                   <CreditCard className="w-5 h-5" />
-                  Get Full Report - $199
+                  {requestFullReportLoading ? "Requesting…" : "Get Full Report - $199"}
                 </button>
               </div>
             </div>
@@ -278,6 +284,7 @@ export default function EstimatingPage() {
   const [isPreliminaryModalOpen, setIsPreliminaryModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [emailingId, setEmailingId] = useState<string | null>(null);
+  const [requestFullReportId, setRequestFullReportId] = useState<string | null>(null);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
   // User ke instant estimates – GET /api/instant-estimates/user (token se logged-in user ki list)
@@ -320,6 +327,21 @@ export default function EstimatingPage() {
     const forModal = estimate?._id && estimate?.estimate_price ? apiItemToModalEstimate(estimate) : estimate;
     setSelectedEstimate(forModal);
     setIsPreliminaryModalOpen(true);
+  };
+
+  const handleRequestFullReport = async (estimateId: string) => {
+    if (!estimateId) return;
+    setRequestFullReportId(estimateId);
+    try {
+      await requestFullReportAPI(estimateId);
+      toast.success("Full report request submitted. Admin will process it shortly.");
+      setIsPreliminaryModalOpen(false);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Failed to request full report.";
+      toast.error(msg);
+    } finally {
+      setRequestFullReportId(null);
+    }
   };
 
   const handleDeleteEstimate = async (id: string) => {
@@ -789,6 +811,8 @@ export default function EstimatingPage() {
           isOpen={isPreliminaryModalOpen}
           onClose={() => setIsPreliminaryModalOpen(false)}
           estimate={selectedEstimate}
+          onRequestFullReport={handleRequestFullReport}
+          requestFullReportLoading={requestFullReportId != null}
         />
       </div>
     </CustomerDashboardLayout>

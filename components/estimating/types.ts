@@ -37,6 +37,8 @@ export interface EstimateData {
     maxPrice: number;
     enabled?: boolean; // For admin toggle
   }>;
+  /** Index of the single estimate selected by customer at Review step (only this one goes to report & API) */
+  selectedEstimateIndex?: number;
 }
 
 export interface EstimateModalProps {

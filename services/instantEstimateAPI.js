@@ -43,3 +43,22 @@ export const deleteInstantEstimateAPI = (id) => {
     null
   );
 };
+
+/** POST /api/instant-estimates/:id/request-full-report – customer requests full report (Auth: customer token) */
+export const requestFullReportAPI = (id) => {
+  if (!id) return Promise.reject(new Error("Estimate ID is required"));
+  return handleAPIRequest(
+    (endpoint) => axiosInstance.post(endpoint),
+    `/api/instant-estimates/${id}/request-full-report`,
+    null
+  );
+};
+
+/** GET /api/instant-estimates/preliminary-requests – admin list of full-report requests (Auth: admin token) */
+export const getPreliminaryRequestsAPI = () => {
+  return handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint),
+    "/api/instant-estimates/preliminary-requests",
+    null
+  );
+};

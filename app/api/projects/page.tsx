@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { getUserProjectsAPI } from "@/services/auth";
-import CustomerDashboardLayout from "@/app/dashboard/customer/page";
+import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
 import { Search, Trash2, Eye, Router } from "lucide-react";
 import axios from "axios";
 import router from "next/router";

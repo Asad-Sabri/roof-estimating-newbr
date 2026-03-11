@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Save, Building2, Edit2 } from "lucide-react";
-import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import { getCompanySettingsAPI, putCompanySettingsAPI } from "@/services/companyAPI";
 
@@ -81,7 +81,7 @@ export default function CompanySettingsPage() {
         const r = res?.data ?? res?.settings ?? res;
         if (r && typeof r === "object") {
           const address = r.address && typeof r.address === "object" ? r.address : undefined;
-          const addressLine = formatAddressLine(address) || r.addressLine ?? r.address_line ?? DEFAULT_COMPANY.addressLine;
+          const addressLine = formatAddressLine(address) || (r.addressLine ?? r.address_line ?? DEFAULT_COMPANY.addressLine);
           const whatsIncludedRaw = r.whatsIncluded ?? r.whats_included;
           const whatsIncluded = Array.isArray(whatsIncludedRaw)
             ? whatsIncludedRaw

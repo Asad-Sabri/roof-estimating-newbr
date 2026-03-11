@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { User, Shield, X } from "lucide-react";
-import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 type Role = "Customer" | "Sales Rep" | "Estimator" | "Crew";

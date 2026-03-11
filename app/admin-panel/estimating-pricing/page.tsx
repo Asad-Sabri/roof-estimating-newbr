@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { DollarSign, Save, Edit2, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
-import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 type PitchType = "flat" | "low" | "medium" | "steep" | "very_steep";

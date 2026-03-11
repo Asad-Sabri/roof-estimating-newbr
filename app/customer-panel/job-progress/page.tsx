@@ -17,7 +17,7 @@ import {
   Filter,
   MessageSquare,
 } from "lucide-react";
-import CustomerDashboardLayout from "@/app/dashboard/customer/page";
+import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
 
 /* -------------------- Types -------------------- */
 type Update = {

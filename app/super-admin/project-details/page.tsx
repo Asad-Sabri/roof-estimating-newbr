@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { getUserProjectsAPI, deleteUserProjectsAPI } from "@/services/auth";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import { getAllProjectsAPI, deleteUserProjectsAPI } from "@/services/auth";
+import SuperAdminDashboardLayout from "@/app/dashboard/super-admin/page";
 import { Search, Eye, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -34,7 +34,7 @@ interface Project {
   createdAt: string;
 }
 
-export default function AdminProjectDetailsPage() {
+export default function SuperAdminProjectDetailsPage() {
   useProtectedRoute();
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
@@ -49,7 +49,7 @@ export default function AdminProjectDetailsPage() {
   const fetchProjects = async () => {
     setLoading(true);
     try {
-      const response = await getUserProjectsAPI();
+      const response = await getAllProjectsAPI();
       const dataArray = Array.isArray(response) ? response : (Array.isArray(response?.data) ? response.data : []);
       setProjects(dataArray);
       setFilteredProjects(dataArray);
@@ -107,19 +107,19 @@ export default function AdminProjectDetailsPage() {
 
   if (loading) {
     return (
-      <AdminDashboardLayout>
+      <SuperAdminDashboardLayout>
         <div className="min-h-[40vh] flex justify-center items-center">
           <p className="text-gray-500">Loading projects...</p>
         </div>
-      </AdminDashboardLayout>
+      </SuperAdminDashboardLayout>
     );
   }
 
   return (
-    <AdminDashboardLayout>
+    <SuperAdminDashboardLayout>
       <main className="min-h-screen px-4 md:px-8 py-6 bg-gray-50">
         <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Project Details</h1>
+          <h1 className="text-2xl font-bold text-gray-900">All Estimate Projects</h1>
           <span className="text-sm text-gray-500">{filteredProjects.length} project(s)</span>
         </header>
 
@@ -276,6 +276,6 @@ export default function AdminProjectDetailsPage() {
           </div>
         </div>
       </main>
-    </AdminDashboardLayout>
+    </SuperAdminDashboardLayout>
   );
 }

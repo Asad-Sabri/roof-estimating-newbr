@@ -13,10 +13,10 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import {
-  getAllCompaniesAPI,
+  getCompanyUserAPI,
   getCompanyByIdAPI,
   createCompanyAPI,
   updateCompanyAPI,
@@ -43,6 +43,13 @@ const emptyForm: CreateCompanyPayload = {
   email: "",
   mobile_number: "",
   address: { ...emptyAddress },
+  contactPersonName: "",
+  contactPersonPhone: "",
+  contactPersonEmail: "",
+  followUpText: "",
+  disclaimer: "",
+  whatsIncluded: [],
+  financingInterestRate: undefined,
 };
 
 function formatAddress(addr: CompanyAddress | undefined): string {
@@ -69,6 +76,20 @@ function formatDate(s: string) {
   }
 }
 
+function getContact(c: any) {
+  return {
+    contactPersonName: c?.contactPersonName ?? c?.contact_person_name ?? "",
+    contactPersonPhone: c?.contactPersonPhone ?? c?.contact_person_phone ?? "",
+    contactPersonEmail: c?.contactPersonEmail ?? c?.contact_person_email ?? "",
+  };
+}
+function getCreatedAt(c: any) {
+  return c?.createdAt ?? c?.created_at ?? "";
+}
+function getUpdatedAt(c: any) {
+  return c?.updatedAt ?? c?.updated_at ?? "";
+}
+
 export default function AdminCompaniesPage() {
   useProtectedRoute();
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -92,10 +113,11 @@ export default function AdminCompaniesPage() {
         if (Array.isArray(r.data)) return r.data as Company[];
         if (Array.isArray(r.companies)) return r.companies as Company[];
         if (r.data && Array.isArray((r.data as any).companies)) return (r.data as { companies: Company[] }).companies;
+        if (r.data && typeof r.data === "object" && "_id" in r.data) return [r.data as Company];
         if ("_id" in r && r._id) return [r as Company];
         return [];
       };
-      const res = await getAllCompaniesAPI();
+      const res = await getCompanyUserAPI();
       const list = extractList(res);
       setCompanies(list);
     } catch (e: unknown) {
@@ -144,6 +166,13 @@ export default function AdminCompaniesPage() {
             country: addr.country ?? "",
             zip_code: addr.zip_code ?? "",
           },
+          contactPersonName: getContact(c).contactPersonName,
+          contactPersonPhone: getContact(c).contactPersonPhone,
+          contactPersonEmail: getContact(c).contactPersonEmail,
+          followUpText: (c as any).followUpText ?? "",
+          disclaimer: (c as any).disclaimer ?? "",
+          whatsIncluded: Array.isArray((c as any).whatsIncluded) ? (c as any).whatsIncluded : [],
+          financingInterestRate: (c as any).financingInterestRate != null ? Number((c as any).financingInterestRate) : undefined,
         });
       }
     } catch {
@@ -176,6 +205,13 @@ export default function AdminCompaniesPage() {
           country: form.address?.country?.trim() ?? "",
           zip_code: form.address?.zip_code?.trim() ?? "",
         },
+        contactPersonName: form.contactPersonName?.trim() ?? "",
+        contactPersonPhone: form.contactPersonPhone?.trim() ?? "",
+        contactPersonEmail: form.contactPersonEmail?.trim() ?? "",
+        followUpText: form.followUpText?.trim() || undefined,
+        disclaimer: form.disclaimer?.trim() || undefined,
+        whatsIncluded: Array.isArray(form.whatsIncluded) && form.whatsIncluded.length > 0 ? form.whatsIncluded.filter(Boolean) : undefined,
+        financingInterestRate: form.financingInterestRate != null && form.financingInterestRate !== "" ? Number(form.financingInterestRate) : undefined,
       };
       if (modalOpen === "add") {
         await createCompanyAPI(payload);
@@ -196,7 +232,7 @@ export default function AdminCompaniesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this company?")) return;
+    if (!confirm("Are you sure you want to delete this subscriber?")) return;
     setDeleteLoadingId(id);
     setError(null);
     try {
@@ -232,11 +268,11 @@ export default function AdminCompaniesPage() {
         <header className="bg-gray-200 text-white py-5 px-2 md:px-6 flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-sm md:text-2xl font-bold flex items-center gap-2 text-black">
             <Building2 className="w-6 h-6" />
-            Companies
+            Subscribers
           </h1>
           <div className="flex items-center gap-3">
             <span className="text-xs text-black font-medium">
-              {companies.length} Companies
+              {companies.length} Subscribers
             </span>
             <button
               type="button"
@@ -244,7 +280,7 @@ export default function AdminCompaniesPage() {
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#8b0e0f] text-white hover:opacity-90 text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
-              Add Company
+              Add Subscriber
             </button>
           </div>
         </header>
@@ -277,7 +313,7 @@ export default function AdminCompaniesPage() {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Company
+                      Subscriber
                     </th>
                     <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                       License
@@ -356,7 +392,7 @@ export default function AdminCompaniesPage() {
                             {formatAddress(c.address)}
                           </td>
                           <td className="px-4 py-3 text-gray-500">
-                            {formatDate(c.createdAt)}
+                            {getCreatedAt(c) ? formatDate(getCreatedAt(c)) : "—"}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
@@ -389,7 +425,7 @@ export default function AdminCompaniesPage() {
                             <td colSpan={9} className="px-4 py-4">
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                                 <div>
-                                  <span className="text-gray-500 block mb-1">Company Name</span>
+                                  <span className="text-gray-500 block mb-1">Subscriber Name</span>
                                   <span className="text-gray-900">{c.companyName || "—"}</span>
                                 </div>
                                 <div>
@@ -412,11 +448,11 @@ export default function AdminCompaniesPage() {
                                 </div>
                                 <div>
                                   <span className="text-gray-500 block mb-1">Created</span>
-                                  <span className="text-gray-900">{formatDate(c.createdAt)}</span>
+                                  <span className="text-gray-900">{getCreatedAt(c) ? formatDate(getCreatedAt(c)) : "—"}</span>
                                 </div>
                                 <div>
                                   <span className="text-gray-500 block mb-1">Updated</span>
-                                  <span className="text-gray-900">{formatDate((c as any).updatedAt)}</span>
+                                  <span className="text-gray-900">{getUpdatedAt(c) ? formatDate(getUpdatedAt(c)) : "—"}</span>
                                 </div>
                                 <div className="sm:col-span-2">
                                   <span className="text-gray-500 block mb-1">Address</span>
@@ -424,44 +460,48 @@ export default function AdminCompaniesPage() {
                                     {[addr.street, addr.city, addr.state, addr.country, addr.zip_code].filter(Boolean).join(", ") || "—"}
                                   </span>
                                 </div>
-                                {(c as any).disclaimer && (
-                                  <div className="sm:col-span-2 lg:col-span-3">
-                                    <span className="text-gray-500 block mb-1">Disclaimer</span>
-                                    <span className="text-gray-900 whitespace-pre-wrap">{(c as any).disclaimer}</span>
+                                <div className="sm:col-span-2 lg:col-span-3">
+                                  <span className="text-gray-500 block mb-1">Disclaimer</span>
+                                  <span className="text-gray-900 whitespace-pre-wrap">{(c as any).disclaimer || "—"}</span>
+                                </div>
+                                <div className="sm:col-span-2 lg:col-span-3">
+                                  <span className="text-gray-500 block mb-1">Follow-up Text</span>
+                                  <span className="text-gray-900 whitespace-pre-wrap">{(c as any).followUpText || "—"}</span>
+                                </div>
+                                <>
+                                  <div>
+                                    <span className="text-gray-500 block mb-1">Contact Person Name</span>
+                                    <span className="text-gray-900">{getContact(c).contactPersonName || "—"}</span>
                                   </div>
-                                )}
-                                {(c as any).followUpText && (
-                                  <div className="sm:col-span-2 lg:col-span-3">
-                                    <span className="text-gray-500 block mb-1">Follow-up Text</span>
-                                    <span className="text-gray-900 whitespace-pre-wrap">{(c as any).followUpText}</span>
+                                  <div>
+                                    <span className="text-gray-500 block mb-1">Contact Person Phone</span>
+                                    <span className="text-gray-900">{getContact(c).contactPersonPhone || "—"}</span>
                                   </div>
-                                )}
-                                {(c as any).contactPersonName && (
-                                  <>
-                                    <div>
-                                      <span className="text-gray-500 block mb-1">Contact Person</span>
-                                      <span className="text-gray-900">{(c as any).contactPersonName}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-gray-500 block mb-1">Contact Phone</span>
-                                      <span className="text-gray-900">{(c as any).contactPersonPhone || "—"}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-gray-500 block mb-1">Contact Email</span>
-                                      <span className="text-gray-900">{(c as any).contactPersonEmail || "—"}</span>
-                                    </div>
-                                  </>
-                                )}
-                                {Array.isArray((c as any).whatsIncluded) && (c as any).whatsIncluded.length > 0 && (
-                                  <div className="sm:col-span-2 lg:col-span-3">
-                                    <span className="text-gray-500 block mb-1">What&apos;s Included</span>
+                                  <div>
+                                    <span className="text-gray-500 block mb-1">Contact Person Email</span>
+                                    <span className="text-gray-900">{getContact(c).contactPersonEmail || "—"}</span>
+                                  </div>
+                                </>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Financing Interest Rate (%)</span>
+                                  <span className="text-gray-900">
+                                    {(c as any).financingInterestRate != null && (c as any).financingInterestRate !== ""
+                                      ? Number((c as any).financingInterestRate)
+                                      : "—"}
+                                  </span>
+                                </div>
+                                <div className="sm:col-span-2 lg:col-span-3">
+                                  <span className="text-gray-500 block mb-1">What&apos;s Included</span>
+                                  {Array.isArray((c as any).whatsIncluded) && (c as any).whatsIncluded.length > 0 ? (
                                     <ul className="list-disc pl-4 text-gray-900">
                                       {((c as any).whatsIncluded as string[]).map((item: string, i: number) => (
                                         <li key={i}>{item}</li>
                                       ))}
                                     </ul>
-                                  </div>
-                                )}
+                                  ) : (
+                                    <span className="text-gray-900">—</span>
+                                  )}
+                                </div>
                               </div>
                             </td>
                           </tr>
@@ -475,8 +515,8 @@ export default function AdminCompaniesPage() {
             {!loading && filtered.length === 0 && (
               <div className="py-12 text-center text-gray-500">
                 {companies.length === 0
-                  ? "No companies found. Add one to get started."
-                  : "No companies match your search."}
+                  ? "No subscribers found. Add one to get started."
+                  : "No subscribers match your search."}
               </div>
             )}
           </div>
@@ -499,7 +539,7 @@ export default function AdminCompaniesPage() {
             >
               <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
                 <h2 id="company-modal-title" className="text-lg font-semibold">
-                  {modalOpen === "add" ? "Add Company" : "Edit Company"}
+                  {modalOpen === "add" ? "Add Subscriber" : "Edit Subscriber"}
                 </h2>
                 <button
                   type="button"
@@ -513,7 +553,7 @@ export default function AdminCompaniesPage() {
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Company Name *
+                    Subscriber Name *
                   </label>
                   <input
                     type="text"
@@ -690,6 +730,75 @@ export default function AdminCompaniesPage() {
                     </div>
                   </div>
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Name</label>
+                    <input
+                      type="text"
+                      value={form.contactPersonName ?? ""}
+                      onChange={(e) => setForm((prev) => ({ ...prev, contactPersonName: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Phone</label>
+                    <input
+                      type="text"
+                      value={form.contactPersonPhone ?? ""}
+                      onChange={(e) => setForm((prev) => ({ ...prev, contactPersonPhone: e.target.value }))}
+                      placeholder="+923000000000"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Email</label>
+                    <input
+                      type="email"
+                      value={form.contactPersonEmail ?? ""}
+                      onChange={(e) => setForm((prev) => ({ ...prev, contactPersonEmail: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Financing Interest Rate (%)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={form.financingInterestRate ?? ""}
+                    onChange={(e) => setForm((prev) => ({ ...prev, financingInterestRate: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                    placeholder="e.g. 5.5"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Text</label>
+                  <textarea
+                    rows={2}
+                    value={form.followUpText ?? ""}
+                    onChange={(e) => setForm((prev) => ({ ...prev, followUpText: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Disclaimer</label>
+                  <textarea
+                    rows={2}
+                    value={form.disclaimer ?? ""}
+                    onChange={(e) => setForm((prev) => ({ ...prev, disclaimer: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">What&apos;s Included (one per line)</label>
+                  <textarea
+                    rows={3}
+                    value={Array.isArray(form.whatsIncluded) ? form.whatsIncluded.join("\n") : ""}
+                    onChange={(e) => setForm((prev) => ({ ...prev, whatsIncluded: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) }))}
+                    placeholder="One item per line"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                  />
+                </div>
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -706,7 +815,7 @@ export default function AdminCompaniesPage() {
                     {submitLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : modalOpen === "add" ? (
-                      "Add Company"
+                      "Add Subscriber"
                     ) : (
                       "Save Changes"
                     )}

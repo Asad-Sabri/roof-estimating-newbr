@@ -53,7 +53,7 @@ export default function SuperAdminSettingsPage() {
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div>
                 <p className="font-medium text-gray-900">Default Pricing</p>
-                <p className="text-sm text-gray-600">Use default pricing tables for all companies</p>
+                <p className="text-sm text-gray-600">Use default pricing tables for all subscribers</p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input

@@ -55,7 +55,7 @@ export async function fetchCompanyForReportPdf(): Promise<CompanyProfile> {
 
 function mapApiToCompanyProfile(r: any): CompanyProfile {
   const address = r.address && typeof r.address === "object" ? r.address : undefined;
-  const addressLine = formatAddress(address) || r.addressLine ?? r.address_line ?? DEFAULT_COMPANY.addressLine;
+  const addressLine = formatAddress(address) || (r.addressLine ?? r.address_line ?? DEFAULT_COMPANY.addressLine);
   const whatsIncludedRaw = r.whatsIncluded ?? r.whats_included;
   const whatsIncluded = Array.isArray(whatsIncludedRaw)
     ? whatsIncludedRaw

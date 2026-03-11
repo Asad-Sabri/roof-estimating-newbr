@@ -15,6 +15,16 @@ export interface CreateCompanyPayload {
   email: string;
   mobile_number: string;
   address: CompanyAddress;
+  user_id?: string;
+  /** Required when Super Admin creates a company – assign to this admin */
+  admin_id?: string;
+  whatsIncluded?: string[];
+  financingInterestRate?: number;
+  contactPersonName?: string;
+  contactPersonPhone?: string;
+  contactPersonEmail?: string;
+  followUpText?: string;
+  disclaimer?: string;
 }
 
 /** Company as returned from API (GET all / by id) */
@@ -27,6 +37,13 @@ export interface Company {
   email: string;
   mobile_number: string;
   address: CompanyAddress;
+  whatsIncluded?: string[];
+  financingInterestRate?: number;
+  contactPersonName?: string;
+  contactPersonPhone?: string;
+  contactPersonEmail?: string;
+  followUpText?: string;
+  disclaimer?: string;
   createdAt: string;
   updatedAt: string;
   __v?: number;

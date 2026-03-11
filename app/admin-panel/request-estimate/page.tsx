@@ -5,7 +5,7 @@ import * as Yup from "yup";
 import { motion } from "framer-motion";
 import { Loader2, CheckCircle, MapPin } from "lucide-react";
 import { useState } from "react";
-import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
 import { useRouter } from "next/navigation";
 import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 import { createProjectAPI } from "@/services/auth";
@@ -69,8 +69,11 @@ export default function AdminRequestEstimatePage() {
         });
 
         setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 2000);
         formik.resetForm();
+        setTimeout(() => {
+          setShowSuccess(false);
+          router.push("/admin-panel/project-details");
+        }, 2000);
       } catch (err) {
         console.error(err);
         alert("Failed to create project. Please try again.");
@@ -107,26 +110,28 @@ export default function AdminRequestEstimatePage() {
         return alert("Please enter a valid address");
       }
       const [lng, lat] = feature.center;
-      const projectData = {
-        firstName: formik.values.firstName,
-        middleName: formik.values.middleName,
-        lastName: formik.values.lastName,
+
+      await createProjectAPI({
+        first_name: formik.values.firstName,
+        middle_name: formik.values.middleName,
+        last_name: formik.values.lastName,
         email: formik.values.email,
-        mobile: formik.values.mobile,
-        address: formik.values.address,
-        roofType: formik.values.roofType,
-        propertyType: formik.values.propertyType,
-        lat,
-        lng,
-        createdAt: new Date().toISOString(),
-      };
-      const existingProjects = JSON.parse(localStorage.getItem("projects") || "[]");
-      existingProjects.push(projectData);
-      localStorage.setItem("projects", JSON.stringify(existingProjects));
+        mobile_number: formik.values.mobile,
+        address: { street: formik.values.address },
+        roof_type: formik.values.roofType,
+        property_type: formik.values.propertyType,
+        latitude: lat,
+        longitude: lng,
+      });
+
+      const addr = { lat, lng, address: formik.values.address };
+      localStorage.setItem("projectAddress", JSON.stringify(addr));
+      localStorage.setItem("projectLocation", JSON.stringify({ lat, lng }));
       router.push("/property-map");
     } catch (err) {
       console.error(err);
-      alert("Error fetching coordinates");
+      alert(err?.response?.data?.message || "Failed to create project or fetch location. Please try again.");
+    } finally {
       setMapLoading(false);
     }
   };
@@ -153,14 +158,16 @@ export default function AdminRequestEstimatePage() {
   };
 
   const handlePickLocation = async () => {
-    if (!latitude || !longitude) {
+    let lat = latitude;
+    let lng = longitude;
+    if (!lat || !lng) {
       try {
         const geoRes = await geocodingClient
           .forwardGeocode({ query: formik.values.address, limit: 1 })
           .send();
         const feature = geoRes.body.features[0];
         if (!feature) throw new Error("Invalid address");
-        const [lng, lat] = feature.center;
+        [lng, lat] = feature.center;
         setLatitude(lat);
         setLongitude(lng);
       } catch {
@@ -168,23 +175,28 @@ export default function AdminRequestEstimatePage() {
         return;
       }
     }
-    const projectData = {
-      firstName: formik.values.firstName,
-      middleName: formik.values.middleName,
-      lastName: formik.values.lastName,
-      email: formik.values.email,
-      mobile: formik.values.mobile,
-      address: formik.values.address,
-      roofType: formik.values.roofType,
-      propertyType: formik.values.propertyType,
-      lat: latitude,
-      lng: longitude,
-      createdAt: new Date().toISOString(),
-    };
-    const existingProjects = JSON.parse(localStorage.getItem("projects") || "[]");
-    existingProjects.push(projectData);
-    localStorage.setItem("projects", JSON.stringify(existingProjects));
-    router.push("/property-map");
+    try {
+      await createProjectAPI({
+        first_name: formik.values.firstName,
+        middle_name: formik.values.middleName,
+        last_name: formik.values.lastName,
+        email: formik.values.email,
+        mobile_number: formik.values.mobile,
+        address: { street: formik.values.address },
+        roof_type: formik.values.roofType,
+        property_type: formik.values.propertyType,
+        latitude: lat,
+        longitude: lng,
+      });
+
+      const addr = { lat, lng, address: formik.values.address };
+      localStorage.setItem("projectAddress", JSON.stringify(addr));
+      localStorage.setItem("projectLocation", JSON.stringify({ lat, lng }));
+      router.push("/property-map");
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.response?.data?.message || "Failed to create project. Please try again.");
+    }
   };
 
   return (

@@ -26,6 +26,11 @@ export default function Step11ReviewEstimates({
         coords && process.env.NEXT_PUBLIC_MAPBOX_TOKEN
           ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/pin-l+ff0000(${coords.lng},${coords.lat})/${coords.lng},${coords.lat},20/640x360@2x?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
           : "";
+      // Only the selected estimate goes in the report
+      const selectedIndex = data.selectedEstimateIndex ?? 0;
+      const selectedEstimates = data.estimates && data.estimates[selectedIndex]
+        ? [data.estimates[selectedIndex]]
+        : (data.estimates && data.estimates.length ? [data.estimates[0]] : []);
       const estimateRecord = {
         address: data.address,
         totalArea: data.totalArea,
@@ -38,140 +43,79 @@ export default function Step11ReviewEstimates({
         lastName: data.lastName,
         email: data.email,
         phone: data.phone,
-        estimates: data.estimates,
+        estimates: selectedEstimates,
       };
       const pdfBlob = await generateEstimateReportPdfFromHtml({ estimate: estimateRecord, mapUrl });
       await sendPdfsAPI(pdfBlob, email);
       toast.success("Report sent to your email!");
     } catch (err: any) {
-      console.error("Email report failed:", err);
-      const msg = err?.response?.data?.message || err?.message || "Could not send report. Please try again.";
-      toast.error(msg);
+      toast.error(err?.response?.data?.message || err?.message || "Could not send report. Please try again.");
     } finally {
       setIsSendingEmail(false);
     }
   };
 
-  // Use estimates from data if available, otherwise use default
-  const estimates = data.estimates || [
-    {
-      type: "Roof Repair and Maintenance",
-      minPrice: 1951,
-      maxPrice: 2156,
-      enabled: true,
-    },
-    {
-      type: "Asphalt Roof",
-      minPrice: 26008,
-      maxPrice: 28746,
-      enabled: true,
-    },
-    {
-      type: "Metal Roof",
-      minPrice: 65020,
-      maxPrice: 71864,
-      enabled: true,
-    },
-    {
-      type: "Tile Roof",
-      minPrice: 91028,
-      maxPrice: 100610,
-      enabled: true,
-    },
-  ];
+  const estimates = data.estimates || [];
+  const selectedIndex = data.selectedEstimateIndex ?? (estimates.length ? 0 : null);
 
-  const handleToggleEstimate = (index: number) => {
-    const updatedEstimates = [...estimates];
-    updatedEstimates[index] = {
-      ...updatedEstimates[index],
-      enabled: !updatedEstimates[index].enabled,
-    };
-    onInputChange("estimates", updatedEstimates);
+  const handleSelectEstimate = (index: number) => {
+    onInputChange("selectedEstimateIndex", index);
   };
-
-  // For now, show all estimates with toggles (Admin functionality would be backend-driven)
-  const isAdmin = false; // This would come from auth context in production
 
   return (
     <div className="space-y-6">
-      <p className="text-gray-600 mb-6">Review your estimate:</p>
-      {isAdmin && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-          <p className="text-sm text-blue-800 font-semibold">
-            Admin Mode: Toggle which estimates appear to customers
-          </p>
-        </div>
-      )}
+      <p className="text-gray-600 mb-6">
+        Select one estimate. Only your selection will appear in the report and be saved.
+      </p>
       <div className="space-y-4">
-        {estimates.map((estimate, index) => (
-          <div
-            key={index}
-            className={`border-2 rounded-lg p-6 transition-all ${
-              estimate.enabled !== false
-                ? "border-gray-200"
-                : "border-gray-200 bg-gray-50 opacity-60"
-            }`}
-            onMouseEnter={(e) => {
-              if (estimate.enabled !== false) {
-                e.currentTarget.style.borderColor = "#8b0e0f";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (estimate.enabled !== false) {
-                e.currentTarget.style.borderColor = "";
-              }
-            }}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg text-gray-900 mb-2">
-                  {estimate.type}
-                </h3>
-                {estimate.enabled !== false && (
-                  <>
+        {estimates.map((estimate, index) => {
+          const isSelected = selectedIndex === index;
+          return (
+            <div
+              key={index}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleSelectEstimate(index)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleSelectEstimate(index);
+                }
+              }}
+              className={`border-2 rounded-lg p-6 transition-all cursor-pointer ${
+                isSelected ? "border-[#8b0e0f] bg-red-50/30" : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 flex-1">
+                  <div
+                    className={`mt-1 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                      isSelected ? "border-[#8b0e0f] bg-[#8b0e0f]" : "border-gray-400"
+                    }`}
+                  >
+                    {isSelected && (
+                      <span className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-lg text-gray-900 mb-1">
+                      {estimate.type}
+                    </h3>
                     <p className="text-2xl font-bold" style={{ color: "#8b0e0f" }}>
-                      ${estimate.minPrice.toLocaleString()} - $
-                      {estimate.maxPrice.toLocaleString()}*
+                      ${estimate.minPrice?.toLocaleString() ?? 0} - $
+                      {estimate.maxPrice?.toLocaleString() ?? 0}*
                     </p>
                     <p className="text-xs text-gray-500 mt-2">
-                      *Preliminary estimate. Final pricing subject to
-                      inspection.
+                      *Preliminary estimate. Final pricing subject to inspection.
                     </p>
-                  </>
-                )}
-                {estimate.enabled === false && (
-                  <p className="text-sm text-gray-500 italic">
-                    This estimate is hidden
-                  </p>
-                )}
+                  </div>
+                </div>
               </div>
-              {(isAdmin || true) && ( // Always show toggle for now - in production, check admin role
-                <label className="flex items-center ml-4 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={estimate.enabled !== false}
-                    onChange={() => handleToggleEstimate(index)}
-                    className="h-5 w-5 border-gray-300 rounded"
-                    style={{ accentColor: "#8b0e0f" }}
-                  />
-                  <span className="ml-2 text-sm text-gray-600">
-                    {estimate.enabled !== false ? "Show" : "Hide"}
-                  </span>
-                </label>
-              )}
             </div>
-          </div>
-        ))}
-      </div>
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4">
-        <p className="text-xs text-gray-600">
-          <span className="font-semibold">Note:</span> Only enabled estimates
-          will be sent to the customer.
-          {!isAdmin && " Admin can toggle estimates on/off."}
-        </p>
+          );
+        })}
       </div>
 
-      {/* Click email to send report */}
       {data.email?.trim() && (
         <p className="text-sm text-gray-600 mt-4">
           Send instant estimate report to{" "}
@@ -187,7 +131,6 @@ export default function Step11ReviewEstimates({
         </p>
       )}
 
-      {/* Send report to my email */}
       <div className="flex flex-col sm:flex-row gap-3 mt-6">
         <button
           type="button"
@@ -200,23 +143,6 @@ export default function Step11ReviewEstimates({
           </svg>
           {isSendingEmail ? "Sending..." : "Send report to my email"}
         </button>
-        {/* <button
-          onClick={() => {
-            // Text functionality - will be connected to backend later
-            if (data.phone) {
-              const textMessage = `Thank you for requesting an estimate from Superior Pro Roofing Systems. Your preliminary estimates are available. Please check your email for details.`;
-              window.location.href = `sms:${data.phone.replace(/\D/g, "")}?body=${encodeURIComponent(textMessage)}`;
-            } else {
-              alert("Phone number is required to send text message.");
-            }
-          }}
-          className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          Text Me My Estimate
-        </button> */}
       </div>
     </div>
   );

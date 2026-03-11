@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { jsPDF } from "jspdf";
-import CustomerDashboardLayout from "@/app/dashboard/customer/page";
+import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
 
 /**
  * Proposal Page (Professional + Functional)

@@ -13,7 +13,7 @@ import {
   Clock,
   User,
 } from "lucide-react";
-import AdminDashboardLayout from "@/app/dashboard/admin/page";
+import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 /* ---------------- Types ---------------- */

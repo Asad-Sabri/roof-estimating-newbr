@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { motion } from "framer-motion";
 import {
   Building2,
@@ -10,6 +10,8 @@ import {
   X,
   Loader2,
   Search,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import SuperAdminDashboardLayout from "@/app/dashboard/super-admin/page";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
@@ -20,6 +22,7 @@ import {
   updateCompanyAPI,
   deleteCompanyAPI,
 } from "@/services/companyAPI";
+import { getAdminsAPI } from "@/services/superAdminAPI";
 import type {
   Company,
   CompanyAddress,
@@ -41,6 +44,13 @@ const emptyForm: CreateCompanyPayload = {
   email: "",
   mobile_number: "",
   address: { ...emptyAddress },
+  contactPersonName: "",
+  contactPersonPhone: "",
+  contactPersonEmail: "",
+  followUpText: "",
+  disclaimer: "",
+  whatsIncluded: [],
+  financingInterestRate: undefined,
 };
 
 function formatAddress(addr: CompanyAddress | undefined): string {
@@ -67,6 +77,33 @@ function formatDate(s: string) {
   }
 }
 
+function getContact(c: any) {
+  return {
+    contactPersonName: c?.contactPersonName ?? c?.contact_person_name ?? "",
+    contactPersonPhone: c?.contactPersonPhone ?? c?.contact_person_phone ?? "",
+    contactPersonEmail: c?.contactPersonEmail ?? c?.contact_person_email ?? "",
+  };
+}
+function getCreatedAt(c: any) {
+  return c?.createdAt ?? c?.created_at ?? "";
+}
+function getUpdatedAt(c: any) {
+  return c?.updatedAt ?? c?.updated_at ?? "";
+}
+
+type AdminOption = { _id: string; name: string };
+function normalizeAdminsForOptions(res: any): AdminOption[] {
+  let list: any[] = [];
+  if (Array.isArray(res)) list = res;
+  else if (res?.data && Array.isArray(res.data)) list = res.data;
+  else if (res?.admins && Array.isArray(res.admins)) list = res.admins;
+  else if (res && typeof res === "object") list = [res];
+  return list.map((a: any) => ({
+    _id: a._id ?? a.id,
+    name: a.name ?? (([a.first_name, a.last_name].filter(Boolean).join(" ") || a.email) ?? "—"),
+  }));
+}
+
 export default function SuperAdminCompaniesPage() {
   useProtectedRoute();
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -78,6 +115,10 @@ export default function SuperAdminCompaniesPage() {
   const [form, setForm] = useState<CreateCompanyPayload>(emptyForm);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [admins, setAdmins] = useState<AdminOption[]>([]);
+  const [selectedAdminId, setSelectedAdminId] = useState<string>("");
+  const [adminsLoading, setAdminsLoading] = useState(false);
 
   const fetchCompanies = useCallback(async () => {
     setLoading(true);
@@ -106,10 +147,24 @@ export default function SuperAdminCompaniesPage() {
     fetchCompanies();
   }, [fetchCompanies]);
 
+  const fetchAdmins = useCallback(async () => {
+    setAdminsLoading(true);
+    try {
+      const res = await getAdminsAPI();
+      setAdmins(normalizeAdminsForOptions(res));
+    } catch {
+      setAdmins([]);
+    } finally {
+      setAdminsLoading(false);
+    }
+  }, []);
+
   const openAdd = () => {
     setForm(emptyForm);
     setEditingId(null);
+    setSelectedAdminId("");
     setModalOpen("add");
+    fetchAdmins();
   };
 
   const openEdit = async (id: string) => {
@@ -134,6 +189,13 @@ export default function SuperAdminCompaniesPage() {
             country: addr.country ?? "",
             zip_code: addr.zip_code ?? "",
           },
+          contactPersonName: getContact(c).contactPersonName,
+          contactPersonPhone: getContact(c).contactPersonPhone,
+          contactPersonEmail: getContact(c).contactPersonEmail,
+          followUpText: (c as any).followUpText ?? "",
+          disclaimer: (c as any).disclaimer ?? "",
+          whatsIncluded: Array.isArray((c as any).whatsIncluded) ? (c as any).whatsIncluded : [],
+          financingInterestRate: (c as any).financingInterestRate != null ? Number((c as any).financingInterestRate) : undefined,
         });
       }
     } catch {
@@ -145,6 +207,7 @@ export default function SuperAdminCompaniesPage() {
     setModalOpen(null);
     setEditingId(null);
     setForm(emptyForm);
+    setSelectedAdminId("");
     setSubmitLoading(false);
   };
 
@@ -166,8 +229,22 @@ export default function SuperAdminCompaniesPage() {
           country: form.address?.country?.trim() ?? "",
           zip_code: form.address?.zip_code?.trim() ?? "",
         },
+        contactPersonName: form.contactPersonName?.trim() ?? "",
+        contactPersonPhone: form.contactPersonPhone?.trim() ?? "",
+        contactPersonEmail: form.contactPersonEmail?.trim() ?? "",
+        followUpText: form.followUpText?.trim() || undefined,
+        disclaimer: form.disclaimer?.trim() || undefined,
+        whatsIncluded: Array.isArray(form.whatsIncluded) && form.whatsIncluded.length > 0 ? form.whatsIncluded.filter(Boolean) : undefined,
+        financingInterestRate: form.financingInterestRate != null && form.financingInterestRate !== "" ? Number(form.financingInterestRate) : undefined,
       };
       if (modalOpen === "add") {
+        const adminId = selectedAdminId?.trim();
+        if (!adminId) {
+          setError("Please select an Admin for this subscriber.");
+          setSubmitLoading(false);
+          return;
+        }
+        payload.admin_id = adminId;
         await createCompanyAPI(payload);
       } else if (editingId) {
         await updateCompanyAPI(editingId, payload);
@@ -186,7 +263,7 @@ export default function SuperAdminCompaniesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this company?")) return;
+    if (!confirm("Are you sure you want to delete this subscriber?")) return;
     setDeleteLoadingId(id);
     setError(null);
     try {
@@ -222,11 +299,11 @@ export default function SuperAdminCompaniesPage() {
         <header className="bg-gray-200 text-white py-5 px-2 md:px-6 flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-sm md:text-2xl font-bold flex items-center gap-2 text-black">
             <Building2 className="w-6 h-6" />
-            Companies
+            Subscribers
           </h1>
           <div className="flex items-center gap-3">
             <span className="text-xs text-black font-medium">
-              {companies.length} Companies
+              {companies.length} Subscribers
             </span>
             <button
               type="button"
@@ -234,7 +311,7 @@ export default function SuperAdminCompaniesPage() {
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#8b0e0f] text-white hover:opacity-90 text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
-              Add Company
+              Add Subscriber
             </button>
           </div>
         </header>
@@ -267,7 +344,7 @@ export default function SuperAdminCompaniesPage() {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Company
+                      Subscriber
                     </th>
                     <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                       License
@@ -288,84 +365,197 @@ export default function SuperAdminCompaniesPage() {
                       Created
                     </th>
                     <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Admin
+                    </th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filtered.map((c) => (
-                    <tr key={c._id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {c.companyName || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {c.licenseNumber || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {c.website ? (
-                          <a
-                            href={
-                              c.website.startsWith("http")
-                                ? c.website
-                                : `https://${c.website}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[#8b0e0f] hover:underline truncate max-w-[120px] block"
-                          >
-                            {c.website}
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {c.email || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {c.mobile_number || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate">
-                        {formatAddress(c.address)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {formatDate(c.createdAt)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(c._id)}
-                            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-[#8b0e0f]"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(c._id)}
-                            disabled={deleteLoadingId === c._id}
-                            className="p-2 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-50"
-                            title="Delete"
-                          >
-                            {deleteLoadingId === c._id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
+                  {filtered.map((c) => {
+                    const isExpanded = expandedId === c._id;
+                    const addr = c.address && typeof c.address === "object" ? c.address : {};
+                    return (
+                      <Fragment key={c._id}>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedId((id) => (id === c._id ? null : c._id))}
+                              className="flex items-center gap-2 text-left font-medium text-gray-900 hover:text-[#8b0e0f]"
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="w-4 h-4 shrink-0" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 shrink-0" />
+                              )}
+                              {c.companyName || "—"}
+                            </button>
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {c.licenseNumber || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {c.website ? (
+                              <a
+                                href={
+                                  c.website.startsWith("http")
+                                    ? c.website
+                                    : `https://${c.website}`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#8b0e0f] hover:underline truncate max-w-[120px] block"
+                              >
+                                {c.website}
+                              </a>
                             ) : (
-                              <Trash2 className="w-4 h-4" />
+                              "—"
                             )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {c.email || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {c.mobile_number || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate">
+                            {formatAddress(c.address)}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">
+                            {getCreatedAt(c) ? formatDate(getCreatedAt(c)) : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {(c as any).adminName ?? "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); openEdit(c._id); }}
+                                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-[#8b0e0f]"
+                                title="Edit"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(c._id); }}
+                                disabled={deleteLoadingId === c._id}
+                                className="p-2 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                title="Delete"
+                              >
+                                {deleteLoadingId === c._id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="bg-gray-50">
+                            <td colSpan={10} className="px-4 py-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Subscriber Name</span>
+                                  <span className="text-gray-900">{c.companyName || "—"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">License Number</span>
+                                  <span className="text-gray-900">{c.licenseNumber || "—"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Website</span>
+                                  {c.website ? (
+                                    <a href={c.website.startsWith("http") ? c.website : `https://${c.website}`} target="_blank" rel="noopener noreferrer" className="text-[#8b0e0f] hover:underline">{c.website}</a>
+                                  ) : "—"}
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Email</span>
+                                  <span className="text-gray-900">{c.email || "—"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Mobile</span>
+                                  <span className="text-gray-900">{c.mobile_number || "—"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Created</span>
+                                  <span className="text-gray-900">{getCreatedAt(c) ? formatDate(getCreatedAt(c)) : "—"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Updated</span>
+                                  <span className="text-gray-900">{getUpdatedAt(c) ? formatDate(getUpdatedAt(c)) : "—"}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block mb-1">Admin</span>
+                                  <span className="text-gray-900">{(c as any).adminName ?? "—"}</span>
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <span className="text-gray-500 block mb-1">Address</span>
+                                  <span className="text-gray-900">
+                                    {[addr.street, addr.city, addr.state, addr.country, addr.zip_code].filter(Boolean).join(", ") || "—"}
+                                  </span>
+                                </div>
+                                {(c as any).disclaimer && (
+                                  <div className="sm:col-span-2 lg:col-span-3">
+                                    <span className="text-gray-500 block mb-1">Disclaimer</span>
+                                    <span className="text-gray-900 whitespace-pre-wrap">{(c as any).disclaimer}</span>
+                                  </div>
+                                )}
+                                {(c as any).followUpText && (
+                                  <div className="sm:col-span-2 lg:col-span-3">
+                                    <span className="text-gray-500 block mb-1">Follow-up Text</span>
+                                    <span className="text-gray-900 whitespace-pre-wrap">{(c as any).followUpText}</span>
+                                  </div>
+                                )}
+                                <>
+                                  <div>
+                                    <span className="text-gray-500 block mb-1">Contact Person Name</span>
+                                    <span className="text-gray-900">{getContact(c).contactPersonName || "—"}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500 block mb-1">Contact Person Phone</span>
+                                    <span className="text-gray-900">{getContact(c).contactPersonPhone || "—"}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500 block mb-1">Contact Person Email</span>
+                                    <span className="text-gray-900">{getContact(c).contactPersonEmail || "—"}</span>
+                                  </div>
+                                </>
+                                {(c as any).financingInterestRate != null && (c as any).financingInterestRate !== "" && (
+                                  <div>
+                                    <span className="text-gray-500 block mb-1">Financing Interest Rate (%)</span>
+                                    <span className="text-gray-900">{Number((c as any).financingInterestRate)}</span>
+                                  </div>
+                                )}
+                                {Array.isArray((c as any).whatsIncluded) && (c as any).whatsIncluded.length > 0 && (
+                                  <div className="sm:col-span-2 lg:col-span-3">
+                                    <span className="text-gray-500 block mb-1">What&apos;s Included</span>
+                                    <ul className="list-disc pl-4 text-gray-900">
+                                      {((c as any).whatsIncluded as string[]).map((item: string, i: number) => (
+                                        <li key={i}>{item}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
             {!loading && filtered.length === 0 && (
               <div className="py-12 text-center text-gray-500">
                 {companies.length === 0
-                  ? "No companies found. Add one to get started."
-                  : "No companies match your search."}
+                  ? "No subscribers found. Add one to get started."
+                  : "No subscribers match your search."}
               </div>
             )}
           </div>
@@ -388,7 +578,7 @@ export default function SuperAdminCompaniesPage() {
             >
               <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
                 <h2 id="company-modal-title" className="text-lg font-semibold">
-                  {modalOpen === "add" ? "Add Company" : "Edit Company"}
+                  {modalOpen === "add" ? "Add Subscriber" : "Edit Subscriber"}
                 </h2>
                 <button
                   type="button"
@@ -400,9 +590,33 @@ export default function SuperAdminCompaniesPage() {
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                {modalOpen === "add" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Admin *
+                    </label>
+                    <select
+                      required
+                      value={selectedAdminId}
+                      onChange={(e) => setSelectedAdminId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f] bg-white"
+                    >
+                      <option value="">Select admin</option>
+                      {adminsLoading ? (
+                        <option disabled>Loading admins...</option>
+                      ) : (
+                        admins.map((a) => (
+                          <option key={a._id} value={a._id}>
+                            {a.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Company Name *
+                    Subscriber Name *
                   </label>
                   <input
                     type="text"
@@ -579,6 +793,75 @@ export default function SuperAdminCompaniesPage() {
                     </div>
                   </div>
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Name</label>
+                    <input
+                      type="text"
+                      value={form.contactPersonName ?? ""}
+                      onChange={(e) => setForm((prev) => ({ ...prev, contactPersonName: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Phone</label>
+                    <input
+                      type="text"
+                      value={form.contactPersonPhone ?? ""}
+                      onChange={(e) => setForm((prev) => ({ ...prev, contactPersonPhone: e.target.value }))}
+                      placeholder="+923000000000"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Email</label>
+                    <input
+                      type="email"
+                      value={form.contactPersonEmail ?? ""}
+                      onChange={(e) => setForm((prev) => ({ ...prev, contactPersonEmail: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Financing Interest Rate (%)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={form.financingInterestRate ?? ""}
+                    onChange={(e) => setForm((prev) => ({ ...prev, financingInterestRate: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                    placeholder="e.g. 5.5"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Text</label>
+                  <textarea
+                    rows={2}
+                    value={form.followUpText ?? ""}
+                    onChange={(e) => setForm((prev) => ({ ...prev, followUpText: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Disclaimer</label>
+                  <textarea
+                    rows={2}
+                    value={form.disclaimer ?? ""}
+                    onChange={(e) => setForm((prev) => ({ ...prev, disclaimer: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">What&apos;s Included (one per line)</label>
+                  <textarea
+                    rows={3}
+                    value={Array.isArray(form.whatsIncluded) ? form.whatsIncluded.join("\n") : ""}
+                    onChange={(e) => setForm((prev) => ({ ...prev, whatsIncluded: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) }))}
+                    placeholder="One item per line"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b0e0f]"
+                  />
+                </div>
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -595,7 +878,7 @@ export default function SuperAdminCompaniesPage() {
                     {submitLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : modalOpen === "add" ? (
-                      "Add Company"
+                      "Add Subscriber"
                     ) : (
                       "Save Changes"
                     )}

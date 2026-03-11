@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileText, Eye, ArrowLeft, DownloadCloud, X } from "lucide-react";
-import CustomerDashboardLayout from "@/app/dashboard/customer/page";
+import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 type EstimateStatus = "Pending" | "Approved" | "Rejected";

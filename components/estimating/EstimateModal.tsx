@@ -78,36 +78,26 @@ export default function EstimateModal({
     }
   }, [formData]);
 
-  // Generate estimates when reaching step 11
+  // Standard USA/UK demo prices for Review your estimates step (customer selects one)
+  const REVIEW_ESTIMATES_LIST = [
+    { type: "Asphalt", minPrice: 2500, maxPrice: 4500, enabled: true },
+    { type: "Metal", minPrice: 3000, maxPrice: 5500, enabled: true },
+    { type: "Tile", minPrice: 4000, maxPrice: 6500, enabled: true },
+    { type: "Cedar", minPrice: 3500, maxPrice: 6000, enabled: true },
+    { type: "BUR (Built-Up Roofing)", minPrice: 2800, maxPrice: 4800, enabled: true },
+    { type: "PVC", minPrice: 4500, maxPrice: 7500, enabled: true },
+    { type: "TPO", minPrice: 4000, maxPrice: 7000, enabled: true },
+    { type: "EPDM", minPrice: 3500, maxPrice: 6000, enabled: true },
+  ];
+
+  // Generate estimates when reaching step 11 (show full list; customer selects one)
   useEffect(() => {
     if (currentStep === 11 && !formData.estimates) {
-      const estimates = [
-        {
-          type: "Roof Repair and Maintenance",
-          minPrice: 1951,
-          maxPrice: 2156,
-          enabled: true,
-        },
-        {
-          type: "Asphalt Roof",
-          minPrice: 26008,
-          maxPrice: 28746,
-          enabled: true,
-        },
-        {
-          type: "Metal Roof",
-          minPrice: 65020,
-          maxPrice: 71864,
-          enabled: true,
-        },
-        {
-          type: "Tile Roof",
-          minPrice: 91028,
-          maxPrice: 100610,
-          enabled: true,
-        },
-      ];
-      setFormData((prev) => ({ ...prev, estimates }));
+      setFormData((prev) => ({
+        ...prev,
+        estimates: REVIEW_ESTIMATES_LIST,
+        selectedEstimateIndex: 0,
+      }));
     }
   }, [currentStep]);
 
@@ -278,31 +268,12 @@ export default function EstimateModal({
         zip_code: addressObj.zip_code || "",
       };
 
-      // Convert estimates to API format
-      const estimatePriceArray = formData.estimates
-        ? convertEstimatesToPriceArray(formData.estimates)
-        : [
-            {
-              title: "Roof Repair and Maintenance",
-              price_range: "$1,951-2,156",
-              description: "Roof Repair and Maintenance estimate",
-            },
-            {
-              title: "Asphalt Roof",
-              price_range: "$26,008-28,746",
-              description: "Asphalt Roof estimate",
-            },
-            {
-              title: "Metal Roof",
-              price_range: "$65,020-71,864",
-              description: "Metal Roof estimate",
-            },
-            {
-              title: "Tile Roof",
-              price_range: "$91,028-100,610",
-              description: "Tile Roof estimate",
-            },
-          ];
+      // Only the customer-selected estimate goes to API and report
+      const selectedIndex = formData.selectedEstimateIndex ?? 0;
+      const selectedEstimates = formData.estimates && formData.estimates[selectedIndex]
+        ? [formData.estimates[selectedIndex]]
+        : [REVIEW_ESTIMATES_LIST[0]];
+      const estimatePriceArray = convertEstimatesToPriceArray(selectedEstimates);
 
       // Prepare API payload – include user_id so backend associates estimate with logged-in user (table me us user ke against dikhe)
       const apiPayload: Record<string, unknown> = {
@@ -330,14 +301,12 @@ export default function EstimateModal({
       // Handle response - API returns { message, data }
       const responseData = response.data || response;
 
-      // Convert estimate_price back to estimates format for UI
+      // Convert estimate_price back to estimates format for UI (only selected one)
       const estimates = responseData.estimate_price
         ? responseData.estimate_price.map((est: any) => {
-            // Parse price_range like "$ 2500-3000" or "$1,951-2,156"
             const priceMatch = est.price_range?.match(/\$?\s*([\d,]+)\s*-\s*([\d,]+)/);
             const minPrice = priceMatch ? parseInt(priceMatch[1].replace(/,/g, "")) : 0;
             const maxPrice = priceMatch ? parseInt(priceMatch[2].replace(/,/g, "")) : 0;
-
             return {
               type: est.title,
               minPrice: minPrice,
@@ -346,7 +315,12 @@ export default function EstimateModal({
               description: est.description,
             };
           })
-        : formData.estimates || [];
+        : selectedEstimates.map((est) => ({
+            type: est.type,
+            minPrice: est.minPrice,
+            maxPrice: est.maxPrice,
+            enabled: true,
+          }));
 
       const finalData = {
         ...formData,
@@ -363,7 +337,7 @@ export default function EstimateModal({
       // Clear current form from localStorage
       localStorage.removeItem("currentEstimateForm");
 
-      toast.success(response.message || "Estimate submitted successfully!");
+      toast.success(response?.message || "Estimate submitted! A copy has been sent by email and SMS.");
       onSave(finalData);
 
       // Close modal - parent will redirect to measurements/estimates screen (no email send)

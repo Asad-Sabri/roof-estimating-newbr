@@ -52,7 +52,7 @@ export default function SuperAdminReportsPage() {
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Active Companies</p>
+                <p className="text-sm text-gray-600">Active Subscribers</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">8</p>
                 <p className="text-sm text-purple-600 mt-1 flex items-center gap-1">
                   <TrendingUp size={14} />

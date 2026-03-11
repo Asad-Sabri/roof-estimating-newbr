@@ -162,6 +162,26 @@ export function EstimateReportContent({
               {company.website}
             </span>
           )}
+          {(company.contactPersonName || company.contactPersonPhone || company.contactPersonEmail) && (
+            <div className="pt-1 mt-0.5" style={{ borderTop: "1px solid #e5e7eb" }}>
+              <span className={`${textSize} font-medium`} style={{ color: "#374151" }}>Contact person</span>
+              {company.contactPersonName && (
+                <span className="block mt-0.5">{company.contactPersonName}</span>
+              )}
+              {company.contactPersonPhone && (
+                <span className="inline-flex items-center gap-1.5 mt-0.5">
+                  <Phone className="w-3.5 h-3.5 shrink-0" />
+                  {company.contactPersonPhone}
+                </span>
+              )}
+              {company.contactPersonEmail && (
+                <span className="inline-flex items-center gap-1.5 mt-0.5 block">
+                  <Mail className="w-3.5 h-3.5 shrink-0" />
+                  {company.contactPersonEmail}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

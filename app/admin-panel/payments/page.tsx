@@ -1,6 +1,6 @@
 "use client";
 
-import AdminDashboardLayout from "@/app/dashboard/admin/page"; // ✅ Admin layout
+import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
