@@ -13,7 +13,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import SuperAdminDashboardLayout from "@/app/dashboard/super-admin/page";
+import SuperAdminDashboardLayout from "@/components/layout/SuperAdminDashboardLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import {
   getAllCompaniesAPI,
@@ -235,7 +235,7 @@ export default function SuperAdminCompaniesPage() {
         followUpText: form.followUpText?.trim() || undefined,
         disclaimer: form.disclaimer?.trim() || undefined,
         whatsIncluded: Array.isArray(form.whatsIncluded) && form.whatsIncluded.length > 0 ? form.whatsIncluded.filter(Boolean) : undefined,
-        financingInterestRate: form.financingInterestRate != null && form.financingInterestRate !== "" ? Number(form.financingInterestRate) : undefined,
+        financingInterestRate: form.financingInterestRate != null ? Number(form.financingInterestRate) : undefined,
       };
       if (modalOpen === "add") {
         const adminId = selectedAdminId?.trim();

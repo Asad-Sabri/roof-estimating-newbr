@@ -1,6 +1,6 @@
 "use client";
 
-import SuperAdminDashboardLayout from "@/app/dashboard/super-admin/page";
+import SuperAdminDashboardLayout from "@/components/layout/SuperAdminDashboardLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import { BarChart3, TrendingUp, DollarSign, Users, Building2 } from "lucide-react";
 

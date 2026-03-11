@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { getAllProjectsAPI, deleteUserProjectsAPI } from "@/services/auth";
-import SuperAdminDashboardLayout from "@/app/dashboard/super-admin/page";
+import SuperAdminDashboardLayout from "@/components/layout/SuperAdminDashboardLayout";
 import { Search, Eye, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";

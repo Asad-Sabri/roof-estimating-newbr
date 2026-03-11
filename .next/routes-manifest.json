@@ -104,6 +104,12 @@
       "namedRegex": "^/admin\\-panel/payments(?:/)?$"
     },
     {
+      "page": "/admin-panel/preliminary-estimates",
+      "regex": "^/admin\\-panel/preliminary\\-estimates(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin\\-panel/preliminary\\-estimates(?:/)?$"
+    },
+    {
       "page": "/admin-panel/project-details",
       "regex": "^/admin\\-panel/project\\-details(?:/)?$",
       "routeKeys": {},
@@ -198,6 +204,12 @@
       "regex": "^/customer\\-panel/signup(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/customer\\-panel/signup(?:/)?$"
+    },
+    {
+      "page": "/customer-panel/subscribers",
+      "regex": "^/customer\\-panel/subscribers(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/customer\\-panel/subscribers(?:/)?$"
     },
     {
       "page": "/customer-panel/view-all-estimate",
@@ -414,6 +426,12 @@
       "regex": "^/super\\-admin/dashboard(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/super\\-admin/dashboard(?:/)?$"
+    },
+    {
+      "page": "/super-admin/project-details",
+      "regex": "^/super\\-admin/project\\-details(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/super\\-admin/project\\-details(?:/)?$"
     },
     {
       "page": "/super-admin/reports",

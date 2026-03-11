@@ -1,6 +1,6 @@
 "use client";
 
-import SuperAdminDashboardLayout from "@/app/dashboard/super-admin/page";
+import SuperAdminDashboardLayout from "@/components/layout/SuperAdminDashboardLayout";
 import {
   Users,
   Shield,

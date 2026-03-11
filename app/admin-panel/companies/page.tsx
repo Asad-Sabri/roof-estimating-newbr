@@ -211,7 +211,7 @@ export default function AdminCompaniesPage() {
         followUpText: form.followUpText?.trim() || undefined,
         disclaimer: form.disclaimer?.trim() || undefined,
         whatsIncluded: Array.isArray(form.whatsIncluded) && form.whatsIncluded.length > 0 ? form.whatsIncluded.filter(Boolean) : undefined,
-        financingInterestRate: form.financingInterestRate != null && form.financingInterestRate !== "" ? Number(form.financingInterestRate) : undefined,
+        financingInterestRate: form.financingInterestRate != null ? Number(form.financingInterestRate) : undefined,
       };
       if (modalOpen === "add") {
         await createCompanyAPI(payload);

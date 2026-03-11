@@ -128,9 +128,12 @@ export default function AdminRequestEstimatePage() {
       localStorage.setItem("projectAddress", JSON.stringify(addr));
       localStorage.setItem("projectLocation", JSON.stringify({ lat, lng }));
       router.push("/property-map");
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(err?.response?.data?.message || "Failed to create project or fetch location. Please try again.");
+      const msg = err && typeof err === "object" && "response" in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      alert(msg || "Failed to create project or fetch location. Please try again.");
     } finally {
       setMapLoading(false);
     }

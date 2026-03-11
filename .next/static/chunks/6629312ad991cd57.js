@@ -1,1 +1,0 @@
-(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,74514,(e,t,u)=>{t.exports=e.r(65140)},67157,e=>{"use strict";e.s(["default",()=>r]);var t=e.i(82639),u=e.i(74514);function r(){let e=(0,u.useRouter)();return(0,t.useEffect)(()=>{e.replace("/super-admin/admins")},[e]),null}}]);

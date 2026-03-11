@@ -101,6 +101,12 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   handler satisfies AppPageConfig<"/admin-panel/payments">
 }
 
+// Validate ../../app/admin-panel/preliminary-estimates/page.tsx
+{
+  const handler = {} as typeof import("../../app/admin-panel/preliminary-estimates/page.js")
+  handler satisfies AppPageConfig<"/admin-panel/preliminary-estimates">
+}
+
 // Validate ../../app/admin-panel/project-details/page.tsx
 {
   const handler = {} as typeof import("../../app/admin-panel/project-details/page.js")
@@ -207,6 +213,12 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   const handler = {} as typeof import("../../app/customer-panel/signup/page.js")
   handler satisfies AppPageConfig<"/customer-panel/signup">
+}
+
+// Validate ../../app/customer-panel/subscribers/page.tsx
+{
+  const handler = {} as typeof import("../../app/customer-panel/subscribers/page.js")
+  handler satisfies AppPageConfig<"/customer-panel/subscribers">
 }
 
 // Validate ../../app/customer-panel/view-all-estimate/page.tsx
@@ -429,6 +441,12 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   const handler = {} as typeof import("../../app/super-admin/dashboard/page.js")
   handler satisfies AppPageConfig<"/super-admin/dashboard">
+}
+
+// Validate ../../app/super-admin/project-details/page.tsx
+{
+  const handler = {} as typeof import("../../app/super-admin/project-details/page.js")
+  handler satisfies AppPageConfig<"/super-admin/project-details">
 }
 
 // Validate ../../app/super-admin/reports/page.tsx

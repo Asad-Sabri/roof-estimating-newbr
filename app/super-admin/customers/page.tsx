@@ -1,6 +1,6 @@
 "use client";
 
-import SuperAdminDashboardLayout from "@/app/dashboard/super-admin/page";
+import SuperAdminDashboardLayout from "@/components/layout/SuperAdminDashboardLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import { useState, useEffect, useCallback } from "react";
 import { Users, Plus, Search, Edit, Trash2, MapPin, Loader2, X, UserPlus } from "lucide-react";
