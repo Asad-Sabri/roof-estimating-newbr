@@ -287,7 +287,7 @@ export function useMapboxFunctions() {
     saveShapesToProjects(updatedFeatures, totalAreaFeet, totalLengthFeet);
   }, [saveShapesToProjects]);
 
-  const updateLabelPositions = useCallback(() => {
+  const updateLabelPositions = useCallback(() => { 
     if (!mapRef.current) return;
     const map = mapRef.current;
     Object.keys(labelElementsRef.current).forEach(key => {
