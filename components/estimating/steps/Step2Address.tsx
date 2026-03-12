@@ -5,6 +5,7 @@ import mapboxgl from "mapbox-gl";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 import * as turf from "@turf/turf";
+import { getPinCoordinatesFromFeature } from "@/utils/buildingCentroid";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { StepProps } from "../types";
@@ -624,16 +625,8 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
             .send();
           if (geoRes.body.features.length > 0) {
             const feature = geoRes.body.features[0];
-            let lng: number, lat: number;
-            if (
-              feature.geometry?.type === "Point" &&
-              feature.geometry.coordinates
-            ) {
-              [lng, lat] = feature.geometry.coordinates;
-            } else {
-              [lng, lat] = feature.center;
-            }
-            // Marker position – geocode se mili jagah (lng, lat)
+            // Pin on building centroid, not street (Phase 1 requirement)
+            const [lng, lat] = await getPinCoordinatesFromFeature(feature);
             if (lng != null && lat != null) {
               mapRef.current!.flyTo({
                 center: [lng, lat],
@@ -641,7 +634,7 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
                 duration: 1500,
               });
               mapRef.current!.once("moveend", () => {
-                addOrUpdateMarker(lng, lat, true); // marker is jagah par
+                addOrUpdateMarker(lng, lat, true); // marker on building
                 const coords = { lat, lng };
                 setCoordinates(coords);
                 onInputChange("coordinates", coords);
@@ -752,16 +745,7 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
           .send();
         if (geoRes.body.features.length > 0) {
           const feature = geoRes.body.features[0];
-          let lng: number, lat: number;
-          if (
-            feature.geometry?.type === "Point" &&
-            feature.geometry.coordinates
-          ) {
-            [lng, lat] = feature.geometry.coordinates;
-          } else {
-            [lng, lat] = feature.center;
-          }
-          // Marker position – suggestion ki jagah (lng, lat)
+          const [lng, lat] = await getPinCoordinatesFromFeature(feature);
           if (lng != null && lat != null) {
             mapRef.current!.flyTo({
               center: [lng, lat],
@@ -769,7 +753,7 @@ export default function Step2Address({ data, onInputChange }: StepProps) {
               duration: 1500,
             });
             mapRef.current!.once("moveend", () => {
-              addOrUpdateMarker(lng, lat, true); // marker is jagah par
+              addOrUpdateMarker(lng, lat, true); // marker on building
               const coords = { lat, lng };
               setCoordinates(coords);
               onInputChange("coordinates", coords);

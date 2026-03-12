@@ -18,7 +18,11 @@ export default function Mapbox() {
   } = useMapContext();
 
   return (
-    <div className="absolute inset-0 w-full h-full relative" style={{ zIndex: 1, overflow: 'hidden' }}>
+    <div className="absolute inset-0 w-full h-full relative mapbox-pin-wrapper" style={{ zIndex: 1, overflow: 'hidden' }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .mapbox-pin-wrapper .mapboxgl-marker-container { z-index: 9999 !important; pointer-events: auto !important; }
+        .mapbox-pin-wrapper .mapboxgl-marker { z-index: 9999 !important; }
+      ` }} />
       <div 
         ref={mapContainerRef} 
         className="absolute inset-0 w-full h-full" 

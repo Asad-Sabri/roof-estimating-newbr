@@ -6,6 +6,9 @@ export interface EstimateData {
   pinConfirmed?: boolean; // Pin drop confirmation on building
   roofSteepness?: "Flat" | "Low" | "Moderate" | "Steep" | "Very Steep";
   buildingType?: "Residential" | "Commercial";
+  /** Roof type category for compatibility (Flat / Steep / Tile / Metal) */
+  currentRoofTypeCategory?: "flat" | "steep" | "tile" | "metal";
+  desiredRoofTypeCategory?: "flat" | "steep" | "tile" | "metal";
   currentRoofType?:
     | "Asphalt"
     | "Metal"

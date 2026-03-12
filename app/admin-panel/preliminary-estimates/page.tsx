@@ -13,6 +13,8 @@ import { sendPdfsAPI } from "@/services/emailAPI";
 import { createProjectAPI } from "@/services/auth";
 import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 import { toast } from "react-toastify";
+import { getPinCoordinatesFromFeature } from "@/utils/buildingCentroid";
+import { ROOF_TYPE_CATEGORIES, getCompatibleSystems } from "@/lib/roofTypeSystemMatrix";
 import "react-toastify/dist/ReactToastify.css";
 
 const geocodingClient = mbxGeocoding({
@@ -39,13 +41,23 @@ function formatDate(s: string) {
   }
 }
 
-/** Map roof material to request-estimate roofType option values */
+/** Map roof material to request-estimate roofType (system) value */
 function toRoofType(v: any): string {
   const s = String(v || "").toLowerCase();
   if (s.includes("shingle") || s.includes("asphalt")) return "shingle";
   if (s.includes("metal")) return "metal";
   if (s.includes("tile")) return "tile";
-  if (s.includes("flat")) return "flat";
+  if (s.includes("flat") || s.includes("tpo") || s.includes("epdm") || s.includes("bur") || s.includes("pvc")) return "flat";
+  return "";
+}
+/** Derive roof type category from roofType (system) for prefill */
+function roofTypeToCategory(roofType: string): string {
+  if (!roofType) return "";
+  const r = (roofType || "").toLowerCase();
+  if (r === "flat" || ["tpo", "epdm", "bur", "pvc", "modified_bitumen"].includes(r)) return "flat";
+  if (r === "shingle" || r === "cedar" || r === "synthetic" || r === "asphalt") return "steep";
+  if (r === "tile") return "tile";
+  if (r === "metal") return "metal";
   return "";
 }
 
@@ -109,6 +121,7 @@ export default function AdminPreliminaryEstimatesPage() {
       email: prefill?.email ?? "",
       mobile: prefill?.mobile ?? "",
       address: prefill?.address ?? "",
+      roofTypeCategory: prefill?.roofTypeCategory ?? roofTypeToCategory(prefill?.roofType ?? ""),
       roofType: prefill?.roofType ?? "",
       propertyType: prefill?.propertyType ?? "",
     },
@@ -118,6 +131,7 @@ export default function AdminPreliminaryEstimatesPage() {
       email: Yup.string().email("Invalid email").required("Required"),
       mobile: Yup.string().required("Required"),
       address: Yup.string().required("Required"),
+      roofTypeCategory: Yup.string().required("Select roof type first"),
       roofType: Yup.string().required("Required"),
       propertyType: Yup.string().required("Required"),
     }),
@@ -147,6 +161,7 @@ export default function AdminPreliminaryEstimatesPage() {
       mobile: true,
       email: true,
       address: true,
+      roofTypeCategory: true,
       roofType: true,
       propertyType: true,
     });
@@ -162,7 +177,7 @@ export default function AdminPreliminaryEstimatesPage() {
         setMapLoading(false);
         return;
       }
-      const [lng, lat] = feature.center;
+      const [lng, lat] = await getPinCoordinatesFromFeature(feature);
       await createProjectAPI({
         first_name: formik.values.firstName,
         middle_name: formik.values.middleName,
@@ -605,18 +620,41 @@ export default function AdminPreliminaryEstimatesPage() {
                   )}
                 </div>
                 <div className="md:col-span-6">
-                  <label className="block text-sm font-medium text-gray-700">Roof Type *</label>
+                  <label className="block text-sm font-medium text-gray-700">Roof Type (Category) *</label>
+                  <select
+                    name="roofTypeCategory"
+                    value={formik.values.roofTypeCategory}
+                    onChange={(e) => {
+                      const cat = e.target.value;
+                      formik.setFieldValue("roofTypeCategory", cat);
+                      const compatible = getCompatibleSystems(cat as any);
+                      const currentInCompatible = compatible.some((s) => s.value === formik.values.roofType);
+                      if (!currentInCompatible) formik.setFieldValue("roofType", "");
+                    }}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-[#8b0e0f] outline-none"
+                  >
+                    <option value="">Select Roof Type</option>
+                    {ROOF_TYPE_CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                  {formik.touched.roofTypeCategory && formik.errors.roofTypeCategory && (
+                    <p className="text-red-500 text-sm">{formik.errors.roofTypeCategory}</p>
+                  )}
+                </div>
+                <div className="md:col-span-6">
+                  <label className="block text-sm font-medium text-gray-700">Roof System *</label>
                   <select
                     name="roofType"
                     value={formik.values.roofType}
                     onChange={formik.handleChange}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-[#8b0e0f] outline-none"
+                    disabled={!formik.values.roofTypeCategory}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-[#8b0e0f] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
-                    <option value="">Select Roof Type</option>
-                    <option value="shingle">Asphalt Shingle</option>
-                    <option value="metal">Metal Roof</option>
-                    <option value="tile">Tile Roof</option>
-                    <option value="flat">Flat Roof</option>
+                    <option value="">Select Roof System</option>
+                    {getCompatibleSystems(formik.values.roofTypeCategory as any).map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
                   </select>
                   {formik.touched.roofType && formik.errors.roofType && (
                     <p className="text-red-500 text-sm">{formik.errors.roofType}</p>

@@ -2,65 +2,40 @@
 
 import Image from "next/image";
 import { StepProps } from "../types";
+import { ROOF_TYPE_CATEGORIES, getEstimatingSystemsForCategory } from "@/lib/roofTypeSystemMatrix";
 
 export default function Step6DesiredRoofType({
   data,
   onInputChange,
 }: StepProps) {
-  // All roof material options from Step 5 (as per requirement)
-  const options = [
-    {
-      value: "Asphalt",
-      label: "Asphalt",
-      image:
-        "https://app.roofr.com/images/instant-estimates/materials/asphalt.jpg",
-    },
-    {
-      value: "Metal",
-      label: "Metal",
-      image:
-        "https://app.roofr.com/images/instant-estimates/materials/metal.jpg",
-    },
-    {
-      value: "Tile",
-      label: "Tile",
-      image:
-        "https://app.roofr.com/images/instant-estimates/materials/tile.jpg",
-    },
-    {
-      value: "Cedar",
-      label: "Cedar",
-      image:
-        "https://app.roofr.com/images/instant-estimates/materials/cedar.jpg",
-    },
-    {
-      value: "BUR",
-      label: "BUR (Built-Up Roofing)",
-      image:
-        "https://pmsilicone.com/wp-content/uploads/2023/04/BUR1-1536x1098.jpg",
-    },
-    {
-      value: "PVC",
-      label: "PVC",
-      image: "https://www.billraganroofing.com/hubfs/FlatRoofPVC.jpg",
-    },
-    {
-      value: "TPO",
-      label: "TPO",
-      image:
-        "https://pmsilicone.com/wp-content/uploads/2022/11/TPO-Roof-768x576.jpg",
-    },
-    {
-      value: "EPDM",
-      label: "EPDM",
-      image:
-        "https://colonyroofers.com/hs-fs/hubfs/EPDM%20Roofing%20Material.jpg?width=1350&height=600&name=EPDM%20Roofing%20Material.jpg",
-    },
-  ];
+  const category = (data.desiredRoofTypeCategory || "") as "" | "flat" | "steep" | "tile" | "metal";
+  const options = getEstimatingSystemsForCategory(category);
 
   return (
     <div className="space-y-6">
       <p className="text-gray-600">What type of roof would you like?</p>
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-black mb-2">Roof type (category)</label>
+        <select
+          value={category}
+          onChange={(e) => {
+            const cat = e.target.value as "flat" | "steep" | "tile" | "metal";
+            onInputChange("desiredRoofTypeCategory", cat || undefined);
+            const compatible = getEstimatingSystemsForCategory(cat);
+            const currentInCompatible = compatible.some((s) => s.value === data.desiredRoofType);
+            if (!currentInCompatible) onInputChange("desiredRoofType", undefined);
+          }}
+          className="w-full max-w-xs border border-gray-300 text-black rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-[#8b0e0f] outline-none"
+        >
+          <option value="" className="text-black">Select roof type first</option>
+          {ROOF_TYPE_CATEGORIES.map((c) => (
+            <option key={c.value} value={c.value}>{c.label}</option>
+          ))}
+        </select>
+      </div>
+      {!category ? (
+        <p className="text-gray-500 text-sm">Select a roof type above to see compatible systems.</p>
+      ) : (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {options.map((option) => (
           <button
@@ -74,14 +49,16 @@ export default function Step6DesiredRoofType({
             style={data.desiredRoofType === option.value ? { borderColor: "#959595", backgroundColor: "rgba(149, 149, 149, 0.1)" } : {}}
           >
             <div className="w-full h-36 rounded mb-2 overflow-hidden bg-gray-100">
-              <Image
-                src={option.image}
-                alt={option.label}
-                width={400}
-                height={300}
-                className="w-full h-full object-cover"
-                unoptimized
-              />
+              {option.image && (
+                <Image
+                  src={option.image}
+                  alt={option.label}
+                  width={400}
+                  height={300}
+                  className="w-full h-full object-cover"
+                  unoptimized
+                />
+              )}
             </div>
             <div className="font-semibold text-sm text-gray-900">
               {option.label}
@@ -89,6 +66,7 @@ export default function Step6DesiredRoofType({
           </button>
         ))}
       </div>
+      )}
     </div>
   );
 }

@@ -63,12 +63,18 @@ export function useMapboxFunctions() {
       const marker = new mapboxgl.Marker({ draggable })
         .setLngLat(location)
         .addTo(mapRef.current);
-      // Zoom in/out par marker hamesha dikhe – sirf z-index taake map canvas ke upar rahe
       const el = marker.getElement();
       if (el) {
+        // Don't set position/top/left – Mapbox positions marker via transform; those break it
+        el.style.opacity = "1";
+        el.style.willChange = "transform";
+        el.style.transition = "opacity .2s";
         el.style.zIndex = "9999";
         const container = el.closest(".mapboxgl-marker-container");
-        if (container && container instanceof HTMLElement) container.style.zIndex = "9999";
+        if (container && container instanceof HTMLElement) {
+          (container as HTMLElement).style.zIndex = "9999";
+          (container as HTMLElement).style.pointerEvents = "auto";
+        }
       }
       // Add drag listener if draggable
       if (draggable) {
@@ -84,9 +90,15 @@ export function useMapboxFunctions() {
       pinMarkerRef.current.setDraggable(draggable);
       const el = pinMarkerRef.current.getElement();
       if (el) {
+        el.style.opacity = "1";
+        el.style.willChange = "transform";
+        el.style.transition = "opacity .2s";
         el.style.zIndex = "9999";
         const container = el.closest(".mapboxgl-marker-container");
-        if (container && container instanceof HTMLElement) container.style.zIndex = "9999";
+        if (container && container instanceof HTMLElement) {
+          (container as HTMLElement).style.zIndex = "9999";
+          (container as HTMLElement).style.pointerEvents = "auto";
+        }
       }
     }
   }, []);
@@ -689,29 +701,16 @@ export function useMapboxFunctions() {
         if (savedLocation) {
           setTempLocation(savedLocation);
           setPinLocation(savedLocation);
-          map.flyTo({ center: savedLocation, zoom: 20, essential: true });
           setShowLocationCard(true);
           setIsLocationConfirmed(true);
           setIsEditMode(false);
-          setTimeout(() => {
-            if (mapRef.current && mapRef.current.loaded()) {
-              if (!pinMarkerRef.current) {
-                const marker = new mapboxgl.Marker({ draggable: false })
-                  .setLngLat(savedLocation!)
-                  .addTo(mapRef.current);
-                const el = marker.getElement();
-                if (el) {
-                  el.style.zIndex = "9999";
-                  const container = el.closest(".mapboxgl-marker-container");
-                  if (container && container instanceof HTMLElement) container.style.zIndex = "9999";
-                }
-                pinMarkerRef.current = marker;
-              } else {
-                pinMarkerRef.current.setLngLat(savedLocation!);
-                pinMarkerRef.current.setDraggable(false);
-              }
+          map.flyTo({ center: savedLocation, zoom: 20, essential: true });
+          // Add pin after map has finished moving (like Instant Estimate Step1) so it's visible
+          map.once("moveend", () => {
+            if (mapRef.current && savedLocation) {
+              setMarkerAtLocation(savedLocation, false);
             }
-          }, 300);
+          });
           return;
         }
       }

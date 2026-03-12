@@ -26,17 +26,18 @@ import { useDispatch } from "react-redux";
 import { logout } from "@/redux/slices/authSlice";
 import logo from "../../public/logo-latest.png";
 
+// Phase 1: Order per client — Request Estimates, Preliminary Estimates, Project Details, Subscribers, Customers
 const navItems = [
   { name: "Dashboard", href: "/admin-panel/dashboard", icon: LayoutDashboard },
-  { name: "Proposals", href: "/admin-panel/proposals", icon: FileText },
-  { name: "Payments", href: "/admin-panel/payments", icon: CreditCard },
-  { name: "Job Progress", href: "/admin-panel/job-progress", icon: Briefcase },
   { name: "Request Estimates", href: "/admin-panel/request-estimate", icon: ClipboardList },
   { name: "Preliminary Estimates", href: "/admin-panel/preliminary-estimates", icon: ClipboardCheck },
   { name: "Project Details", href: "/admin-panel/project-details", icon: FolderOpen },
-  { name: "Estimating Pricing", href: "/admin-panel/estimating-pricing", icon: DollarSign },
   { name: "Subscribers", href: "/admin-panel/companies", icon: Building2 },
   { name: "Customers", href: "/admin-panel/customers", icon: Users },
+  { name: "Proposals", href: "/admin-panel/proposals", icon: FileText },
+  { name: "Payments", href: "/admin-panel/payments", icon: CreditCard },
+  { name: "Job Progress", href: "/admin-panel/job-progress", icon: Briefcase },
+  { name: "Estimating Pricing", href: "/admin-panel/estimating-pricing", icon: DollarSign },
   { name: "Assign Role", href: "/admin-panel/assign-role", icon: Settings },
 ];
 

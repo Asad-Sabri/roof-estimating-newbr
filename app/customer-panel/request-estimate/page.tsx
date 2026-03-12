@@ -9,6 +9,8 @@ import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout
 import { useRouter } from "next/navigation";
 import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 import { createProjectAPI } from "../../../services/auth";
+import { getPinCoordinatesFromFeature } from "@/utils/buildingCentroid";
+import { ROOF_TYPE_CATEGORIES, getCompatibleSystems } from "@/lib/roofTypeSystemMatrix";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 const geocodingClient = mbxGeocoding({
@@ -33,6 +35,7 @@ export default function CreateProjectForm() {
       email: "",
       mobile: "",
       address: "",
+      roofTypeCategory: "" as string,
       roofType: "",
       propertyType: "",
     },
@@ -42,6 +45,7 @@ export default function CreateProjectForm() {
       email: Yup.string().email("Invalid email").required("Required"),
       mobile: Yup.string().required("Required"),
       address: Yup.string().required("Required"),
+      roofTypeCategory: Yup.string().required("Select roof type first"),
       roofType: Yup.string().required("Required"),
       propertyType: Yup.string().required("Required"),
     }),
@@ -52,8 +56,8 @@ export default function CreateProjectForm() {
           .forwardGeocode({ query: values.address, limit: 1 })
           .send();
         const feature = geoRes.body.features[0];
-        const lat = feature ? feature.center[1] : null;
-        const lng = feature ? feature.center[0] : null;
+        if (!feature) throw new Error("Invalid address");
+        const [lng, lat] = await getPinCoordinatesFromFeature(feature);
 
         await createProjectAPI({
           first_name: values.firstName,
@@ -91,6 +95,7 @@ export default function CreateProjectForm() {
       mobile: true,
       email: true,
       address: true,
+      roofTypeCategory: true,
       roofType: true,
       propertyType: true,
     });
@@ -111,7 +116,7 @@ export default function CreateProjectForm() {
         return alert("Please enter a valid address");
       }
 
-      const [lng, lat] = feature.center;
+      const [lng, lat] = await getPinCoordinatesFromFeature(feature);
 
       // 🔹 Save complete project data to localStorage
       const projectData = {
@@ -181,7 +186,7 @@ export default function CreateProjectForm() {
           .send();
         const feature = geoRes.body.features[0];
         if (!feature) throw new Error("Invalid address");
-        const [lng, lat] = feature.center;
+        const [lng, lat] = await getPinCoordinatesFromFeature(feature);
         setLatitude(lat);
         setLongitude(lng);
       } catch (err) {
@@ -409,22 +414,40 @@ export default function CreateProjectForm() {
                   </div>
                 </div>
 
-                {/* Roof Type */}
+                {/* Roof Type (Category) + Roof System */}
                 <div className="md:col-span-6">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Roof Type *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Roof Type (Category) *</label>
+                  <select
+                    name="roofTypeCategory"
+                    value={formik.values.roofTypeCategory}
+                    onChange={(e) => {
+                      const cat = e.target.value;
+                      formik.setFieldValue("roofTypeCategory", cat);
+                      const compatible = getCompatibleSystems(cat as any);
+                      const currentInCompatible = compatible.some((s) => s.value === formik.values.roofType);
+                      if (!currentInCompatible) formik.setFieldValue("roofType", "");
+                    }}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="">Select Roof Type</option>
+                    {ROOF_TYPE_CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="md:col-span-6">
+                  <label className="block text-sm font-medium text-gray-700">Roof System *</label>
                   <select
                     name="roofType"
                     value={formik.values.roofType}
                     onChange={formik.handleChange}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                    disabled={!formik.values.roofTypeCategory}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
-                    <option value="">Select Roof Type</option>
-                    <option value="shingle">Asphalt Shingle</option>
-                    <option value="metal">Metal Roof</option>
-                    <option value="tile">Tile Roof</option>
-                    <option value="flat">Flat Roof</option>
+                    <option value="">Select Roof System</option>
+                    {getCompatibleSystems(formik.values.roofTypeCategory as any).map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
                   </select>
                 </div>
 
