@@ -134,6 +134,8 @@ function SignaturePad({
       window.removeEventListener("pointermove", handlePointerMove as any);
       window.removeEventListener("pointerup", handlePointerUp as any);
     };
+    // Intentionally run once on mount; handlers are stable via refs
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function clear() {

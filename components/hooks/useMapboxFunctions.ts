@@ -11,6 +11,9 @@ import { SnapPolygonMode, SnapLineMode } from "mapbox-gl-draw-snap-mode";
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 const GOOGLE_SATELLITE_KEY = "AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao";
 const GOOGLE_TILE_URL = `https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&k=${GOOGLE_SATELLITE_KEY}`;
+const DEFAULT_POLYGON_LABELS = ["Ridge", "Hip", "Valley", "Rake", "Eave", "Flashing", "Step Flashing"];
+const DEFAULT_LINE_LABELS = ["Ridge", "Hip", "Valley", "Rake", "Eave", "Flashing", "Step Flashing"];
+
 const customGoogleStyle = {
   version: 8,
   name: "Google Satellite Tiles",
@@ -129,10 +132,6 @@ export function useMapboxFunctions() {
   // Show location card initially - user needs to confirm even if location is saved
   const [showLocationCard, setShowLocationCard] = useState<boolean>(true);
   const [isLocationConfirmed, setIsLocationConfirmed] = useState<boolean>(false);
-  const defaultPolygonLabels = ["Ridge", "Hip", "Valley", "Rake", "Eave", "Flashing", "Step Flashing"];
-  const defaultLineLabels = ["Ridge", "Hip", "Valley", "Rake", "Eave", "Flashing", "Step Flashing"];
-
-
 
   const saveShapesToProjects = useCallback((features: any[], totalAreaFeet: number, totalLengthFeet: number) => {
     if (typeof window === "undefined") return;
@@ -168,7 +167,7 @@ export function useMapboxFunctions() {
           edges,
           area: areaSqFeet,
           customColor: feature.properties?.customColor || (isDeduction ? "#808080" : "#FFD700"),
-          label: feature.properties?.label || (isDeduction ? "Deduction Area" : defaultPolygonLabels[idx] || `Polygon #${idx + 1}`),
+          label: feature.properties?.label || (isDeduction ? "Deduction Area" : DEFAULT_POLYGON_LABELS[idx] || `Polygon #${idx + 1}`),
           isDeduction,
         });
       }
@@ -186,7 +185,7 @@ export function useMapboxFunctions() {
           edges,
           area: areaSqFeet, // Saving area in Line object too
           customColor: feature.properties?.customColor || "#FFD700",
-          label: feature.properties?.label || defaultLineLabels[idx] || `Line #${idx + 1}`,
+          label: feature.properties?.label || DEFAULT_LINE_LABELS[idx] || `Line #${idx + 1}`,
         });
       }
     });

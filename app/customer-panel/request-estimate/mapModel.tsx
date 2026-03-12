@@ -35,7 +35,7 @@ export default function MapPopup({ onClose, onSelect }: MapPopupProps) {
   mapRef.current = map;
 
   return () => map.remove();
-}, []);
+}, [lat, lng]);
 
   const handleSelect = async () => {
     const res = await fetch(

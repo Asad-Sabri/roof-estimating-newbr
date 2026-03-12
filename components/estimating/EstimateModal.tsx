@@ -22,6 +22,17 @@ import Step9ProjectDescription from "./steps/Step9ProjectDescription";
 import Step10ContactInfo from "./steps/Step10ContactInfo";
 import Step11ReviewEstimates from "./steps/Step11ReviewEstimates";
 
+const REVIEW_ESTIMATES_LIST = [
+  { type: "Asphalt", minPrice: 2500, maxPrice: 4500, enabled: true },
+  { type: "Metal", minPrice: 3000, maxPrice: 5500, enabled: true },
+  { type: "Tile", minPrice: 4000, maxPrice: 6500, enabled: true },
+  { type: "Cedar", minPrice: 3500, maxPrice: 6000, enabled: true },
+  { type: "BUR (Built-Up Roofing)", minPrice: 2800, maxPrice: 4800, enabled: true },
+  { type: "PVC", minPrice: 4500, maxPrice: 7500, enabled: true },
+  { type: "TPO", minPrice: 4000, maxPrice: 7000, enabled: true },
+  { type: "EPDM", minPrice: 3500, maxPrice: 6000, enabled: true },
+];
+
 export default function EstimateModal({
   isOpen,
   onClose,
@@ -78,18 +89,6 @@ export default function EstimateModal({
     }
   }, [formData]);
 
-  // Standard USA/UK demo prices for Review your estimates step (customer selects one)
-  const REVIEW_ESTIMATES_LIST = [
-    { type: "Asphalt", minPrice: 2500, maxPrice: 4500, enabled: true },
-    { type: "Metal", minPrice: 3000, maxPrice: 5500, enabled: true },
-    { type: "Tile", minPrice: 4000, maxPrice: 6500, enabled: true },
-    { type: "Cedar", minPrice: 3500, maxPrice: 6000, enabled: true },
-    { type: "BUR (Built-Up Roofing)", minPrice: 2800, maxPrice: 4800, enabled: true },
-    { type: "PVC", minPrice: 4500, maxPrice: 7500, enabled: true },
-    { type: "TPO", minPrice: 4000, maxPrice: 7000, enabled: true },
-    { type: "EPDM", minPrice: 3500, maxPrice: 6000, enabled: true },
-  ];
-
   // Generate estimates when reaching step 11 (show full list; customer selects one)
   useEffect(() => {
     if (currentStep === 11 && !formData.estimates) {
@@ -99,7 +98,8 @@ export default function EstimateModal({
         selectedEstimateIndex: 0,
       }));
     }
-  }, [currentStep]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- REVIEW_ESTIMATES_LIST is module-level
+  }, [currentStep, formData.estimates]);
 
   // Validation function to check if current step is valid
   const isStepValid = (step: number): boolean => {

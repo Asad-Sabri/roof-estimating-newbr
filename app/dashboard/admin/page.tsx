@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
-export default function DashboardAdminPage() {
+/** Redirect-only page; admin layout lives in @/components/layout/AdminDashboardLayout */
+export default function DashboardAdminPage(): never {
   redirect("/admin-panel/dashboard");
 }

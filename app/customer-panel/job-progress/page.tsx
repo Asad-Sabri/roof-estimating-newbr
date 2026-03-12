@@ -253,6 +253,7 @@ export default function JobProgressPage() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- lightbox handlers stable in practice
   }, [lightboxOpen, lightboxImages.length]);
 
   /* -------------------- Filtering -------------------- */
@@ -475,7 +476,8 @@ export default function JobProgressPage() {
                             disabled={u.photos.length === 0}
                             className="inline-flex cursor-pointer items-center gap-2 px-3 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-60"
                           >
-                            <Image /> {u.photos.length}
+                            {/* eslint-disable-next-line jsx-a11y/alt-text -- Lucide icon for photo count */}
+                            <Image aria-hidden="true" /> {u.photos.length}
                           </button>
 
                           <button
