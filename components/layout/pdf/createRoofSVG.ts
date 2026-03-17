@@ -24,17 +24,18 @@ interface PolygonData {
 const PADDING = 50;
 
 const COLOR_MAP: { [key: string]: string } = {
-    Ridge: "#FFA500",
+    Ridge: "#FF6B35",
     Hip: "#008000",
     Valley: "#0000FF",
     Eave: "#800080",
-    Rake: "#FFC0CB",
+    Rake: "#0066CC",
     Flashing: "#FF00FF",
-    StepFlashing: "#FF00FF",
+    StepFlashing: "#9932CC",
     Parapet: "#666666",
     Step: "#FF00FF",
-    Polygon: "#333333",
-    Default: "#333333",
+    Polygon: "#4A90D9",
+    Default: "#4A90D9",
+    Deduction: "#808080",
 };
 
 const formatLength = (length: number): string => `${length.toFixed(2)}  `;
@@ -121,9 +122,10 @@ export const createRoofSVG = (
         <polygon 
             points="${points}"
             style="
-                fill:none;
+                fill:${strokeColor};
+                fill-opacity:0.2;
                 stroke:${strokeColor};
-                stroke-width:1;
+                stroke-width:2;
                 stroke-linejoin:round;
                 stroke-linecap:round;
             "
@@ -150,7 +152,7 @@ export const createRoofSVG = (
         svg += `
         <polyline 
             points="${points}"
-            style="fill:none;stroke:${strokeColor};stroke-width:1;stroke-linecap:round;"
+            style="fill:none;stroke:${strokeColor};stroke-width:2;stroke-linecap:round;"
         />`;
 
         if (line.properties?.lengthFeet && line.coordinates.length > 1) {

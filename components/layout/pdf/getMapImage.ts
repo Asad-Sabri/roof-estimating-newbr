@@ -45,41 +45,54 @@ export const getMapboxMapURL = (
   return `https://api.mapbox.com/styles/v1/${mapStyle}/static/${center.lng},${center.lat},${zoom},${bearing}/${width}x${height}@2x?access_token=${accessToken}`;
 };
 
+/** Returns a data URL placeholder so PDF can embed it (no CORS). */
+function getPlaceholderDataUrl(width: number, height: number, text: string): string {
+  if (typeof document === "undefined") return "";
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+  ctx.fillStyle = "#E9967A";
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#333";
+  ctx.font = "18px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, width / 2, height / 2);
+  return canvas.toDataURL("image/png");
+}
+
 export const getMapImageBase64 = async (
-  center: { lat: number; lng: number },
-  options: MapOptions = {}
+  center: { lat: number; lng: number },
+  options: MapOptions = {}
 ): Promise<string> => {
-    const mapUrl = getMapboxMapURL(center, options);
+  const width = options.width ?? 1000;
+  const height = options.height ?? 800;
+  const mapUrl = getMapboxMapURL(center, options);
 
-    try {
-        const response = await fetch(mapUrl);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Mapbox Static Maps API error: ${response.status} ${response.statusText}`, errorText);
-            throw new Error(`Failed to fetch map image: ${response.statusText}`);
-        }
-        
-        const blob = await response.blob();
-        
-        return await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                if (typeof reader.result === 'string') {
-                    resolve(reader.result);
-                } else {
-                    reject(new Error("Failed to convert image Blob to Data URL."));
-                }
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
+  try {
+    const response = await fetch(mapUrl);
 
-    } catch (error) {
-        console.error("Error generating Base64 map image:", error);
-        const width = options.width ?? 1000;
-        const height = options.height ?? 800;
-        const placeholderUrl = `https://placehold.co/${width}x${height}/E9967A/FFFFFF?text=Map+Load+Failed`;
-        return placeholderUrl; 
-    }
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Mapbox Static Maps API error: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`Failed to fetch map image: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") resolve(reader.result);
+        else reject(new Error("Failed to convert image Blob to Data URL."));
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error("Error generating Base64 map image:", error);
+    return getPlaceholderDataUrl(width, height, "Map load failed");
+  }
 };

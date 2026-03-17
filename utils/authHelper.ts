@@ -17,6 +17,8 @@ export const handleLogout = () => {
   if (typeof window !== "undefined") {
     localStorage.removeItem("token");
     localStorage.removeItem("loginRole");
+    localStorage.removeItem("access_type");
+    localStorage.removeItem("userProfile");
     localStorage.removeItem("persist:root");
     
     // Also clear document.cookie (multiple formats to ensure it's cleared)

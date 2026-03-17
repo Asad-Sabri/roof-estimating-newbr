@@ -7,10 +7,11 @@ import { Shield, Plus, Search, Edit, Trash2, Loader2, X } from "lucide-react";
 import {
   getAdminsAPI,
   getAdminByIdAPI,
+  createAdminAPI,
   updateAdminAPI,
   deleteAdminAPI,
 } from "@/services/superAdminAPI";
-import { signupAPI } from "@/services/auth";
+import { toast } from "react-toastify";
 
 type Admin = {
   _id?: string;
@@ -58,6 +59,14 @@ function formatDate(s: string) {
   }
 }
 
+/** Display label for backend role (response returns "platform_admin" | "admin") */
+function formatRoleLabel(role: string | undefined): string {
+  if (!role) return "Admin";
+  const r = (role || "").toLowerCase().replace(/\s+/g, "_");
+  if (r === "platform_admin" || r === "platform-admin") return "Platform Admin";
+  return "Subscriber Admin";
+}
+
 const emptyForm = {
   first_name: "",
   last_name: "",
@@ -66,7 +75,15 @@ const emptyForm = {
   mobile_number: "",
   password: "",
   is_active: true,
+  role: "admin" as "admin" | "platform_admin",
+  company: "",
+  postal_code: "",
 };
+
+const ADMIN_ROLE_OPTIONS = [
+  { value: "admin", label: "Subscriber Admin (admin, manager, staff)" },
+  { value: "platform_admin", label: "Platform Admin" },
+];
 
 export default function SuperAdminAdminsPage() {
   useProtectedRoute();
@@ -81,6 +98,13 @@ export default function SuperAdminAdminsPage() {
   const [editAdminId, setEditAdminId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [loginRole, setLoginRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") setLoginRole(localStorage.getItem("loginRole"));
+  }, []);
+
+  const isSuperAdmin = loginRole === "super-admin";
 
   const fetchAdmins = useCallback(async () => {
     setLoading(true);
@@ -120,12 +144,15 @@ export default function SuperAdminAdminsPage() {
       mobile_number: admin.mobile_number ?? "",
       password: "",
       is_active: (admin.status || "").toLowerCase() !== "inactive",
+      role: (admin.role === "platform_admin" || (admin.role || "").toLowerCase() === "platform_admin") ? "platform_admin" : "admin",
     });
     try {
       const res = await getAdminByIdAPI(id);
       const a = res?.data ?? res?.admin ?? res?.user ?? res;
       if (a && typeof a === "object") {
-        setForm({
+        const roleRaw = (a.role ?? admin.role ?? "").toString().toLowerCase().replace(/\s+/g, "_");
+        setForm((prev) => ({
+          ...prev,
           first_name: a.first_name ?? (admin.first_name ?? admin.name?.split(" ")[0] ?? "") ?? "",
           last_name: a.last_name ?? (admin.last_name ?? admin.name?.split(" ").slice(1).join(" ") ?? "") ?? "",
           middle_name: a.middle_name ?? "",
@@ -133,7 +160,8 @@ export default function SuperAdminAdminsPage() {
           mobile_number: a.mobile_number ?? admin.mobile_number ?? "",
           password: "",
           is_active: a.is_active !== false,
-        });
+          role: roleRaw === "platform_admin" ? "platform_admin" : "admin",
+        }));
       }
     } catch {
       // form already set from list
@@ -155,20 +183,25 @@ export default function SuperAdminAdminsPage() {
       const raw = form.mobile_number?.trim() || "";
       const digits = raw.replace(/\D/g, "");
       const mobile = digits ? (raw.startsWith("+") ? raw : `+${digits}`) : form.mobile_number;
-      await signupAPI({
+      // POST /api/admins – same as Postman; signup API does not allow platform_admin
+      const payload: Record<string, string> = {
+        role: form.role || "admin",
         first_name: form.first_name,
         last_name: form.last_name,
         middle_name: form.middle_name || "",
         email: form.email,
-        mobile_number: mobile || form.mobile_number,
         password: form.password,
-        role: "admin",
-        account_type: "Admin",
-      });
+        mobile_number: mobile || form.mobile_number,
+      };
+      if (form.company?.trim()) payload.company = form.company.trim();
+      if (form.postal_code?.trim()) payload.postal_code = form.postal_code.trim();
+      const data: any = await createAdminAPI(payload);
+      toast.success(data?.message ?? (form.role === "platform_admin" ? "Platform Admin created successfully" : "Admin created successfully"));
       closeModal();
       fetchAdmins();
     } catch (e: any) {
-      setFormError(e?.response?.data?.message || e?.message || "Failed to create admin");
+      const msg = e?.response?.data?.message ?? e?.response?.data?.errors?.[0]?.msg ?? e?.message ?? "Failed to create admin";
+      setFormError(msg);
     } finally {
       setFormLoading(false);
     }
@@ -273,15 +306,15 @@ export default function SuperAdminAdminsPage() {
             </p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-4">
-            <p className="text-sm text-gray-600">Master Admins</p>
+            <p className="text-sm text-gray-600">Platform Admins</p>
             <p className="text-2xl font-bold text-[#8b0e0f]">
-              {admins.filter((a) => (a.role || "").toLowerCase().includes("master")).length}
+              {admins.filter((a) => (a.role || "").toLowerCase().replace(/\s+/g, "_") === "platform_admin").length}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-4">
-            <p className="text-sm text-gray-600">Sub Admins</p>
+            <p className="text-sm text-gray-600">Subscriber Admins</p>
             <p className="text-2xl font-bold text-purple-600">
-              {admins.filter((a) => (a.role || "").toLowerCase().includes("sub")).length}
+              {admins.filter((a) => (a.role || "").toLowerCase().replace(/\s+/g, "_") !== "platform_admin").length}
             </p>
           </div>
         </div>
@@ -319,12 +352,12 @@ export default function SuperAdminAdminsPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            (admin.role || "").toLowerCase().includes("master")
+                            (admin.role || "").toLowerCase().replace(/\s+/g, "_") === "platform_admin"
                               ? "bg-red-50 text-[#8b0e0f]"
                               : "bg-purple-100 text-purple-800"
                           }`}
                         >
-                          {admin.role}
+                          {formatRoleLabel(admin.role)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -351,14 +384,16 @@ export default function SuperAdminAdminsPage() {
                           >
                             <Edit size={18} />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteConfirm(admin._id ?? null)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                          {isSuperAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirm(admin._id ?? null)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Delete (Super Admin only)"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -444,6 +479,45 @@ export default function SuperAdminAdminsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                 />
               </div>
+              {modal === "create" && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                    <select
+                      value={form.role}
+                      onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as "admin" | "platform_admin" }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
+                    >
+                      {ADMIN_ROLE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Platform Admin: create/configure subscribers only. Subscriber Admin: company data only.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Company (optional)</label>
+                    <input
+                      type="text"
+                      value={form.company}
+                      onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
+                      placeholder="e.g. MyCompany"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Postal code (optional)</label>
+                    <input
+                      type="text"
+                      value={form.postal_code}
+                      onChange={(e) => setForm((f) => ({ ...f, postal_code: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
+                      placeholder="e.g. 54000"
+                    />
+                  </div>
+                </>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Password {modal === "edit" && "(leave blank to keep current)"}
@@ -458,16 +532,22 @@ export default function SuperAdminAdminsPage() {
                 />
               </div>
               {modal === "edit" && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="is_active"
-                    checked={form.is_active}
-                    onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-                    className="rounded border-gray-300"
-                  />
-                  <label htmlFor="is_active" className="text-sm text-gray-700">Active</label>
-                </div>
+                <>
+                  <div className="text-sm text-gray-600">
+                    Role: <span className="font-medium text-gray-900">{formatRoleLabel(form.role)}</span>
+                    <span className="ml-1 text-gray-400">(set at creation, cannot change here)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="is_active"
+                      checked={form.is_active}
+                      onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
+                      className="rounded border-gray-300"
+                    />
+                    <label htmlFor="is_active" className="text-sm text-gray-700">Active</label>
+                  </div>
+                </>
               )}
               <div className="flex gap-2 pt-2">
                 <button

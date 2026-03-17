@@ -132,7 +132,7 @@ export const scaleCoordinatesToSVG = (
         );
 
         const key = (line.customColor || line.label || 'unknown').toLowerCase();
-        const strokeColor = line.customColor || LINE_COLORS[key] || '#444';
+        const strokeColor = line.customColor || LINE_COLORS[key] || '#4A90D9';
 
         // Generate edge labels
         const edgeLabels = (line.edges || []).map((edge) => {
@@ -171,7 +171,7 @@ export const scaleCoordinatesToSVG = (
             svgCenterY
         );
 
-        const strokeColor = polygon.customColor || LINE_COLORS[polygon.label?.toLowerCase() || 'unknown'] || '#000';
+        const strokeColor = polygon.customColor || LINE_COLORS[polygon.label?.toLowerCase() || 'unknown'] || '#4A90D9';
 
         const edgeLabels = (polygon.edges || []).map((edge) => {
             const start = edge.start || ring[0];
@@ -189,7 +189,7 @@ export const scaleCoordinatesToSVG = (
 
         return {
             points,
-            fill: 'white',
+            fill: strokeColor,
             stroke: strokeColor,
             strokeWidth: 2,
             label: polygon.label?.toLowerCase() || 'unknown',

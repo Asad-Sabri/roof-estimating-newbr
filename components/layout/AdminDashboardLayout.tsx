@@ -32,6 +32,7 @@ const navItems = [
   { name: "Request Estimates", href: "/admin-panel/request-estimate", icon: ClipboardList },
   { name: "Preliminary Estimates", href: "/admin-panel/preliminary-estimates", icon: ClipboardCheck },
   { name: "Project Details", href: "/admin-panel/project-details", icon: FolderOpen },
+  { name: "Measurement Reports", href: "/admin-panel/measurement-reports", icon: FileText },
   { name: "Subscribers", href: "/admin-panel/companies", icon: Building2 },
   { name: "Customers", href: "/admin-panel/customers", icon: Users },
   { name: "Proposals", href: "/admin-panel/proposals", icon: FileText },

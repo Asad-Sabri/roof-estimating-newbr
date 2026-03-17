@@ -116,6 +116,7 @@ export const RoofMeasurementsDiagram: React.FC<
                 stroke={polygon.stroke}
                 strokeWidth={2}
                 fill={polygon.fill}
+                fillOpacity={0.25}
               />
 
               {/* Polygon edge labels sirf tab show hon jab showLengths true ho */}

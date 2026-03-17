@@ -23,7 +23,7 @@ import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import { useDispatch } from "react-redux";
 import { logout } from "@/redux/slices/authSlice";
 
-const navItems = [
+const superAdminNavItems = [
   { name: "Dashboard", href: "/super-admin/dashboard", icon: LayoutDashboard },
   { name: "Admins", href: "/super-admin/admins", icon: Shield },
   { name: "Customers", href: "/super-admin/customers", icon: Users },
@@ -33,6 +33,14 @@ const navItems = [
   { name: "Settings", href: "/super-admin/settings", icon: Settings },
 ];
 
+// Platform Admin: reduced menu (no Admins, no Settings) – subscriber CRUD only
+const platformAdminNavItems = [
+  { name: "Dashboard", href: "/super-admin/dashboard", icon: LayoutDashboard },
+  { name: "Subscribers", href: "/super-admin/companies", icon: Building2 },
+  { name: "Customers", href: "/super-admin/customers", icon: Users },
+  { name: "Reports", href: "/super-admin/reports", icon: BarChart3 },
+];
+
 export default function SuperAdminDashboardLayout({
   children,
 }: {
@@ -40,22 +48,28 @@ export default function SuperAdminDashboardLayout({
 }) {
   const { isAuthenticated, isChecking } = useProtectedRoute();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loginRole, setLoginRole] = useState<string | null>(null);
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const loginRole = localStorage.getItem("loginRole");
-      if (loginRole !== "super-admin") {
-        if (loginRole === "admin") {
-          window.location.href = "/admin-panel/dashboard";
-        } else {
-          window.location.href = "/customer-panel/dashboard";
-        }
+      const role = localStorage.getItem("loginRole");
+      setLoginRole(role);
+      const accessType = localStorage.getItem("access_type");
+      if (accessType === "portal_only" || role === "customer") {
+        window.location.href = "/customer-panel/dashboard";
+      } else if (role === "admin") {
+        window.location.href = "/admin-panel/dashboard";
+      } else if (role !== "super-admin" && role !== "platform-admin") {
+        window.location.href = "/customer-panel/dashboard";
       }
     }
   }, []);
+
+  const isPlatformAdmin = loginRole === "platform-admin";
+  const navItems = isPlatformAdmin ? platformAdminNavItems : superAdminNavItems;
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -161,10 +175,12 @@ export default function SuperAdminDashboardLayout({
             {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
           <h1 className="font-semibold text-lg tracking-wide truncate text-center lg:text-left">
-            {/* Super Admin Portal */}
+            {isPlatformAdmin ? "Platform Admin" : "Super Admin"}
           </h1>
           <div className="flex items-center space-x-4 text-left">
-            <span className="hidden sm:inline text-sm text-gray-600">Super Admin</span>
+            <span className="hidden sm:inline text-sm text-gray-600">
+              {isPlatformAdmin ? "Platform Admin" : "Super Admin"}
+            </span>
             <div className="w-10 h-10 rounded-full border shadow-sm bg-[#8b0e0f] flex items-center justify-center">
               <Shield className="text-white" size={20} />
             </div>

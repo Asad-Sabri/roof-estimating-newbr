@@ -275,7 +275,7 @@ export default function EstimateModal({
         : [REVIEW_ESTIMATES_LIST[0]];
       const estimatePriceArray = convertEstimatesToPriceArray(selectedEstimates);
 
-      // Prepare API payload – include user_id so backend associates estimate with logged-in user (table me us user ke against dikhe)
+      // Prepare API payload – backend Phase 1: roof_teep (category), roof_system (e.g. TPO, Shingle), keep roof_material/current_roof_material
       const apiPayload: Record<string, unknown> = {
         first_name: formData.firstName || "",
         last_name: formData.lastName || "",
@@ -283,18 +283,18 @@ export default function EstimateModal({
         mobile_number: formData.phone || "",
         address: addressObj,
         area: String(formData.totalArea || 0),
-        roof_teep: formData.roofSteepness || "",
+        roof_teep: formData.desiredRoofTypeCategory || formData.currentRoofTypeCategory || formData.roofSteepness || "",
         building_type: formData.buildingType || "",
         current_roof_material: formData.currentRoofType || "",
         current_roof_layer: formData.roofLayers === "I do not know" ? "" : formData.roofLayers || "",
         roof_material: formData.desiredRoofType || "",
+        roof_system: formData.desiredRoofType || "",
         timeline: mapTimeline(formData.projectTimeline),
         interested_in_financing: mapFinancingInterest(formData.financingInterest),
         estimate_price: estimatePriceArray,
       };
       if (userId) apiPayload.user_id = userId;
 
-      // Call backend API
       toast.info("Submitting your estimate request...");
       const response = await createInstantEstimateAPI(apiPayload);
 
@@ -337,7 +337,7 @@ export default function EstimateModal({
       // Clear current form from localStorage
       localStorage.removeItem("currentEstimateForm");
 
-      toast.success(response?.message || "Estimate submitted! A copy has been sent by email and SMS.");
+      toast.success(response?.message || "Estimate saved. You will receive an email and SMS shortly.");
       onSave(finalData);
 
       // Close modal - parent will redirect to measurements/estimates screen (no email send)

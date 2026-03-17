@@ -62,3 +62,33 @@ export const getPreliminaryRequestsAPI = () => {
     null
   );
 };
+
+/** GET /api/instant-estimates/:id/pdf – download instant estimate PDF (returns blob) */
+export const getInstantEstimatePdfUrl = (id) => {
+  if (!id) return null;
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
+  return `${base}/api/instant-estimates/${id}/pdf${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+};
+
+/** Trigger download: GET /api/instant-estimates/:id/pdf */
+export const downloadInstantEstimatePdfAPI = async (id, filename = "instant-estimate.pdf") => {
+  const res = await axiosInstance.get(`/api/instant-estimates/${id}/pdf`, { responseType: "blob" });
+  const url = window.URL.createObjectURL(res.data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  window.URL.revokeObjectURL(url);
+};
+
+/** GET /api/instant-estimates/:id/xactimate – download Xactimate XML */
+export const downloadInstantEstimateXactimateAPI = async (id, filename = "instant-estimate.xactimate.xml") => {
+  const res = await axiosInstance.get(`/api/instant-estimates/${id}/xactimate`, { responseType: "blob" });
+  const url = window.URL.createObjectURL(res.data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  window.URL.revokeObjectURL(url);
+};

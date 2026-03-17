@@ -497,7 +497,26 @@ export function useMapboxFunctions() {
     
     // Save location to localStorage
     if (typeof window !== "undefined") {
-      localStorage.setItem("projectLocation", JSON.stringify({ lat: tempLocation[1], lng: tempLocation[0] }));
+      const location = { lat: tempLocation[1], lng: tempLocation[0] };
+      localStorage.setItem("projectLocation", JSON.stringify(location));
+      // Ensure "projects" has at least one entry so saveShapesToProjects can save measurements for PDF
+      let projects = [];
+      try {
+        const raw = localStorage.getItem("projects");
+        projects = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(projects)) projects = [];
+        if (projects.length === 0) {
+          projects = [{
+            polygons: [],
+            lines: [],
+            totalArea: "0",
+            totalLength: "0",
+            mapboxBearing: "0",
+            ...location,
+          }];
+          localStorage.setItem("projects", JSON.stringify(projects));
+        }
+      } catch (_) {}
       // Also update projectAddress if it exists
       const projectAddress = localStorage.getItem("projectAddress");
       if (projectAddress) {

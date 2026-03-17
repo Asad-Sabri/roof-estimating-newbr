@@ -15,6 +15,9 @@ type AddressShape = {
   zip_code?: string;
 };
 
+type MaterialRow = { name: string; code?: string; price?: number; unit?: string };
+type PricingShape = { pricePerSqFt?: number; materials?: MaterialRow[] };
+
 type CompanyProfile = {
   companyName: string;
   licenseNumber?: string;
@@ -32,6 +35,7 @@ type CompanyProfile = {
   followUpText?: string;
   whatsIncluded?: string[];
   interestRate?: number;
+  pricing?: PricingShape;
 };
 
 function formatAddressLine(addr: AddressShape | undefined): string {
@@ -104,6 +108,7 @@ export default function CompanySettingsPage() {
             whatsIncluded,
             disclaimer: r.disclaimer ?? DEFAULT_COMPANY.disclaimer,
             interestRate: r.interestRate ?? r.interest_rate ?? DEFAULT_COMPANY.interestRate,
+            pricing: r.pricing ?? undefined,
           });
         }
       })
@@ -143,7 +148,7 @@ export default function CompanySettingsPage() {
   const handleSaveAll = async () => {
     setSaving(true);
     try {
-      const payload = {
+      const payload: any = {
         companyName: profile.companyName,
         licenseNumber: profile.licenseNumber,
         website: profile.website,
@@ -158,6 +163,12 @@ export default function CompanySettingsPage() {
         disclaimer: profile.disclaimer,
         interestRate: profile.interestRate,
       };
+      if (profile.pricing) {
+        payload.pricing = {
+          pricePerSqFt: profile.pricing.pricePerSqFt,
+          materials: profile.pricing.materials ?? [],
+        };
+      }
       await putCompanySettingsAPI(payload);
       setHasChanges(false);
       alert("Company settings saved successfully!");
@@ -252,6 +263,134 @@ export default function CompanySettingsPage() {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Subscriber pricing – used for instant estimate calculation (GET/PUT /api/company/settings) */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold mb-4">Pricing (per subscriber)</h2>
+            <p className="text-sm text-gray-600 mb-4">Used to calculate instant estimate amounts. Price per sq ft and material list.</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Price per sq ft ($)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={profile.pricing?.pricePerSqFt ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value === "" ? undefined : parseFloat(e.target.value);
+                    setProfile({
+                      ...profile,
+                      pricing: { ...profile.pricing, pricePerSqFt: v } as PricingShape,
+                    });
+                    setHasChanges(true);
+                  }}
+                  className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="e.g. 4.50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Materials (name, code, price, unit)</label>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border border-gray-200 rounded-md">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Name</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Code</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Price</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Unit</th>
+                        <th className="px-3 py-2 w-10" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(profile.pricing?.materials ?? []).map((m, i) => (
+                        <tr key={i} className="border-t border-gray-200">
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={m.name}
+                              onChange={(e) => {
+                                const materials = [...(profile.pricing?.materials ?? [])];
+                                materials[i] = { ...m, name: e.target.value };
+                                setProfile({ ...profile, pricing: { ...profile.pricing, materials } });
+                                setHasChanges(true);
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={m.code ?? ""}
+                              onChange={(e) => {
+                                const materials = [...(profile.pricing?.materials ?? [])];
+                                materials[i] = { ...m, code: e.target.value };
+                                setProfile({ ...profile, pricing: { ...profile.pricing, materials } });
+                                setHasChanges(true);
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.01}
+                              value={m.price ?? ""}
+                              onChange={(e) => {
+                                const materials = [...(profile.pricing?.materials ?? [])];
+                                materials[i] = { ...m, price: e.target.value === "" ? undefined : parseFloat(e.target.value) };
+                                setProfile({ ...profile, pricing: { ...profile.pricing, materials } });
+                                setHasChanges(true);
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={m.unit ?? ""}
+                              onChange={(e) => {
+                                const materials = [...(profile.pricing?.materials ?? [])];
+                                materials[i] = { ...m, unit: e.target.value };
+                                setProfile({ ...profile, pricing: { ...profile.pricing, materials } });
+                                setHasChanges(true);
+                              }}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              placeholder="sq ft"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const materials = (profile.pricing?.materials ?? []).filter((_, j) => j !== i);
+                                setProfile({ ...profile, pricing: { ...profile.pricing, materials } });
+                                setHasChanges(true);
+                              }}
+                              className="text-red-600 hover:bg-red-50 p-1 rounded"
+                            >
+                              ×
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const materials = [...(profile.pricing?.materials ?? []), { name: "", code: "", price: undefined, unit: "sq ft" }];
+                    setProfile({ ...profile, pricing: { ...profile.pricing, materials } });
+                    setHasChanges(true);
+                  }}
+                  className="mt-2 px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+                >
+                  + Add material
+                </button>
+              </div>
             </div>
           </div>
 

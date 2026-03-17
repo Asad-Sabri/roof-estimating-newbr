@@ -18,7 +18,8 @@ import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 
 import logo from "../../public/logo-latest.png";
 
-type LoginRole = "customer" | "admin" | "super-admin";
+// Backend Phase 1: super_admin, platform_admin, admin, manager, staff, customer
+type LoginRole = "super-admin" | "platform-admin" | "admin" | "customer";
 
 const geocodingClient = mbxGeocoding({
   accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN!,
@@ -302,7 +303,10 @@ export default function LoginPage() {
 
       if (token || tokenFromStorage) {
         const loginRole = localStorage.getItem("loginRole");
-        if (loginRole === "super-admin") {
+        const accessType = localStorage.getItem("access_type");
+        if (accessType === "portal_only" || loginRole === "customer") {
+          router.replace("/customer-panel/dashboard");
+        } else if (loginRole === "super-admin" || loginRole === "platform-admin") {
           router.replace("/super-admin/dashboard");
         } else if (loginRole === "admin") {
           router.replace("/admin-panel/dashboard");
@@ -329,21 +333,39 @@ export default function LoginPage() {
     onSuccess: (data: any) => {
       const { token, user } = data;
 
-      // Normalize backend role: customer | admin | super-admin (super admin pehle check karo)
-      const rawRole = (user?.role ?? data?.role ?? "").toString().toLowerCase().replace(/\s+/g, "-").replace(/_/g, "-");
+      // access_type: "platform" | "portal_only" – portal_only/customer never see platform dashboard
+      const accessType = (user?.access_type ?? data?.access_type ?? "").toString().toLowerCase();
+      const isPortalOnly = accessType === "portal_only";
+
+      // Normalize backend role: super_admin, platform_admin, admin, manager, staff, customer
+      const rawRole = (user?.role ?? data?.role ?? "").toString().toLowerCase().replace(/\s+/g, "_");
       const isSuperAdmin =
+        rawRole === "super_admin" ||
         rawRole === "super-admin" ||
         rawRole === "superadmin" ||
         user?.is_super_admin === true ||
         user?.isSuperAdmin === true ||
         data?.is_super_admin === true ||
         data?.isSuperAdmin === true;
-      const isAdmin = !isSuperAdmin && (rawRole === "admin" || rawRole === "master-admin" || rawRole === "sub-admin");
-      const actualRole: LoginRole = isSuperAdmin ? "super-admin" : isAdmin ? "admin" : "customer";
+      const isPlatformAdmin =
+        !isSuperAdmin && (rawRole === "platform_admin" || rawRole === "platform-admin");
+      const isSubscriberStaff =
+        !isSuperAdmin &&
+        !isPlatformAdmin &&
+        ["admin", "manager", "staff"].includes(rawRole);
+      const actualRole: LoginRole = isSuperAdmin
+        ? "super-admin"
+        : isPlatformAdmin
+          ? "platform-admin"
+          : isSubscriberStaff
+            ? "admin"
+            : "customer";
 
       if (typeof window !== "undefined") {
         localStorage.setItem("token", token);
         localStorage.setItem("loginRole", actualRole);
+        localStorage.setItem("access_type", isPortalOnly ? "portal_only" : "platform");
+        if (user) localStorage.setItem("userProfile", JSON.stringify(user));
         document.cookie = `token=${token}; path=/; max-age=${30 * 24 * 60 * 60}`;
       }
 
@@ -357,13 +379,17 @@ export default function LoginPage() {
       dispatch(setCredentials({ user, token }));
       toast.success(data?.message || "Login successful!");
 
-      // Redirect by role: customer → customer panel, admin → admin panel, super-admin → super-admin
+      // Customer or portal_only → always subscriber portal (customer panel); never platform dashboard
+      if (actualRole === "customer" || isPortalOnly) {
+        router.push("/customer-panel/dashboard");
+        return;
+      }
       if (actualRole === "super-admin") {
         router.push("/super-admin/dashboard");
-      } else if (actualRole === "admin") {
-        router.push("/admin-panel/dashboard");
+      } else if (actualRole === "platform-admin") {
+        router.push("/super-admin/dashboard"); // Platform Admin: subscriber CRUD; same layout, backend restricts actions
       } else {
-        router.push("/customer-panel/dashboard");
+        router.push("/admin-panel/dashboard");
       }
     },
     onError: (error: any, variables: { email: string; password: string }) => {

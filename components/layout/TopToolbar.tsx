@@ -3,26 +3,34 @@
 import React, { useEffect } from "react";
 import { generatePDF } from "./pdf/pdfGenerator";
 import mapboxgl from "mapbox-gl";
-import logoSrc from '../../public/logo-latest.png'
+import { toast } from "react-toastify";
+import logoSrc from "../../public/logo-latest.png";
 import Image from "next/image";
+
 interface HeaderToolbarProps {
   mapRef: React.RefObject<mapboxgl.Map | null>;
+  onBeforePdf?: () => void;
 }
 
-export default function HeaderToolbar({ mapRef }: HeaderToolbarProps) {
+export default function HeaderToolbar({ mapRef, onBeforePdf }: HeaderToolbarProps) {
   useEffect(() => {
     console.log("HeaderToolbar mounted. mapRef.current:", mapRef?.current);
   }, [mapRef]);
 
-  const handleDownloadPDF = () => {
-    if (!mapRef || !mapRef.current) {
-      console.warn("Map not ready yet!");
+  const handleDownloadPDF = async () => {
+    if (!mapRef?.current) {
+      toast.error("Map not ready yet.");
       return;
     }
-
-    const canvas = mapRef.current.getCanvas();
-    generatePDF({ mapImage: canvas.toDataURL("image/png") });
-    
+    try {
+      onBeforePdf?.();
+      const canvas = mapRef.current.getCanvas();
+      await generatePDF({ mapImage: canvas.toDataURL("image/png") });
+      toast.success("PDF downloaded.");
+    } catch (err: any) {
+      console.error("PDF generation failed:", err);
+      toast.error(err?.message || "PDF download failed. Try again.");
+    }
   };
 
   return (

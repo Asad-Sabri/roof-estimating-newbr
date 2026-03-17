@@ -44,6 +44,19 @@ export const useProtectedRoute = () => {
     const tokenFromStorage = localStorage.getItem("token");
     const isInstantEstimateVisitor = localStorage.getItem("isInstantEstimateVisitor");
     const customerAddress = localStorage.getItem("customerAddress");
+    const loginRole = localStorage.getItem("loginRole");
+    const accessType = localStorage.getItem("access_type");
+    
+    // Customer / portal_only: never see platform (super-admin or admin-panel); redirect to subscriber portal
+    const isCustomerOrPortalOnly = accessType === "portal_only" || loginRole === "customer";
+    const isPlatformRoute = pathname?.startsWith("/super-admin") || pathname?.startsWith("/admin-panel");
+    if (isCustomerOrPortalOnly && isPlatformRoute) {
+      hasRedirected.current = true;
+      router.replace("/customer-panel/dashboard");
+      setIsAuthenticated(true);
+      setIsChecking(false);
+      return;
+    }
     
     // Check if token exists OR if user is instant estimate visitor (for customer panel only)
     const isCustomerPanel = pathname?.startsWith("/customer-panel");

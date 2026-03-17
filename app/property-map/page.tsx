@@ -9,20 +9,17 @@ import { MapProvider, useMapContext } from "@/components/hooks/mapContext";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 function PageContent() {
-  const { mapRef } = useMapContext();
-  
-  // Prevent body scroll when on map page
+  const { mapRef, updateShapesData } = useMapContext();
+
   useEffect(() => {
-    document.body.classList.add('map-page-no-scroll');
-    return () => {
-      document.body.classList.remove('map-page-no-scroll');
-    };
+    document.body.classList.add("map-page-no-scroll");
+    return () => document.body.classList.remove("map-page-no-scroll");
   }, []);
-  
+
   return (
     <div className="fixed inset-0 w-full h-full overflow-hidden" style={{ top: 0, left: 0, right: 0, bottom: 0 }}>
       <LeftSidebar />
-      <TopToolbar mapRef={mapRef} />
+      <TopToolbar mapRef={mapRef} onBeforePdf={updateShapesData} />
       <div className="absolute inset-0 w-full h-full">
         <Mapbox />
       </div>

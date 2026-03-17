@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import Link from "next/link";
-import { FileText, TrendingUp, DollarSign, Calendar, X, Eye, MapPin, Home, Layers, Clock, CreditCard, Trash2, ChevronDown, ChevronRight, Mail, Phone, User } from "lucide-react";
-import { getUserInstantEstimatesAPI, deleteInstantEstimateAPI, requestFullReportAPI } from "@/services/instantEstimateAPI";
+import { FileText, TrendingUp, DollarSign, Calendar, X, Eye, MapPin, Home, Layers, Clock, CreditCard, Trash2, ChevronDown, ChevronRight, Mail, Phone, User, Download, FileCode } from "lucide-react";
+import { getUserInstantEstimatesAPI, deleteInstantEstimateAPI, requestFullReportAPI, downloadInstantEstimatePdfAPI, downloadInstantEstimateXactimateAPI } from "@/services/instantEstimateAPI";
 import { generateEstimateReportPdfFromHtml } from "@/utils/estimateReportPdfFromHtml";
 import { sendPdfsAPI } from "@/services/emailAPI";
 import { toast } from "react-toastify";
@@ -284,6 +284,8 @@ export default function EstimatingPage() {
   const [isPreliminaryModalOpen, setIsPreliminaryModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [emailingId, setEmailingId] = useState<string | null>(null);
+  const [pdfDownloadId, setPdfDownloadId] = useState<string | null>(null);
+  const [xactimateDownloadId, setXactimateDownloadId] = useState<string | null>(null);
   const [requestFullReportId, setRequestFullReportId] = useState<string | null>(null);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
@@ -355,6 +357,32 @@ export default function EstimatingPage() {
       alert("Failed to delete estimate. Please try again.");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleDownloadPdf = async (id: string) => {
+    if (!id) return;
+    setPdfDownloadId(id);
+    try {
+      await downloadInstantEstimatePdfAPI(id);
+      toast.success("PDF downloaded.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to download PDF.");
+    } finally {
+      setPdfDownloadId(null);
+    }
+  };
+
+  const handleDownloadXactimate = async (id: string) => {
+    if (!id) return;
+    setXactimateDownloadId(id);
+    try {
+      await downloadInstantEstimateXactimateAPI(id);
+      toast.success("Xactimate export downloaded.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to export Xactimate.");
+    } finally {
+      setXactimateDownloadId(null);
     }
   };
 
@@ -659,6 +687,24 @@ export default function EstimatingPage() {
                                 {emailingId === est._id ? "Sending…" : "Email report"}
                               </button>
                               <button
+                                onClick={(e) => { e.stopPropagation(); handleDownloadPdf(est._id); }}
+                                disabled={pdfDownloadId === est._id}
+                                title="Download PDF"
+                                className="px-3 py-1.5 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                              >
+                                <Download className="w-3 h-3" />
+                                {pdfDownloadId === est._id ? "…" : "PDF"}
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDownloadXactimate(est._id); }}
+                                disabled={xactimateDownloadId === est._id}
+                                title="Export Xactimate"
+                                className="px-3 py-1.5 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                              >
+                                <FileCode className="w-3 h-3" />
+                                {xactimateDownloadId === est._id ? "…" : "Xactimate"}
+                              </button>
+                              <button
                                 onClick={() => handleDeleteEstimate(est._id)}
                                 disabled={deletingId === est._id}
                                 className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -784,6 +830,22 @@ export default function EstimatingPage() {
                                   >
                                     <Mail className="w-3 h-3" />
                                     {emailingId === est._id ? "Sending…" : "Email report"}
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleDownloadPdf(est._id); }}
+                                    disabled={pdfDownloadId === est._id}
+                                    title="Download PDF"
+                                    className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-50 cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
+                                  >
+                                    <Download className="w-3 h-3" /> {pdfDownloadId === est._id ? "…" : "PDF"}
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleDownloadXactimate(est._id); }}
+                                    disabled={xactimateDownloadId === est._id}
+                                    title="Export Xactimate"
+                                    className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-50 cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
+                                  >
+                                    <FileCode className="w-3 h-3" /> {xactimateDownloadId === est._id ? "…" : "Xactimate"}
                                   </button>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); handleDeleteEstimate(est._id); }}
