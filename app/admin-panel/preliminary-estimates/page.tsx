@@ -61,6 +61,18 @@ function roofTypeToCategory(roofType: string): string {
   return "";
 }
 
+type Prefill = {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  email: string;
+  mobile: string;
+  address: string;
+  roofType: string;
+  propertyType: string;
+  roofTypeCategory?: string;
+};
+
 /** Map building type to request-estimate propertyType option values */
 function toPropertyType(v: any): string {
   const s = String(v || "").toLowerCase();
@@ -71,7 +83,7 @@ function toPropertyType(v: any): string {
 }
 
 /** Build initial form values from preliminary request item */
-function getPrefillFromItem(item: any) {
+function getPrefillFromItem(item: any): Prefill {
   const customer = item?.customer ?? item?.user ?? item;
   const estimate = item?.estimate ?? item?.instantEstimate ?? item;
   const name = customer?.name ?? ([customer?.first_name, customer?.last_name].filter(Boolean).join(" ")) ?? estimate?.name ?? "";
