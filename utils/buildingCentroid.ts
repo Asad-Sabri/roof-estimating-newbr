@@ -98,15 +98,15 @@ export async function getBuildingCentroid(lng: number, lat: number): Promise<Bui
  * From Mapbox geocode feature, get best point for pin: try building centroid, else bbox center, else feature.center.
  */
 export async function getPinCoordinatesFromFeature(feature: {
-  center?: [number, number];
-  bbox?: [number, number, number, number];
+  center?: number[] | [number, number];
+  bbox?: number[] | [number, number, number, number];
   geometry?: { type: string; coordinates?: number[] };
 }): Promise<[number, number]> {
   let lng: number, lat: number;
-  if (feature.geometry?.type === "Point" && feature.geometry.coordinates?.length >= 2) {
+  if (feature.geometry?.type === "Point" && (feature.geometry.coordinates?.length ?? 0) >= 2) {
     [lng, lat] = feature.geometry.coordinates as [number, number];
   } else if (feature.center && feature.center.length >= 2) {
-    [lng, lat] = feature.center;
+    [lng, lat] = feature.center.slice(0, 2) as [number, number];
   } else if (feature.bbox && feature.bbox.length >= 4) {
     lng = (feature.bbox[0] + feature.bbox[2]) / 2;
     lat = (feature.bbox[1] + feature.bbox[3]) / 2;

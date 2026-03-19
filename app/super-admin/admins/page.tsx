@@ -145,6 +145,8 @@ export default function SuperAdminAdminsPage() {
       password: "",
       is_active: (admin.status || "").toLowerCase() !== "inactive",
       role: (admin.role === "platform_admin" || (admin.role || "").toLowerCase() === "platform_admin") ? "platform_admin" : "admin",
+      company: admin.company ?? "",
+      postal_code: "",
     });
     try {
       const res = await getAdminByIdAPI(id);
