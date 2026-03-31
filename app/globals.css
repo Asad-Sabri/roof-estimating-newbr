@@ -83,17 +83,15 @@ body.map-page-no-scroll {
   pointer-events: none;
 }
 
-/* Ensure Mapbox markers are visible on top of EVERYTHING */
+/* Ensure Mapbox markers are visible on top. Do NOT set position – Mapbox uses absolute + transform for correct placement on zoom/pan (works with Google tiles). */
 .mapboxgl-marker-container {
   z-index: 9999 !important;
-  position: relative !important;
   display: block !important;
   visibility: visible !important;
 }
 
 .mapboxgl-marker {
   z-index: 9999 !important;
-  /* position: relative !important; */
   display: block !important;
   visibility: visible !important;
 }
@@ -103,7 +101,6 @@ body.map-page-no-scroll {
 .mapboxgl-marker div,
 .mapboxgl-marker > * {
   z-index: 9999 !important;
-  position: absolute !important;
   pointer-events: auto !important;
   display: block !important;
   visibility: visible !important;
@@ -119,10 +116,9 @@ body.map-page-no-scroll {
   z-index: 0 !important;
 }
 
-/* Ensure marker wrapper is on top */
+/* Ensure marker wrapper is on top – no position override so Mapbox positioning works on zoom */
 .mapboxgl-marker-wrapper {
   z-index: 9999 !important;
-  position: relative !important;
 }
 
 

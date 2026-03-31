@@ -65,24 +65,31 @@ export function useMapboxFunctions() {
         .addTo(mapRef.current);
       const el = marker.getElement();
       if (el) {
-        // Don't set position/top/left – Mapbox positions marker via transform; those break it
+        // Don't set position/top/left – Mapbox positions marker via transform (needed for Google tiles)
         el.style.opacity = "1";
         el.style.willChange = "transform";
         el.style.transition = "opacity .2s";
         el.style.zIndex = "9999";
+        el.style.pointerEvents = draggable ? "auto" : "none";
         const container = el.closest(".mapboxgl-marker-container");
         if (container && container instanceof HTMLElement) {
           (container as HTMLElement).style.zIndex = "9999";
-          (container as HTMLElement).style.pointerEvents = "auto";
+          (container as HTMLElement).style.pointerEvents = draggable ? "auto" : "none";
         }
       }
-      // Add drag listener if draggable
-      if (draggable) {
-        marker.on("drag", (ev) => {
-          const p = (ev.target as mapboxgl.Marker).getLngLat();
-          setTempLocation([p.lng, p.lat]);
-        });
-      }
+      // Keep temp/pin location synced while dragging in edit mode
+      marker.on("drag", (ev) => {
+        const p = (ev.target as mapboxgl.Marker).getLngLat();
+        const next: [number, number] = [p.lng, p.lat];
+        setTempLocation(next);
+        setPinLocation(next);
+      });
+      marker.on("dragend", (ev) => {
+        const p = (ev.target as mapboxgl.Marker).getLngLat();
+        const next: [number, number] = [p.lng, p.lat];
+        setTempLocation(next);
+        setPinLocation(next);
+      });
       
       pinMarkerRef.current = marker;
     } else {
@@ -94,10 +101,11 @@ export function useMapboxFunctions() {
         el.style.willChange = "transform";
         el.style.transition = "opacity .2s";
         el.style.zIndex = "9999";
+        el.style.pointerEvents = draggable ? "auto" : "none";
         const container = el.closest(".mapboxgl-marker-container");
         if (container && container instanceof HTMLElement) {
           (container as HTMLElement).style.zIndex = "9999";
-          (container as HTMLElement).style.pointerEvents = "auto";
+          (container as HTMLElement).style.pointerEvents = draggable ? "auto" : "none";
         }
       }
     }
@@ -357,7 +365,7 @@ export function useMapboxFunctions() {
         if (!el) {
           el = document.createElement("div");
           el.style.cssText = `
-            position: absolute;
+            // position: absolute;
             background: ${background};
             padding: 2px 4px;
             border-radius: 3px;
@@ -366,7 +374,7 @@ export function useMapboxFunctions() {
             color: ${color};
             text-align: center;
             pointer-events: none;
-            transform: translate(-50%, -50%);
+            // transform: translate(-50%, -50%);
             z-index: 1000;
             border: ${border};
           `;
@@ -531,13 +539,30 @@ export function useMapboxFunctions() {
       }
     }
     
+    setPinLocation(tempLocation);
     // Hide location card and exit edit mode
     setIsLocationConfirmed(true);
     setIsEditMode(false);
     setShowLocationCard(false);
     
-    // Update marker position and make it non-draggable (fixed at location)
+    // Lock marker: position + non-draggable (so it stays fixed with Google tiles + Mapbox)
     setMarkerAtLocation(tempLocation, false);
+    // Enforce lock after React flush so pin never moves on zoom/pan
+    const lockedLngLat = tempLocation;
+    requestAnimationFrame(() => {
+      if (pinMarkerRef.current) {
+        pinMarkerRef.current.setLngLat(lockedLngLat);
+        pinMarkerRef.current.setDraggable(false);
+        const el = pinMarkerRef.current.getElement();
+        if (el) {
+          el.style.pointerEvents = "none";
+          const container = el.closest(".mapboxgl-marker-container");
+          if (container && container instanceof HTMLElement) {
+            (container as HTMLElement).style.pointerEvents = "none";
+          }
+        }
+      }
+    });
     
     // Zoom to confirmed location - marker will stay fixed at coordinates
     if (mapRef.current) {
@@ -555,9 +580,21 @@ export function useMapboxFunctions() {
     setIsLocationConfirmed(false);
     setIsEditMode(true); // Enable edit mode when "Change Location" is clicked
     setShowLocationCard(true);
-    // Make marker draggable and enable map clicks
+    // Make marker draggable again and re-enable pointer-events
     if (pinMarkerRef.current) {
+      const p = pinMarkerRef.current.getLngLat();
+      const next: [number, number] = [p.lng, p.lat];
+      setTempLocation(next);
+      setPinLocation(next);
       pinMarkerRef.current.setDraggable(true);
+      const el = pinMarkerRef.current.getElement();
+      if (el) {
+        el.style.pointerEvents = "auto";
+        const container = el.closest(".mapboxgl-marker-container");
+        if (container && container instanceof HTMLElement) {
+          (container as HTMLElement).style.pointerEvents = "auto";
+        }
+      }
     }
   }, []);
   useEffect(() => {
