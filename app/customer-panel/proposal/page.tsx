@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { jsPDF } from "jspdf";
-import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
+import CustomerLayout from "@/components/layout/CustomerLayout";
 
 /**
  * Proposal Page (Professional + Functional)
@@ -440,7 +440,7 @@ export default function ProposalPage() {
   }
 
   return (
-    <CustomerDashboardLayout>
+    <CustomerLayout>
       <motion.main
         className="text-gray-900 flex flex-col"
         initial={{ opacity: 0, y: 8 }}
@@ -698,7 +698,7 @@ export default function ProposalPage() {
           © {new Date().getFullYear()} Roof Estimate CRM. All rights reserved.
         </footer>
       </motion.main>
-    </CustomerDashboardLayout>
+    </CustomerLayout>
   );
 }
 

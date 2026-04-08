@@ -17,7 +17,7 @@ import {
   Filter,
   MessageSquare,
 } from "lucide-react";
-import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
+import CustomerLayout from "@/components/layout/CustomerLayout";
 
 /* -------------------- Types -------------------- */
 type Update = {
@@ -281,7 +281,7 @@ export default function JobProgressPage() {
 
   /* -------------------- Render -------------------- */
   return (
-    <CustomerDashboardLayout>
+    <CustomerLayout>
       <motion.main
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
@@ -729,7 +729,7 @@ export default function JobProgressPage() {
           © {new Date().getFullYear()} Roof Estimate CRM. All rights reserved.
         </footer>
       </motion.main>
-    </CustomerDashboardLayout>
+    </CustomerLayout>
   );
 }
 

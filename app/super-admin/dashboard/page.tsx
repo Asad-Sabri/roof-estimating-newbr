@@ -1,107 +1,156 @@
 "use client";
 
-import SuperAdminDashboardLayout from "@/components/layout/SuperAdminDashboardLayout";
+import PlatformLayout from "@/components/layout/PlatformLayout";
 import {
-  Users,
   Shield,
   Building2,
-  BarChart3,
   ArrowRight,
-  TrendingUp,
-  DollarSign,
+  Settings,
   Activity,
+  Eye,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import { usePlatformAccess } from "@/lib/auth/usePlatformAccess";
+import { platformBaseForRole } from "@/lib/routes/portalPaths";
 
-// Stats Overview
-const stats = [
-  { 
-    name: "Total Admins", 
-    value: "12", 
-    icon: Shield, 
-    color: "from-blue-600 to-blue-700", 
-    link: "/super-admin/admins" 
-  },
-  { 
-    name: "Total Customers", 
-    value: "1,248", 
-    icon: Users, 
-    color: "from-green-600 to-green-700", 
-    link: "/super-admin/customers" 
-  },
-  { 
-    name: "Active Subscribers", 
-    value: "8", 
-    icon: Building2, 
-    color: "from-purple-600 to-purple-700", 
-    link: "/super-admin/companies" 
-  },
-  { 
-    name: "Total Revenue", 
-    value: "$2.5M", 
-    icon: DollarSign, 
-    color: "from-yellow-600 to-yellow-700", 
-    link: "/super-admin/reports" 
-  },
-  { 
-    name: "Active Jobs", 
-    value: "156", 
-    icon: Activity, 
-    color: "from-red-600 to-red-700", 
-    link: "/super-admin/reports" 
-  },
-  { 
-    name: "Growth Rate", 
-    value: "+24%", 
-    icon: TrendingUp, 
-    color: "from-cyan-600 to-cyan-700", 
-    link: "/super-admin/reports" 
-  },
-];
-
-// Recent Activities
-const activities = [
-  { id: 1, type: "admin", user: "John Admin", action: "Created new admin account", time: "5m ago" },
-  { id: 2, type: "customer", user: "Sarah Customer", action: "Registered new account", time: "12m ago" },
-  { id: 3, type: "company", user: "ABC Roofing Co", action: "New company registered", time: "1h ago" },
-  { id: 4, type: "admin", user: "Mike Admin", action: "Updated customer assignment", time: "2h ago" },
-  { id: 5, type: "customer", user: "David Customer", action: "Requested estimate", time: "3h ago" },
-];
-
-export default function SuperAdminDashboardPage() {
+export default function PlatformDashboardPage() {
   useProtectedRoute();
+  const {
+    role,
+    isPlatformSuperAdmin,
+    isReadOnlyPlatformAdmin,
+    canManagePlatformAdmins,
+    canEditPlatformSettings,
+    canCreateSubscribers,
+    canDeleteSubscribers,
+    canEditSubscribers,
+  } = usePlatformAccess();
+
+  const base = platformBaseForRole(role);
+
+  const statsSuper = [
+    {
+      name: "Platform admins",
+      value: "—",
+      icon: Shield,
+      color: "from-blue-600 to-blue-700",
+      link: `${base}/admins`,
+    },
+    {
+      name: "Active subscribers",
+      value: "—",
+      icon: Building2,
+      color: "from-purple-600 to-purple-700",
+      link: `${base}/companies`,
+    },
+    {
+      name: "Platform settings",
+      value: "Configure",
+      icon: Settings,
+      color: "from-slate-600 to-slate-800",
+      link: `${base}/settings`,
+    },
+  ];
+
+  const statsPlatformAdmin = [
+    {
+      name: "Subscribers",
+      value: "—",
+      icon: Building2,
+      color: "from-purple-600 to-purple-700",
+      link: `${base}/companies`,
+    },
+    {
+      name: "Admins (directory)",
+      value: "View",
+      icon: Eye,
+      color: "from-indigo-600 to-indigo-800",
+      link: `${base}/admins`,
+    },
+  ];
+
+  const stats = isPlatformSuperAdmin ? statsSuper : statsPlatformAdmin;
+
+  const activitiesSuper = [
+    {
+      id: 1,
+      type: "admin",
+      user: "Full access",
+      action: "Manage subscribers, platform admins, and system settings from the sidebar.",
+      time: "—",
+    },
+    {
+      id: 2,
+      type: "company",
+      user: "aiROOFS.pro",
+      action: "End-customer data stays in subscriber workspaces — not on this platform console.",
+      time: "—",
+    },
+  ];
+
+  const activitiesLimited = [
+    {
+      id: 1,
+      type: "admin",
+      user: "Limited access",
+      action:
+        "You can view platform settings and the admins list. Edit subscribers but you cannot add/delete subscribers or manage admin accounts.",
+      time: "—",
+    },
+  ];
+
+  const activities = isPlatformSuperAdmin ? activitiesSuper : activitiesLimited;
 
   return (
-    <SuperAdminDashboardLayout>
+    <PlatformLayout>
       <div className="space-y-8 animate-fadeIn">
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between text-white p-6 rounded-2xl shadow-md" style={{ backgroundColor: "#8b0e0f" }}>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between text-white p-6 rounded-2xl shadow-md bg-red-900">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Super Admin Dashboard</h1>
-            <p className="text-sm text-white opacity-90 mt-1">
-              Full system overview and management
+            <h1 className="text-2xl md:text-3xl font-bold">
+              {isPlatformSuperAdmin ? "Platform Super Admin" : "Platform Admin"}
+            </h1>
+            <p className="text-sm text-white opacity-90 mt-1 max-w-xl">
+              {isPlatformSuperAdmin
+                ? "Full control: subscribers, platform admins, settings, and reports."
+                : "Access follows permissions set by Platform Super Admin."}
             </p>
           </div>
-          <div className="mt-4 md:mt-0">
+          <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-2">
             <Link
-              href="/super-admin/reports"
-              className="flex items-center gap-2 bg-white font-semibold px-4 py-2 rounded-lg shadow hover:bg-gray-100 transition"
-              style={{ color: "#8b0e0f" }}
+              href={`${base}/companies`}
+              className="flex items-center justify-center gap-2 bg-white font-semibold px-4 py-2 rounded-lg shadow hover:bg-gray-100 transition text-slate-900"
             >
-              View Full Reports <ArrowRight className="h-4 w-4" />
+              Subscribers <ArrowRight className="h-4 w-4" />
             </Link>
+            {isPlatformSuperAdmin && (
+              <Link
+                href={`${base}/admins`}
+                className="flex items-center justify-center gap-2 bg-sky-600 font-semibold px-4 py-2 rounded-lg shadow hover:bg-sky-500 transition text-white"
+              >
+                Admin management <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
           </div>
         </div>
 
-        {/* Stats Section */}
+        {isReadOnlyPlatformAdmin && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <strong className="font-semibold">Limited access:</strong> your role only has read / report permissions.
+            Ask a Platform Super Admin to assign companies.* or admins.* as needed.
+          </div>
+        )}
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (
               <Link key={stat.name} href={stat.link}>
                 <div className="group bg-white rounded-xl shadow-lg p-6 flex items-center gap-5 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer relative overflow-hidden">
-                  <div className={`p-4 rounded-xl bg-gradient-to-r ${stat.color} text-white shadow-md`}>
+                  <div
+                    className={`p-4 rounded-xl bg-gradient-to-r ${stat.color} text-white shadow-md`}
+                  >
                     <Icon className="h-7 w-7" />
                   </div>
                   <div>
@@ -115,28 +164,25 @@ export default function SuperAdminDashboardPage() {
           })}
         </div>
 
-        {/* Recent Activities */}
         <div className="bg-white rounded-xl shadow-md p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Activity className="h-5 w-5 text-blue-600" />
-            Recent System Activities
+            <Activity className="h-5 w-5 text-slate-700" />
+            {isPlatformSuperAdmin ? "Activity" : "What you can do"}
           </h2>
           <div className="space-y-3">
             {activities.map((activity) => (
               <div
                 key={activity.id}
-                className="flex items-start justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                className="flex items-start justify-between p-4 bg-gray-50 rounded-lg"
               >
                 <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-lg ${
-                    activity.type === "admin" ? "bg-blue-100" :
-                    activity.type === "customer" ? "bg-green-100" :
-                    "bg-purple-100"
-                  }`}>
+                  <div
+                    className={`p-2 rounded-lg ${
+                      activity.type === "admin" ? "bg-blue-100" : "bg-purple-100"
+                    }`}
+                  >
                     {activity.type === "admin" ? (
                       <Shield className="h-4 w-4 text-blue-600" />
-                    ) : activity.type === "customer" ? (
-                      <Users className="h-4 w-4 text-green-600" />
                     ) : (
                       <Building2 className="h-4 w-4 text-purple-600" />
                     )}
@@ -152,54 +198,73 @@ export default function SuperAdminDashboardPage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
         <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
+            <h2 className="text-lg font-semibold mb-4">Quick actions</h2>
             <div className="space-y-3">
+              {canManagePlatformAdmins && (
+                <Link
+                  href={`${base}/admins`}
+                  className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition"
+                >
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  <span className="font-medium">Create / manage platform admins</span>
+                </Link>
+              )}
+              {!canManagePlatformAdmins && !isPlatformSuperAdmin && (
+                <Link
+                  href={`${base}/admins`}
+                  className="flex items-center gap-3 p-4 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition"
+                >
+                  <Eye className="h-5 w-5 text-indigo-700" />
+                  <span className="font-medium">View admins directory</span>
+                </Link>
+              )}
               <Link
-                href="/super-admin/admins/create"
-                className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition"
-              >
-                <Shield className="h-5 w-5 text-blue-600" />
-                <span className="font-medium">Create New Admin</span>
-              </Link>
-              <Link
-                href="/super-admin/customers"
-                className="flex items-center gap-3 p-4 bg-green-50 border border-green-100 rounded-lg hover:bg-green-100 transition"
-              >
-                <Users className="h-5 w-5 text-green-600" />
-                <span className="font-medium">Manage Customers</span>
-              </Link>
-              <Link
-                href="/super-admin/companies"
+                href={`${base}/companies`}
                 className="flex items-center gap-3 p-4 bg-purple-50 border border-purple-100 rounded-lg hover:bg-purple-100 transition"
               >
                 <Building2 className="h-5 w-5 text-purple-600" />
-                <span className="font-medium">View All Subscribers</span>
+                <span className="font-medium">
+                  {canCreateSubscribers || canEditSubscribers || canDeleteSubscribers
+                    ? "Manage subscribers"
+                    : "View subscribers"}
+                </span>
               </Link>
+              {canEditPlatformSettings && (
+                <Link
+                  href={`${base}/settings`}
+                  className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-lg hover:bg-slate-100 transition"
+                >
+                  <Settings className="h-5 w-5 text-slate-700" />
+                  <span className="font-medium">Platform settings</span>
+                </Link>
+              )}
             </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-lg font-semibold mb-4">System Overview</h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-600">Total Users</span>
-                <span className="font-bold text-gray-900">1,260</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-600">Active Sessions</span>
-                <span className="font-bold text-gray-900">342</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-600">Pending Requests</span>
-                <span className="font-bold text-red-600">23</span>
-              </div>
-            </div>
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-slate-600" />
+              Scope
+            </h2>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {isPlatformSuperAdmin ? (
+                <>
+                  You have full platform access: create and remove subscribers and platform admins,
+                  change platform-wide settings, and use platform reports when available.
+                </>
+              ) : (
+                <>
+                  Your actions follow the permissions on your account (e.g. companies.* for
+                  subscribers, admins.* for the admins area — system settings are only for Platform
+                  Super Admin).
+                </>
+              )}
+            </p>
           </div>
         </div>
       </div>
-    </SuperAdminDashboardLayout>
+    </PlatformLayout>
   );
 }

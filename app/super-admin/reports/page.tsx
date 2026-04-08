@@ -1,6 +1,6 @@
 "use client";
 
-import SuperAdminDashboardLayout from "@/components/layout/SuperAdminDashboardLayout";
+import PlatformLayout from "@/components/layout/PlatformLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import { BarChart3, TrendingUp, DollarSign, Users, Building2 } from "lucide-react";
 
@@ -8,7 +8,7 @@ export default function SuperAdminReportsPage() {
   useProtectedRoute();
 
   return (
-    <SuperAdminDashboardLayout>
+    <PlatformLayout>
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -118,6 +118,6 @@ export default function SuperAdminReportsPage() {
           </div>
         </div>
       </div>
-    </SuperAdminDashboardLayout>
+    </PlatformLayout>
   );
 }

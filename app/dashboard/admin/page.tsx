@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Redirect-only page; admin layout lives in @/components/layout/AdminDashboardLayout */
+/** Redirect-only page; admin layout lives in @/components/layout/SubscriberLayout */
 export default function DashboardAdminPage(): never {
-  redirect("/admin-panel/dashboard");
+  redirect("/subscriber-admin/dashboard");
 }

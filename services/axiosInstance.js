@@ -1,6 +1,12 @@
   // services/axiosInstance.js
   import axios from "axios";
   import { parseCookies } from "nookies";
+  import { sendTenantHeader, autoTenantForSubscriberAndCustomer } from "@/lib/auth/env";
+  import {
+    getStoredCanonicalRole,
+    isCustomerRole,
+    isSubscriberRole,
+  } from "@/lib/auth/roles";
 
 export const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL, // ab /api hai
@@ -28,6 +34,25 @@ export const axiosInstance = axios.create({
           config.headers.Authorization = `Bearer ${token}`;
         }
 
+        if (typeof window !== "undefined") {
+          const tenantId = localStorage.getItem("tenantId");
+          if (tenantId) {
+            let attachTenant = sendTenantHeader();
+            if (!attachTenant && autoTenantForSubscriberAndCustomer()) {
+              const role = getStoredCanonicalRole();
+              if (
+                role &&
+                (isSubscriberRole(role) || isCustomerRole(role))
+              ) {
+                attachTenant = true;
+              }
+            }
+            if (attachTenant) {
+              config.headers["X-Tenant-Id"] = tenantId;
+            }
+          }
+        }
+
         return config;
       } catch (err) {
         console.error("Error in request interceptor:", err);
@@ -37,14 +62,29 @@ export const axiosInstance = axios.create({
     (error) => Promise.reject(error)
   );
 
-  // ✅ Handle response errors globally
   axiosInstance.interceptors.response.use(
     (response) => response,
     (error) => {
       const status = error?.response?.status;
-      // if (status === 401 && typeof window !== "undefined") {
-      //   window.location.href = "/login";
-      // }
+      const data = error?.response?.data;
+      const msg =
+        (typeof data?.message === "string" && data.message) ||
+        (typeof data?.detail === "string" && data.detail) ||
+        "";
+
+      if (typeof window !== "undefined") {
+        const reqUrl = String(error?.config?.url || "");
+        const isLoginPost = reqUrl.includes("/api/login");
+        if (status === 401 && !isLoginPost) {
+          import("react-toastify").then(({ toast }) => {
+            toast.error(msg || "Session expired — please sign in again");
+          });
+        } else if (status === 403) {
+          import("react-toastify").then(({ toast }) => {
+            toast.error(msg || "Access denied");
+          });
+        }
+      }
       return Promise.reject(error);
     }
   );
@@ -55,8 +95,12 @@ export const axiosInstance = axios.create({
       const { data } = await requestFunc(endpoint, requestData);
       return data;
     } catch (error) {
+      const body = error?.response?.data;
       const errorMessage =
-        error?.response?.data?.message || error.message || "Unknown error";
+        (typeof body?.message === "string" && body.message) ||
+        (typeof body?.detail === "string" && body.detail) ||
+        error.message ||
+        "Unknown error";
       console.error(`API Error (${endpoint}):`, errorMessage);
       throw error;
     }

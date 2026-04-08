@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { User, Shield, X } from "lucide-react";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 type Role = "Customer" | "Sales Rep" | "Estimator" | "Crew";
@@ -142,7 +142,7 @@ export default function AssignRolesPage() {
   }, [activeUser]);
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         {/* Header */}
         <header className="flex items-center gap-2">
@@ -303,6 +303,6 @@ export default function AssignRolesPage() {
           </div>
         )}
       </motion.div>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

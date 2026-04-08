@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { getUserProjectsAPI } from "@/services/auth";
-import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
+import CustomerLayout from "@/components/layout/CustomerLayout";
 import { Search, Trash2, Eye, Router } from "lucide-react";
 import axios from "axios";
 import router from "next/router";
+import { CUSTOMER_BASE } from "@/lib/routes/portalPaths";
 
 interface Project {
   _id: string;
@@ -112,21 +113,21 @@ export default function ProjectDetailsPage() {
 
   if (loading) {
     return (
-      <CustomerDashboardLayout>
+      <CustomerLayout>
         <div className="min-h-screen flex justify-center items-center">
           <p className="text-gray-500 text-lg">Loading projects...</p>
         </div>
-      </CustomerDashboardLayout>
+      </CustomerLayout>
     );
   }
 
   if (!projects.length) {
     return (
-      <CustomerDashboardLayout>
+      <CustomerLayout>
         <div className="min-h-screen flex justify-center items-center">
           <p className="text-gray-500 text-lg">No projects found.</p>
         </div>
-      </CustomerDashboardLayout>
+      </CustomerLayout>
     );
   }
 
@@ -137,7 +138,7 @@ export default function ProjectDetailsPage() {
   );
 
   return (
-    <CustomerDashboardLayout>
+    <CustomerLayout>
       <main className="min-h-screen px-4 md:px-8 py-10 bg-gray-100">
         <h1 className="text-3xl font-bold text-gray-800 mb-6">My Projects</h1>
 
@@ -260,7 +261,7 @@ export default function ProjectDetailsPage() {
                         {/* 👁️ View Button */}
                         <button
                           onClick={() =>
-                            router.push(`/customer-panel/map-view/${p._id}`)
+                            router.push(`${CUSTOMER_BASE}/map-view/${p._id}`)
                           }
                           className="p-2 rounded-full hover:bg-blue-100 transition"
                           title="View on Map"
@@ -299,6 +300,6 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
       </main>
-    </CustomerDashboardLayout>
+    </CustomerLayout>
   );
 }

@@ -10,7 +10,7 @@ import {
   ClipboardList,
   CalendarDays,
 } from "lucide-react";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 type Report = {
@@ -70,7 +70,7 @@ export default function AdminReportsPage() {
   }, []);
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -159,6 +159,6 @@ export default function AdminReportsPage() {
           </div>
         </section>
       </motion.main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

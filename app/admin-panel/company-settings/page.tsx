@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Save, Building2, Edit2 } from "lucide-react";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import { getCompanySettingsAPI, putCompanySettingsAPI } from "@/services/companyAPI";
 
@@ -181,7 +181,7 @@ export default function CompanySettingsPage() {
   };
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -617,6 +617,6 @@ export default function CompanySettingsPage() {
           </div>
         </section>
       </motion.main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

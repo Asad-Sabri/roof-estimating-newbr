@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
+import CustomerLayout from "@/components/layout/CustomerLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import Link from "next/link";
 import { FileText, TrendingUp, DollarSign, Calendar, X, Eye, MapPin, Home, Layers, Clock, CreditCard, Trash2, ChevronDown, ChevronRight, Mail, Phone, User, Download, FileCode } from "lucide-react";
@@ -9,6 +9,7 @@ import { getUserInstantEstimatesAPI, deleteInstantEstimateAPI, requestFullReport
 import { generateEstimateReportPdfFromHtml } from "@/utils/estimateReportPdfFromHtml";
 import { sendPdfsAPI } from "@/services/emailAPI";
 import { toast } from "react-toastify";
+import { CUSTOMER_BASE } from "@/lib/routes/portalPaths";
 
 /** API item ko Preliminary modal ke expected shape me convert karta hai */
 function apiItemToModalEstimate(est: any) {
@@ -465,7 +466,7 @@ export default function EstimatingPage() {
       : "N/A";
 
   return (
-    <CustomerDashboardLayout>
+    <CustomerLayout>
       <div className="space-y-6 min-h-full">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -476,7 +477,7 @@ export default function EstimatingPage() {
             </p>
           </div>
           <Link
-            href="/customer-panel/instant-estimate"
+            href={`${CUSTOMER_BASE}/instant-estimate`}
             className="px-6 py-3 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 w-fit"
             style={{ backgroundColor: "#8b0e0f" }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#6d0b0c")}
@@ -556,7 +557,7 @@ export default function EstimatingPage() {
                 Get your first estimate on the Instant Estimate page
               </p>
               <Link
-                href="/customer-panel/instant-estimate"
+                href={`${CUSTOMER_BASE}/instant-estimate`}
                 className="px-6 py-2 text-white rounded-lg transition cursor-pointer inline-block"
                 style={{ backgroundColor: "#8b0e0f" }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#6d0b0c")}
@@ -877,6 +878,6 @@ export default function EstimatingPage() {
           requestFullReportLoading={requestFullReportId != null}
         />
       </div>
-    </CustomerDashboardLayout>
+    </CustomerLayout>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import SuperAdminDashboardLayout from "@/components/layout/SuperAdminDashboardLayout";
+import PlatformLayout from "@/components/layout/PlatformLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import { usePlatformAccess } from "@/lib/auth/usePlatformAccess";
 import { useState, useEffect, useCallback } from "react";
 import { Users, Plus, Search, Edit, Trash2, MapPin, Loader2, X, UserPlus } from "lucide-react";
 import {
@@ -154,12 +155,14 @@ export default function SuperAdminCustomersPage() {
   }, [modal, fetchAdmins]);
 
   const openCreate = () => {
+    if (!canManagePlatformCustomers) return;
     setForm({ ...emptyForm });
     setFormError(null);
     setModal("create");
   };
 
   const openEdit = async (customer: Customer) => {
+    if (!canManagePlatformCustomers) return;
     const id = customer._id;
     if (!id) return;
     setEditCustomerId(id);
@@ -198,6 +201,7 @@ export default function SuperAdminCustomersPage() {
   };
 
   const openAssign = (customer: Customer) => {
+    if (!canManagePlatformCustomers) return;
     const id = customer._id;
     if (!id) return;
     setAssignCustomerId(id);
@@ -215,6 +219,7 @@ export default function SuperAdminCustomersPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManagePlatformCustomers) return;
     setFormLoading(true);
     setFormError(null);
     try {
@@ -242,6 +247,7 @@ export default function SuperAdminCustomersPage() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManagePlatformCustomers) return;
     if (!editCustomerId) return;
     setFormLoading(true);
     setFormError(null);
@@ -287,6 +293,7 @@ export default function SuperAdminCustomersPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canManagePlatformCustomers) return;
     setDeleteLoading(true);
     setError(null);
     try {
@@ -309,7 +316,7 @@ export default function SuperAdminCustomersPage() {
   );
 
   return (
-    <SuperAdminDashboardLayout>
+    <PlatformLayout>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -317,17 +324,23 @@ export default function SuperAdminCustomersPage() {
               <Users className="text-[#8b0e0f]" size={32} />
               Customers Management
             </h1>
-            <p className="text-gray-600 mt-1">View and manage all customer accounts</p>
+            <p className="text-gray-600 mt-1">
+              {canManagePlatformCustomers
+                ? "View and manage all customer accounts"
+                : "View customer accounts — changes need customers.assign permission."}
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition shadow-md"
-            style={{ backgroundColor: "#8b0e0f" }}
-          >
-            <Plus size={20} />
-            Create Customer
-          </button>
+          {canManagePlatformCustomers && (
+            <button
+              type="button"
+              onClick={openCreate}
+              className="flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition shadow-md"
+              style={{ backgroundColor: "#8b0e0f" }}
+            >
+              <Plus size={20} />
+              Create Customer
+            </button>
+          )}
         </div>
 
         {error && (
@@ -424,30 +437,37 @@ export default function SuperAdminCustomersPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openAssign(customer)}
-                            className="text-[#8b0e0f] hover:opacity-80"
-                            title="Assign to Admin"
-                          >
-                            <UserPlus size={18} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openEdit(customer)}
-                            className="text-[#8b0e0f] hover:opacity-80"
-                            title="Edit"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteConfirm(customer._id ?? null)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                          {canManagePlatformCustomers && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openAssign(customer)}
+                                className="text-[#8b0e0f] hover:opacity-80"
+                                title="Assign to Admin"
+                              >
+                                <UserPlus size={18} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openEdit(customer)}
+                                className="text-[#8b0e0f] hover:opacity-80"
+                                title="Edit"
+                              >
+                                <Edit size={18} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirm(customer._id ?? null)}
+                                className="text-red-600 hover:text-red-900"
+                                title="Delete"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </>
+                          )}
+                          {!canManagePlatformCustomers && (
+                            <span className="text-xs text-gray-400">View only</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -677,6 +697,6 @@ export default function SuperAdminCustomersPage() {
           </div>
         </div>
       )}
-    </SuperAdminDashboardLayout>
+    </PlatformLayout>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle, XCircle, Trash2, FileText } from "lucide-react";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 type Estimate = {
@@ -90,7 +90,7 @@ export default function AdminRequestEstimatePage() {
   };
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -197,6 +197,6 @@ export default function AdminRequestEstimatePage() {
           </div>
         </section>
       </motion.main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

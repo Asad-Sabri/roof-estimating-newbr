@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import EstimateModal from "@/components/estimating/EstimateModal";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import { CUSTOMER_BASE } from "@/lib/routes/portalPaths";
 
 export default function MeasurementsPage() {
   const router = useRouter();
@@ -38,7 +39,7 @@ export default function MeasurementsPage() {
 
     setIsModalOpen(false);
     // Redirect to Measurements page (estimates list) - not dashboard
-    router.replace("/customer-panel/estimating");
+    router.replace(`${CUSTOMER_BASE}/estimating`);
   };
 
   if (isChecking) {

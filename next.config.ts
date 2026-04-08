@@ -76,6 +76,7 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         destination: "http://88.99.241.139:5000/api/:path*", // HTTP backend
       },
+      /** Portal URL aliases (`/platform-admin`, `/customer`, …) are handled in `middleware.ts` via `rewrite`. */
     ];
   },
 };

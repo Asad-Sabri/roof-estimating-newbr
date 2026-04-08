@@ -1,17 +1,37 @@
 "use client";
 
-import SuperAdminDashboardLayout from "@/components/layout/SuperAdminDashboardLayout";
+import PlatformLayout from "@/components/layout/PlatformLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
-import { useState, useEffect, useCallback } from "react";
-import { Shield, Plus, Search, Edit, Trash2, Loader2, X } from "lucide-react";
+import { Fragment, useState, useEffect, useCallback } from "react";
+import {
+  Shield,
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Loader2,
+  X,
+  ChevronRight,
+  ChevronDown,
+  Save,
+} from "lucide-react";
 import {
   getAdminsAPI,
   getAdminByIdAPI,
   createAdminAPI,
   updateAdminAPI,
   deleteAdminAPI,
+  deleteAdminLegacyAPI,
+  getPlatformPermissionsCatalogAPI,
+  getPlatformAdminPermissionsAPI,
+  putPlatformAdminPermissionsAPI,
 } from "@/services/superAdminAPI";
 import { toast } from "react-toastify";
+import { usePlatformAccess } from "@/lib/auth/usePlatformAccess";
+import { normalizePermissionCode } from "@/lib/auth/platformPermissions";
+
+/** Temporarily hidden — platform super admin does not manage customer assignment via this UI. */
+const HIDDEN_PLATFORM_PERMISSION_CODES = new Set(["customers.assign"]);
 
 type Admin = {
   _id?: string;
@@ -67,6 +87,70 @@ function formatRoleLabel(role: string | undefined): string {
   return "Subscriber Admin";
 }
 
+function normalizeRoleKey(role: string | undefined): string {
+  return (role || "").toLowerCase().replace(/\s+/g, "_");
+}
+
+function isPlatformAdminRole(role: string | undefined): boolean {
+  return normalizeRoleKey(role) === "platform_admin";
+}
+
+/** Subscriber admin = tenant/company admin; not the platform-level role. */
+function isSubscriberAdminRole(role: string | undefined): boolean {
+  return !isPlatformAdminRole(role);
+}
+
+/**
+ * Super Admin: may delete any admin row.
+ * Platform Admin with admins.write: may delete subscriber admins only (not other platform admins).
+ */
+function canDeleteAdminRow(
+  admin: Admin,
+  isPlatformSuperAdminUser: boolean,
+  canManagePlatformAdmins: boolean
+): boolean {
+  if (isPlatformSuperAdminUser) return true;
+  if (!canManagePlatformAdmins) return false;
+  return isSubscriberAdminRole(admin.role);
+}
+
+type PermCatalogEntry = { code: string; label: string };
+
+function normalizePermissionCatalog(res: unknown): PermCatalogEntry[] {
+  const r = res as Record<string, unknown>;
+  const raw =
+    (Array.isArray(r?.permissions) && r.permissions) ||
+    (Array.isArray((r?.data as Record<string, unknown>)?.permissions) &&
+      (r?.data as Record<string, unknown>).permissions) ||
+    (Array.isArray(r?.data) && r.data) ||
+    [];
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item: unknown) => {
+    if (typeof item === "string") return { code: item, label: item };
+    const o = item as Record<string, unknown>;
+    const code = String(o.code ?? o.id ?? o.key ?? "");
+    const label = String(o.label ?? o.name ?? o.title ?? code);
+    return { code, label };
+  })
+    .filter((x) => x.code.length > 0)
+    .filter((x) => !HIDDEN_PLATFORM_PERMISSION_CODES.has(normalizePermissionCode(x.code)));
+}
+
+function normalizePermissionsResponse(res: unknown): string[] {
+  const r = res as Record<string, unknown>;
+  const raw =
+    (Array.isArray(r?.permissions) && r.permissions) ||
+    (Array.isArray((r?.data as Record<string, unknown>)?.permissions) &&
+      (r?.data as Record<string, unknown>).permissions) ||
+    (Array.isArray(r?.data) && r.data) ||
+    [];
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((x) => String(x))
+    .filter(Boolean)
+    .filter((c) => !HIDDEN_PLATFORM_PERMISSION_CODES.has(normalizePermissionCode(c)));
+}
+
 const emptyForm = {
   first_name: "",
   last_name: "",
@@ -98,13 +182,75 @@ export default function SuperAdminAdminsPage() {
   const [editAdminId, setEditAdminId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [loginRole, setLoginRole] = useState<string | null>(null);
+  const { canManagePlatformAdmins, isPlatformSuperAdmin, isPlatformAdminOnly } = usePlatformAccess();
+  /** List visible with admins.read; CRUD needs admins.write */
+  const isAdminsViewOnly = !isPlatformSuperAdmin && !canManagePlatformAdmins;
 
-  useEffect(() => {
-    if (typeof window !== "undefined") setLoginRole(localStorage.getItem("loginRole"));
+  const [expandedPermAdminId, setExpandedPermAdminId] = useState<string | null>(null);
+  const [permCatalog, setPermCatalog] = useState<PermCatalogEntry[]>([]);
+  const [permDraftByAdmin, setPermDraftByAdmin] = useState<Record<string, string[]>>({});
+  const [permLoadingId, setPermLoadingId] = useState<string | null>(null);
+  const [permSavingId, setPermSavingId] = useState<string | null>(null);
+
+  const loadPermissionCatalog = useCallback(async () => {
+    try {
+      const res = await getPlatformPermissionsCatalogAPI();
+      const list = normalizePermissionCatalog(res);
+      setPermCatalog((prev) => (prev.length > 0 ? prev : list));
+    } catch {
+      toast.error("Could not load permission list");
+    }
   }, []);
 
-  const isSuperAdmin = loginRole === "super-admin";
+  const toggleExpandPermissions = async (admin: Admin) => {
+    const id = admin._id;
+    if (!id || !isPlatformAdminRole(admin.role)) return;
+    if (expandedPermAdminId === id) {
+      setExpandedPermAdminId(null);
+      return;
+    }
+    setExpandedPermAdminId(id);
+    await loadPermissionCatalog();
+    setPermLoadingId(id);
+    try {
+      const res = await getPlatformAdminPermissionsAPI(id);
+      const list = normalizePermissionsResponse(res);
+      setPermDraftByAdmin((prev) => ({ ...prev, [id]: list }));
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      toast.error(err?.response?.data?.message || "Could not load permissions");
+      setPermDraftByAdmin((prev) => ({ ...prev, [id]: [] }));
+    } finally {
+      setPermLoadingId(null);
+    }
+  };
+
+  const togglePermissionCode = (adminId: string, code: string, enabled: boolean) => {
+    setPermDraftByAdmin((prev) => {
+      const cur = new Set(prev[adminId] ?? []);
+      if (enabled) cur.add(code);
+      else cur.delete(code);
+      return { ...prev, [adminId]: Array.from(cur) };
+    });
+  };
+
+  const savePermissions = async (adminId: string) => {
+    const list = permDraftByAdmin[adminId] ?? [];
+    setPermSavingId(adminId);
+    try {
+      const filtered = list.filter(
+        (c) => !HIDDEN_PLATFORM_PERMISSION_CODES.has(normalizePermissionCode(c))
+      );
+      await putPlatformAdminPermissionsAPI(adminId, { permissions: filtered });
+      toast.success("Permissions updated");
+      setExpandedPermAdminId(null);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      toast.error(err?.response?.data?.message || "Failed to save permissions");
+    } finally {
+      setPermSavingId(null);
+    }
+  };
 
   const fetchAdmins = useCallback(async () => {
     setLoading(true);
@@ -223,6 +369,7 @@ export default function SuperAdminAdminsPage() {
       is_active: form.is_active,
     };
     if (form.password) payload.password = form.password;
+    if (isPlatformSuperAdmin) payload.role = form.role;
     try {
       await updateAdminAPI(editAdminId, payload);
       closeModal();
@@ -235,14 +382,40 @@ export default function SuperAdminAdminsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    const target = admins.find((a) => (a._id ?? "") === id);
+    if (target && !canDeleteAdminRow(target, isPlatformSuperAdmin, canManagePlatformAdmins)) {
+      toast.error("Only Platform Super Admin can remove a Platform Admin account.");
+      setDeleteConfirm(null);
+      return;
+    }
     setDeleteLoading(true);
     setError(null);
     try {
-      await deleteAdminAPI(id);
+      const subscriberRow = target && isSubscriberAdminRole(target.role);
+      /**
+       * Platform Admin + subscriber admin: try DELETE /api/admins/:id first (admins.write);
+       * if that fails, fall back to DELETE /api/platform/admins/:id (e.g. legacy 404).
+       */
+      if (!isPlatformSuperAdmin && subscriberRow) {
+        try {
+          await deleteAdminLegacyAPI(id);
+        } catch {
+          try {
+            await deleteAdminAPI(id);
+          } catch (platformErr: any) {
+            throw platformErr;
+          }
+        }
+      } else {
+        await deleteAdminAPI(id);
+      }
       setDeleteConfirm(null);
-      fetchAdmins();
+      await fetchAdmins();
+      toast.success("Admin deleted");
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || "Failed to delete admin");
+      const errMsg = e?.response?.data?.message || e?.message || "Failed to delete admin";
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setDeleteLoading(false);
     }
@@ -256,7 +429,7 @@ export default function SuperAdminAdminsPage() {
   );
 
   return (
-    <SuperAdminDashboardLayout>
+    <PlatformLayout>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -264,18 +437,33 @@ export default function SuperAdminAdminsPage() {
               <Shield className="text-[#8b0e0f]" size={32} />
               Admins Management
             </h1>
-            <p className="text-gray-600 mt-1">Manage all admin accounts and permissions</p>
+            <p className="text-gray-600 mt-1">
+              {isAdminsViewOnly
+                ? "View platform and subscriber admins — create, edit, and delete need admins.write permission."
+                : isPlatformSuperAdmin
+                  ? "Manage all admin accounts and permissions"
+                  : "Create and edit admins; delete subscriber (company) admins. Removing a Platform Admin requires Super Admin."}
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition shadow-md"
-            style={{ backgroundColor: "#8b0e0f" }}
-          >
-            <Plus size={20} />
-            Create New Admin
-          </button>
+          {canManagePlatformAdmins && (
+            <button
+              type="button"
+              onClick={openCreate}
+              className="flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition shadow-md"
+              style={{ backgroundColor: "#8b0e0f" }}
+            >
+              <Plus size={20} />
+              Create New Admin
+            </button>
+          )}
         </div>
+
+        {isAdminsViewOnly && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <strong className="font-semibold">View only.</strong> You can list admins but cannot create,
+            edit, or delete accounts without <span className="font-medium">admins.write</span>.
+          </div>
+        )}
 
         {error && (
           <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
@@ -331,8 +519,13 @@ export default function SuperAdminAdminsPage() {
               <table className="w-full">
                 <thead className="border-b border-gray-200 text-white" style={{ backgroundColor: "#8b0e0f" }}>
                   <tr>
+                    {isPlatformSuperAdmin && (
+                      <th className="px-3 py-3 w-10 text-left text-xs font-medium uppercase tracking-wider">
+                        Perms
+                      </th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Admin</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Company</th>
+                    {/* <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Company</th> */}
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Role</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Created</th>
@@ -341,16 +534,38 @@ export default function SuperAdminAdminsPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredAdmins.map((admin) => (
-                    <tr key={admin._id || admin.id || admin.email} className="hover:bg-gray-50 transition">
+                    <Fragment key={admin._id || admin.id || admin.email}>
+                    <tr className="hover:bg-gray-50 transition">
+                      {isPlatformSuperAdmin && (
+                        <td className="px-3 py-4 whitespace-nowrap align-middle">
+                          {isPlatformAdminRole(admin.role) && admin._id ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleExpandPermissions(admin)}
+                              className="p-1 rounded-md text-[#8b0e0f] hover:bg-red-50"
+                              title="Platform permissions"
+                              aria-expanded={expandedPermAdminId === admin._id}
+                            >
+                              {expandedPermAdminId === admin._id ? (
+                                <ChevronDown className="w-5 h-5" />
+                              ) : (
+                                <ChevronRight className="w-5 h-5" />
+                              )}
+                            </button>
+                          ) : (
+                            <span className="inline-block w-7" />
+                          )}
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <p className="text-sm font-medium text-gray-900">{admin.name}</p>
                           <p className="text-sm text-gray-500">{admin.email}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      {/* <td className="px-6 py-4 whitespace-nowrap">
                         <p className="text-sm text-gray-900">{admin.company}</p>
-                      </td>
+                      </td> */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -378,20 +593,26 @@ export default function SuperAdminAdminsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(admin)}
-                            className="text-[#8b0e0f] hover:opacity-80"
-                            title="Edit"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          {isSuperAdmin && (
+                          {canManagePlatformAdmins && (
+                            <button
+                              type="button"
+                              onClick={() => openEdit(admin)}
+                              className="text-[#8b0e0f] hover:opacity-80"
+                              title="Edit"
+                            >
+                              <Edit size={18} />
+                            </button>
+                          )}
+                          {canDeleteAdminRow(admin, isPlatformSuperAdmin, canManagePlatformAdmins) && (
                             <button
                               type="button"
                               onClick={() => setDeleteConfirm(admin._id ?? null)}
                               className="text-red-600 hover:text-red-900"
-                              title="Delete (Super Admin only)"
+                              title={
+                                isPlatformAdminRole(admin.role)
+                                  ? "Delete platform admin"
+                                  : "Delete subscriber admin"
+                              }
                             >
                               <Trash2 size={18} />
                             </button>
@@ -399,6 +620,83 @@ export default function SuperAdminAdminsPage() {
                         </div>
                       </td>
                     </tr>
+                    {isPlatformSuperAdmin &&
+                      expandedPermAdminId === admin._id &&
+                      isPlatformAdminRole(admin.role) && (
+                        <tr>
+                          <td
+                            colSpan={isPlatformSuperAdmin ? 7 : 6}
+                            className="px-0 py-0 border-t border-red-100 bg-red-50/60"
+                          >
+                            <div className="px-6 py-4 space-y-3">
+                              <p className="text-sm font-semibold text-red-950">
+                                Platform access for {admin.name}
+                              </p>
+                              <p className="text-xs text-gray-600 max-w-3xl">
+                                Turn permissions on or off for this Platform Admin. Only enabled items appear in their
+                                sidebar. Empty selection means no module access (dashboard only). Legacy accounts
+                                without saved permissions still receive full access until you save here.
+                              </p>
+                              {permLoadingId === admin._id ? (
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Loader2 className="w-5 h-5 animate-spin text-[#8b0e0f]" />
+                                  Loading permissions…
+                                </div>
+                              ) : (
+                                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {(permCatalog.length > 0
+                                    ? permCatalog
+                                    : [{ code: "companies.read", label: "companies.read" }]
+                                  ).map((entry) => {
+                                    const id = admin._id as string;
+                                    const active = (permDraftByAdmin[id] ?? []).includes(entry.code);
+                                    return (
+                                      <label
+                                        key={entry.code}
+                                        className="flex items-center justify-between gap-3 rounded-lg border border-red-100 bg-white px-3 py-2 shadow-sm"
+                                      >
+                                        <span className="text-sm text-gray-800">{entry.label}</span>
+                                        <button
+                                          type="button"
+                                          role="switch"
+                                          aria-checked={active}
+                                          onClick={() => togglePermissionCode(id, entry.code, !active)}
+                                          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+                                            active ? "bg-[#8b0e0f]" : "bg-gray-300"
+                                          }`}
+                                        >
+                                          <span
+                                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                                              active ? "translate-x-5" : "translate-x-0.5"
+                                            } mt-0.5`}
+                                          />
+                                        </button>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              <div className="flex justify-end pt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => admin._id && savePermissions(admin._id)}
+                                  disabled={permSavingId === admin._id || permLoadingId === admin._id}
+                                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-50"
+                                  style={{ backgroundColor: "#8b0e0f" }}
+                                >
+                                  {permSavingId === admin._id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Save className="w-4 h-4" />
+                                  )}
+                                  Save permissions
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -469,7 +767,7 @@ export default function SuperAdminAdminsPage() {
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
-                  readOnly={modal === "edit"}
+                  readOnly={modal === "edit" && isPlatformAdminOnly}
                 />
               </div>
               <div>
@@ -481,6 +779,33 @@ export default function SuperAdminAdminsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
                 />
               </div>
+              {modal === "edit" && isPlatformSuperAdmin && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <select
+                    value={form.role}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, role: e.target.value as "admin" | "platform_admin" }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b0e0f] focus:border-transparent"
+                  >
+                    {ADMIN_ROLE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Platform Admin: create/configure subscribers only. Subscriber Admin: company data only.
+                  </p>
+                </div>
+              )}
+              {modal === "edit" && isPlatformAdminOnly && (
+                <div className="text-sm text-gray-600">
+                  Role: <span className="font-medium text-gray-900">{formatRoleLabel(form.role)}</span>
+                  <span className="ml-1 text-gray-400">(set at creation, cannot change here)</span>
+                </div>
+              )}
               {modal === "create" && (
                 <>
                   <div>
@@ -535,10 +860,6 @@ export default function SuperAdminAdminsPage() {
               </div>
               {modal === "edit" && (
                 <>
-                  <div className="text-sm text-gray-600">
-                    Role: <span className="font-medium text-gray-900">{formatRoleLabel(form.role)}</span>
-                    <span className="ml-1 text-gray-400">(set at creation, cannot change here)</span>
-                  </div>
                   <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -600,6 +921,6 @@ export default function SuperAdminAdminsPage() {
           </div>
         </div>
       )}
-    </SuperAdminDashboardLayout>
+    </PlatformLayout>
   );
 }

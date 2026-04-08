@@ -1,66 +1,109 @@
 import { handleAPIRequest } from "./axiosInstance";
 import { axiosInstance } from "./axiosInstance";
+import { platformPaths, subscriberPaths } from "./apiPaths";
 
-// —— ADMINS ——
+export const getPlatformPermissionsCatalogAPI = () =>
+  handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint),
+    platformPaths.permissionsCatalog,
+    null
+);
 
-/** GET /api/admins – all admins list */
+export const getPlatformAdminPermissionsAPI = (id) =>
+  handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint),
+    platformPaths.platformAdminPermissions(id),
+    null
+);
+
+export const putPlatformAdminPermissionsAPI = (id, body) =>
+  handleAPIRequest(
+    axiosInstance.put,
+    platformPaths.platformAdminPermissions(id),
+    body
+  );
+
+// —— PLATFORM ADMINS (preferred: /api/platform/admins) ——
+
 export const getAdminsAPI = () =>
-  handleAPIRequest((endpoint) => axiosInstance.get(endpoint), "/api/admins", null);
+  handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint),
+    platformPaths.admins,
+    null
+);
 
-/** GET /api/admins/:id – one admin by id */
 export const getAdminByIdAPI = (id) =>
-  handleAPIRequest((endpoint) => axiosInstance.get(endpoint), `/api/admins/${id}`, null);
+  handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint),
+    platformPaths.admin(id),
+    null
+);
 
-/** POST /api/admins – create admin */
 export const createAdminAPI = (body) =>
-  handleAPIRequest(axiosInstance.post, "/api/admins", body);
+  handleAPIRequest(axiosInstance.post, platformPaths.admins, body);
 
-/** PUT /api/admins/:id – update admin */
 export const updateAdminAPI = (id, body) =>
-  handleAPIRequest(axiosInstance.put, `/api/admins/${id}`, body);
+  handleAPIRequest(axiosInstance.put, platformPaths.admin(id), body);
 
-/** DELETE /api/admins/:id – delete admin */
 export const deleteAdminAPI = (id) =>
+  handleAPIRequest(
+    (endpoint) => axiosInstance.delete(endpoint),
+    platformPaths.admin(id),
+    null
+);
+
+/**
+ * Legacy DELETE /api/admins/:id — some backends allow Platform Admin (admins.write) to remove
+ * subscriber/company admins here while DELETE /api/platform/admins/:id stays super-admin-only.
+ */
+export const deleteAdminLegacyAPI = (id) =>
   handleAPIRequest(
     (endpoint) => axiosInstance.delete(endpoint),
     `/api/admins/${id}`,
     null
   );
 
-// —— CUSTOMERS ——
+// —— CUSTOMERS (legacy + subscriber-scoped; tenantId required for /api/customers) ——
 
-/** GET /api/customers – all customers list (super-admin) */
+/** Legacy: full list — platform flows; prefer not calling from platform UI per RBAC. */
 export const getCustomersAPI = () =>
   handleAPIRequest((endpoint) => axiosInstance.get(endpoint), "/api/customers", null);
 
-/** GET /api/admin/customers – current admin ke against jitne customers hain (assigned/created) wohi list */
-export const getAdminCustomersAPI = () =>
-  handleAPIRequest((endpoint) => axiosInstance.get(endpoint), "/api/admin/customers", null);
+/** Subscriber-scoped customer list (recommended). */
+export const getSubscriberCustomersAPI = () =>
+  handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint),
+    subscriberPaths.customers,
+    null
+);
 
-/** GET /api/customers/:id – one customer by id */
+/** @deprecated use getSubscriberCustomersAPI — kept name for gradual migration */
+export const getAdminCustomersAPI = () => getSubscriberCustomersAPI();
+
 export const getCustomerByIdAPI = (id) =>
-  handleAPIRequest((endpoint) => axiosInstance.get(endpoint), `/api/customers/${id}`, null);
+  handleAPIRequest(
+    (endpoint) => axiosInstance.get(endpoint),
+    `/api/customers/${id}`,
+    null
+);
 
-/** POST /api/customers – create customer */
 export const createCustomerAPI = (body) =>
   handleAPIRequest(axiosInstance.post, "/api/customers", body);
 
-/** PUT /api/customers/:id – update customer */
 export const updateCustomerAPI = (id, body) =>
   handleAPIRequest(axiosInstance.put, `/api/customers/${id}`, body);
 
-/** PUT /api/customers/:id/assign – assign customer to admin */
+/** Platform: assign customer to admin — PUT /api/platform/customers/:id/assign */
 export const assignCustomerToAdminAPI = (customerId, adminId) =>
   handleAPIRequest(
     axiosInstance.put,
-    `/api/customers/${customerId}/assign`,
+    platformPaths.assignCustomer(customerId),
     adminId != null ? { adminId } : {}
   );
 
-/** DELETE /api/customers/:id – delete customer */
 export const deleteCustomerAPI = (id) =>
   handleAPIRequest(
     (endpoint) => axiosInstance.delete(endpoint),
     `/api/customers/${id}`,
     null
-  );
+);

@@ -5,13 +5,15 @@ import * as Yup from "yup";
 import { motion } from "framer-motion";
 import { Loader2, CheckCircle, MapPin } from "lucide-react";
 import { useState } from "react";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useRouter } from "next/navigation";
 import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 import { createProjectAPI } from "@/services/auth";
 import { getPinCoordinatesFromFeature } from "@/utils/buildingCentroid";
 import { ROOF_TYPE_CATEGORIES, getCompatibleSystems } from "@/lib/roofTypeSystemMatrix";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import { useSubscriberAccess } from "@/lib/auth/useSubscriberAccess";
+import { subscriberBaseForRole } from "@/lib/routes/portalPaths";
 
 const geocodingClient = mbxGeocoding({
   accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN!,
@@ -20,6 +22,8 @@ const geocodingClient = mbxGeocoding({
 export default function AdminRequestEstimatePage() {
   useProtectedRoute();
   const router = useRouter();
+  const { role: subscriberRole } = useSubscriberAccess();
+  const subBase = subscriberBaseForRole(subscriberRole);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -76,7 +80,7 @@ export default function AdminRequestEstimatePage() {
         formik.resetForm();
         setTimeout(() => {
           setShowSuccess(false);
-          router.push("/admin-panel/project-details");
+          router.push(`${subBase}/project-details`);
         }, 2000);
       } catch (err) {
         console.error(err);
@@ -208,7 +212,7 @@ export default function AdminRequestEstimatePage() {
   };
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <main className="min-h-screen flex flex-col items-center bg-gray-50 py-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -444,6 +448,6 @@ export default function AdminRequestEstimatePage() {
           )}
         </motion.div>
       </main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

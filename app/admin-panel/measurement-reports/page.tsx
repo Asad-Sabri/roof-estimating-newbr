@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FileText, Download, FileCode, RefreshCw } from "lucide-react";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import {
   getMeasurementReportsAPI,
@@ -69,7 +69,7 @@ export default function MeasurementReportsPage() {
   };
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -148,6 +148,6 @@ export default function MeasurementReportsPage() {
           </div>
         )}
       </motion.main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

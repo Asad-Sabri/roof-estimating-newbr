@@ -8,6 +8,7 @@ import { getCompanyForCustomerAPI } from "@/services/companyAPI";
 import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 import { EstimateReportContent } from "@/components/estimating/EstimateReportContent";
 import type { EstimateRecord, CompanyProfile } from "@/components/estimating/EstimateReportContent";
+import { CUSTOMER_BASE } from "@/lib/routes/portalPaths";
 
 const geocodingClient = mbxGeocoding({
   accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "",
@@ -221,7 +222,7 @@ export default function EstimateReportPage() {
         <div className="max-w-lg w-full bg-white rounded-xl shadow p-8 text-center">
           <p className="text-gray-600 mb-4">No estimate found.</p>
           <button
-            onClick={() => router.push("/customer-panel/estimating")}
+            onClick={() => router.push(`${CUSTOMER_BASE}/estimating`)}
             className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"
           >
             Go to Estimating

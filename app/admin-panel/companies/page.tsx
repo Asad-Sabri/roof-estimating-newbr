@@ -13,7 +13,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import {
   getCompanyUserAPI,
@@ -258,7 +258,7 @@ export default function AdminCompaniesPage() {
   );
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -826,6 +826,6 @@ export default function AdminCompaniesPage() {
           </div>
         )}
       </motion.main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

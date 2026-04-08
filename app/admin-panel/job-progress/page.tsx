@@ -18,7 +18,7 @@ import {
   Edit,
   Trash2,
 } from "lucide-react";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 /* -------------------- Types -------------------- */
@@ -209,7 +209,7 @@ export default function AdminJobProgressPage() {
 
   /* -------------------- Render -------------------- */
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -420,6 +420,6 @@ export default function AdminJobProgressPage() {
           )}
         </AnimatePresence>
       </motion.main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

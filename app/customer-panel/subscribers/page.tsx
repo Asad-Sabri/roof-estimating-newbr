@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
+import CustomerLayout from "@/components/layout/CustomerLayout";
 import {
   getCompanyForCustomerAPI,
   getSubscribersListAPI,
@@ -123,7 +123,7 @@ export default function SubscribersPage() {
   };
 
   return (
-    <CustomerDashboardLayout>
+    <CustomerLayout>
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Subscribers</h1>
         <p className="text-gray-600 mb-6">
@@ -237,6 +237,6 @@ export default function SubscribersPage() {
           </div>
         )}
       </div>
-    </CustomerDashboardLayout>
+    </CustomerLayout>
   );
 }

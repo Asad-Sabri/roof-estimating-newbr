@@ -3,26 +3,41 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { parseCookies } from "nookies";
+import {
+  getPostLoginPath,
+  normalizeLoginRole,
+} from "@/lib/auth/roles";
 
-export default function AdminPage() {
+export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in
     const { token } = parseCookies();
-    let tokenFromStorage = null;
+    let tokenFromStorage: string | null = null;
+    let accessType = "";
+    let profile: Record<string, unknown> = {};
     if (typeof window !== "undefined") {
       tokenFromStorage = localStorage.getItem("token");
+      accessType = localStorage.getItem("access_type") || "";
+      try {
+        const raw = localStorage.getItem("userProfile");
+        if (raw) profile = JSON.parse(raw) as Record<string, unknown>;
+      } catch {
+        profile = {};
+      }
     }
 
-    // If user is logged in, redirect to dashboard
     if (token || tokenFromStorage) {
-      router.push("/customer-panel/dashboard");
+      const path = getPostLoginPath(normalizeLoginRole(profile, {}), accessType);
+      router.replace(path);
     } else {
-      // If not logged in, redirect to login page
-      router.push("/login");
+      router.replace("/login");
     }
   }, [router]);
 
-  return null;
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-600">
+      <p>Loading…</p>
+    </div>
+  );
 }

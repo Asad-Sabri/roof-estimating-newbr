@@ -13,7 +13,7 @@ import {
   Clock,
   User,
 } from "lucide-react";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 /* ---------------- Types ---------------- */
@@ -99,7 +99,7 @@ export default function AdminProposalsPage() {
   }
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <motion.main
         className=" text-gray-900"
         initial={{ opacity: 0, y: 8 }}
@@ -227,6 +227,6 @@ export default function AdminProposalsPage() {
           </div>
         )}
       </motion.main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

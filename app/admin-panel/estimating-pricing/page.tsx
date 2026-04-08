@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { DollarSign, Save, Edit2, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 
 type PitchType = "flat" | "low" | "medium" | "steep" | "very_steep";
@@ -269,7 +269,7 @@ export default function EstimatingPricingPage() {
   };
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -544,6 +544,6 @@ export default function EstimatingPricingPage() {
           </div>
         </section>
       </motion.main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

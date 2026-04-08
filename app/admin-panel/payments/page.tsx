@@ -1,6 +1,6 @@
 "use client";
 
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -105,7 +105,7 @@ export default function AdminPaymentsPage() {
   }
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <motion.main
         className="flex flex-col text-gray-900"
         initial={{ opacity: 0, y: 8 }}
@@ -208,6 +208,6 @@ export default function AdminPaymentsPage() {
           © {new Date().getFullYear()} Roof Estimate CRM Admin. All rights reserved.
         </footer>
       </motion.main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

@@ -1,65 +1,74 @@
 "use client";
 
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import {
   Users,
-  Briefcase,
   FileText,
-  CreditCard,
-  BarChart3,
   ClipboardPlus,
   ArrowRight,
   FolderOpen,
+  ClipboardCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
-import { useQueryClient } from "@tanstack/react-query";
+import { useSubscriberAccess } from "@/lib/auth/useSubscriberAccess";
+import { subscriberBaseForRole } from "@/lib/routes/portalPaths";
 
-// ✅ Stats Overview
-const stats = [
-  { name: "Total Customers", value: "120", icon: Users, color: "from-red-600 to-red-700", link: "/admin-panel/customers" },
-  { name: "Active Jobs", value: "35", icon: Briefcase, color: "from-blue-500 to-indigo-600", link: "/admin-panel/job-progress" },
-  { name: "Proposals Sent", value: "220", icon: FileText, color: "from-purple-500 to-pink-600", link: "/admin-panel/proposals" },
-  { name: "Payments Received", value: "$85,000", icon: CreditCard, color: "from-yellow-500 to-orange-600", link: "/admin-panel/payments" },
-  { name: "Job Progress Updates", value: "150", icon: BarChart3, color: "from-cyan-500 to-teal-600", link: "/admin-panel/job-progress" },
-  { name: "Request Estimates", value: "50", icon: ClipboardPlus, color: "from-red-500 to-pink-600", link: "/admin-panel/estimates" },
-  { name: "Project Details", value: "Projects", icon: FolderOpen, color: "from-emerald-500 to-teal-600", link: "/admin-panel/project-details" },
-];
-
-// ✅ Recent Activities
 const activities = [
-  { id: 1, user: "John Doe", action: "Requested an estimate", time: "2h ago" },
-  { id: 2, user: "Alice Smith", action: "Signed a proposal", time: "5h ago" },
-  { id: 3, user: "Mark Johnson", action: "Made a payment of $1,200", time: "1d ago" },
-  { id: 4, user: "Sarah Lee", action: "Uploaded job progress photos", time: "2d ago" },
+  { id: 1, user: "Workspace", action: "Connect your APIs to show live counts and activity here.", time: "—" },
 ];
 
 export default function AdminDashboardPage() {
-  useProtectedRoute(); // Protect this route
-  const queryClient = useQueryClient();
-  
-  // Get user profile to check role
-  const userProfile: any = queryClient.getQueryData(["profile"]) || {};
-  const userRole = userProfile?.role || (typeof window !== "undefined" ? localStorage.getItem("loginRole") : null) || "admin";
-  
+  useProtectedRoute();
+  const { role: subscriberRole } = useSubscriberAccess();
+  const base = subscriberBaseForRole(subscriberRole);
+  const stats = [
+    {
+      name: "Customers",
+      value: "—",
+      icon: Users,
+      color: "from-red-600 to-red-700",
+      link: `${base}/customers`,
+    },
+    {
+      name: "Projects",
+      value: "—",
+      icon: FolderOpen,
+      color: "from-emerald-600 to-teal-700",
+      link: `${base}/project-details`,
+    },
+    {
+      name: "Estimates",
+      value: "—",
+      icon: FileText,
+      color: "from-violet-600 to-purple-700",
+      link: `${base}/estimates`,
+    },
+    {
+      name: "Preliminary estimates",
+      value: "—",
+      icon: ClipboardCheck,
+      color: "from-amber-600 to-orange-600",
+      link: `${base}/preliminary-estimates`,
+    },
+  ];
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <div className="space-y-10 animate-fadeIn">
-        {/* 🔹 Page Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between text-white p-6 rounded-2xl shadow-md" style={{ backgroundColor: "#8b0e0f" }}>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Admin Dashboard</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">Subscriber dashboard</h1>
             <p className="text-sm text-white opacity-90 mt-1">
-              Overview of customer activity and performance
+              Customers, projects, and estimates for your organization
             </p>
           </div>
           <div className="mt-4 md:mt-0">
             <Link
-              href="/admin-panel/reports"
+              href={`${base}/customers`}
               className="flex items-center gap-2 bg-white font-semibold px-4 py-2 rounded-lg shadow hover:bg-gray-100 transition"
               style={{ color: "#8b0e0f" }}
             >
-              View Reports <ArrowRight className="h-4 w-4" />
+              Go to customers <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
@@ -90,7 +99,7 @@ export default function AdminDashboardPage() {
         {/* 🔹 Recent Activities */}
         <div className="bg-white rounded-xl shadow-md p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            Recent Customer Activities
+            Activity
           </h2>
           <ul className="divide-y divide-gray-200">
             {activities.map((activity) => (
@@ -110,48 +119,33 @@ export default function AdminDashboardPage() {
           </ul>
         </div>
 
-        {/* 🔹 Quick Actions */}
         <div className="bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <h2 className="text-lg font-semibold mb-4">Quick links</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <Link
-              href="/admin-panel/job-progress"
-              className="flex flex-col items-center justify-center gap-2 bg-blue-50 border border-blue-100 rounded-xl p-4 hover:bg-blue-100 transition"
-            >
-              <Briefcase className="h-6 w-6 text-blue-600" />
-              <span className="text-sm font-medium">Manage Jobs</span>
-            </Link>
-            <Link
-              href="/admin-panel/proposals"
-              className="flex flex-col items-center justify-center gap-2 bg-purple-50 border border-purple-100 rounded-xl p-4 hover:bg-purple-100 transition"
-            >
-              <FileText className="h-6 w-6 text-purple-600" />
-              <span className="text-sm font-medium">View Proposals</span>
-            </Link>
-            <Link
-              href="/admin-panel/payments"
-              className="flex flex-col items-center justify-center gap-2 bg-yellow-50 border border-yellow-100 rounded-xl p-4 hover:bg-yellow-100 transition"
-            >
-              <CreditCard className="h-6 w-6 text-yellow-600" />
-              <span className="text-sm font-medium">Track Payments</span>
-            </Link>
-            <Link
-              href="/admin-panel/estimates"
+              href={`${base}/customers`}
               className="flex flex-col items-center justify-center gap-2 bg-red-50 border border-red-100 rounded-xl p-4 hover:bg-red-100 transition"
             >
-              <ClipboardPlus className="h-6 w-6 text-red-600" />
-              <span className="text-sm font-medium">Request Estimates</span>
+              <Users className="h-6 w-6 text-red-700" />
+              <span className="text-sm font-medium">Customers</span>
             </Link>
             <Link
-              href="/admin-panel/project-details"
+              href={`${base}/project-details`}
               className="flex flex-col items-center justify-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl p-4 hover:bg-emerald-100 transition"
             >
               <FolderOpen className="h-6 w-6 text-emerald-600" />
-              <span className="text-sm font-medium">Project Details</span>
+              <span className="text-sm font-medium">Projects</span>
+            </Link>
+            <Link
+              href={`${base}/request-estimate`}
+              className="flex flex-col items-center justify-center gap-2 bg-rose-50 border border-rose-100 rounded-xl p-4 hover:bg-rose-100 transition"
+            >
+              <ClipboardPlus className="h-6 w-6 text-rose-700" />
+              <span className="text-sm font-medium">Request estimates</span>
             </Link>
           </div>
         </div>
       </div>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

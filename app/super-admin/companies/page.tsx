@@ -13,14 +13,15 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import SuperAdminDashboardLayout from "@/components/layout/SuperAdminDashboardLayout";
+import PlatformLayout from "@/components/layout/PlatformLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import { usePlatformAccess } from "@/lib/auth/usePlatformAccess";
 import {
   getAllCompaniesAPI,
   getCompanyByIdAPI,
-  createCompanyAPI,
-  updateCompanyAPI,
-  deleteCompanyAPI,
+  createPlatformSubscriberAPI,
+  updatePlatformSubscriberAPI,
+  deletePlatformSubscriberAPI,
 } from "@/services/companyAPI";
 import { getAdminsAPI } from "@/services/superAdminAPI";
 import type {
@@ -106,6 +107,11 @@ function normalizeAdminsForOptions(res: any): AdminOption[] {
 
 export default function SuperAdminCompaniesPage() {
   useProtectedRoute();
+  const {
+    canCreateSubscribers,
+    canDeleteSubscribers,
+    canEditSubscribers,
+  } = usePlatformAccess();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -213,6 +219,8 @@ export default function SuperAdminCompaniesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (modalOpen === "add" && !canCreateSubscribers) return;
+    if (modalOpen === "edit" && !canEditSubscribers) return;
     setSubmitLoading(true);
     setError(null);
     try {
@@ -245,17 +253,18 @@ export default function SuperAdminCompaniesPage() {
           return;
         }
         payload.admin_id = adminId;
-        await createCompanyAPI(payload);
+        await createPlatformSubscriberAPI(payload);
       } else if (editingId) {
-        await updateCompanyAPI(editingId, payload);
+        await updatePlatformSubscriberAPI(editingId, payload);
       }
       closeModal();
       await fetchCompanies();
     } catch (e: unknown) {
+      const ax = e as { response?: { data?: { message?: string } }; message?: string };
       const msg =
-        e && typeof e === "object" && "message" in e
-          ? String((e as { message: string }).message)
-          : "Request failed";
+        (typeof ax?.response?.data?.message === "string" && ax.response.data.message) ||
+        ax?.message ||
+        "Request failed";
       setError(msg);
     } finally {
       setSubmitLoading(false);
@@ -263,17 +272,19 @@ export default function SuperAdminCompaniesPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canDeleteSubscribers) return;
     if (!confirm("Are you sure you want to delete this subscriber?")) return;
     setDeleteLoadingId(id);
     setError(null);
     try {
-      await deleteCompanyAPI(id);
+      await deletePlatformSubscriberAPI(id);
       await fetchCompanies();
     } catch (e: unknown) {
+      const ax = e as { response?: { data?: { message?: string } }; message?: string };
       const msg =
-        e && typeof e === "object" && "message" in e
-          ? String((e as { message: string }).message)
-          : "Delete failed";
+        (typeof ax?.response?.data?.message === "string" && ax.response.data.message) ||
+        ax?.message ||
+        "Delete failed";
       setError(msg);
     } finally {
       setDeleteLoadingId(null);
@@ -289,7 +300,7 @@ export default function SuperAdminCompaniesPage() {
   );
 
   return (
-    <SuperAdminDashboardLayout>
+    <PlatformLayout>
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -297,22 +308,33 @@ export default function SuperAdminCompaniesPage() {
         className="text-gray-900"
       >
         <header className="bg-gray-200 text-white py-5 px-2 md:px-6 flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-sm md:text-2xl font-bold flex items-center gap-2 text-black">
-            <Building2 className="w-6 h-6" />
-            Subscribers
-          </h1>
+          <div>
+            <h1 className="text-sm md:text-2xl font-bold flex items-center gap-2 text-black">
+              <Building2 className="w-6 h-6" />
+              Subscribers
+            </h1>
+            {(!canCreateSubscribers || !canDeleteSubscribers) && (
+              <p className="text-xs text-gray-700 mt-1 max-w-xl">
+                Add/update needs create/update permission (e.g. <span className="font-medium">companies.write</span> or
+                subscriber write); delete needs <span className="font-medium">companies.delete</span> — set in Platform
+                Admin permissions.
+              </p>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-black font-medium">
               {companies.length} Subscribers
             </span>
-            <button
-              type="button"
-              onClick={openAdd}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#8b0e0f] text-white hover:opacity-90 text-sm font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              Add Subscriber
-            </button>
+            {canCreateSubscribers && (
+              <button
+                type="button"
+                onClick={openAdd}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#8b0e0f] text-white hover:opacity-90 text-sm font-medium"
+              >
+                <Plus className="w-4 h-4" />
+                Add Subscriber
+              </button>
+            )}
           </div>
         </header>
 
@@ -431,27 +453,37 @@ export default function SuperAdminCompaniesPage() {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); openEdit(c._id); }}
-                                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-[#8b0e0f]"
-                                title="Edit"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); handleDelete(c._id); }}
-                                disabled={deleteLoadingId === c._id}
-                                className="p-2 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-50"
-                                title="Delete"
-                              >
-                                {deleteLoadingId === c._id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-4 h-4" />
-                                )}
-                              </button>
+                              {canEditSubscribers && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEdit(c._id);
+                                  }}
+                                  className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-[#8b0e0f]"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                              )}
+                              {canDeleteSubscribers && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(c._id);
+                                  }}
+                                  disabled={deleteLoadingId === c._id}
+                                  className="p-2 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                  title="Delete"
+                                >
+                                  {deleteLoadingId === c._id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -889,6 +921,6 @@ export default function SuperAdminCompaniesPage() {
           </div>
         )}
       </motion.main>
-    </SuperAdminDashboardLayout>
+    </PlatformLayout>
   );
 }

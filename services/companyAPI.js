@@ -1,4 +1,5 @@
 import { axiosInstance, handleAPIRequest } from "./axiosInstance";
+import { platformPaths } from "./apiPaths";
 
 /** Har request pe fresh data – cache nahi */
 const freshConfig = () => ({
@@ -164,12 +165,57 @@ export const putCompanySettingsAPI = (data) => {
   );
 };
 
+/**
+ * PUT /api/company/settings — multipart logo (field `logo`).
+ * Backend may also accept `company_logo`; axios sends FormData without forcing JSON Content-Type.
+ */
+export const uploadCompanyLogoAPI = (file) => {
+  if (!file) return Promise.reject(new Error("File required"));
+  const formData = new FormData();
+  formData.append("logo", file);
+  return handleAPIRequest(
+    (endpoint, body) => axiosInstance.put(endpoint, body),
+    "/api/company/settings",
+    formData
+  );
+};
+
 /** DELETE /api/company/:id */
 export const deleteCompanyAPI = (id) => {
   if (!id) return Promise.reject(new Error("Company ID required"));
   return handleAPIRequest(
     (endpoint) => axiosInstance.delete(endpoint, freshConfig()),
     `/api/company/${id}`,
+    null
+  );
+};
+
+/**
+ * Platform shell (super-admin UI) — subscribers CRUD with `requirePlatformPermission(companies.*)`.
+ * Use these instead of /api/company for Platform Admin + companies.write; legacy POST /api/company may be super-admin-only.
+ */
+export const createPlatformSubscriberAPI = (data) => {
+  return handleAPIRequest(
+    axiosInstance.post,
+    platformPaths.subscribers,
+    withContactSnakeCase(data)
+  );
+};
+
+export const updatePlatformSubscriberAPI = (id, data) => {
+  if (!id) return Promise.reject(new Error("Subscriber ID required"));
+  return handleAPIRequest(
+    (endpoint, body) => axiosInstance.put(endpoint, body),
+    `${platformPaths.subscribers}/${id}`,
+    withContactSnakeCase(data)
+  );
+};
+
+export const deletePlatformSubscriberAPI = (id) => {
+  if (!id) return Promise.reject(new Error("Subscriber ID required"));
+  return handleAPIRequest(
+    (endpoint) => axiosInstance.delete(endpoint, freshConfig()),
+    `${platformPaths.subscribers}/${id}`,
     null
   );
 };

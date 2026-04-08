@@ -6,7 +6,7 @@ import * as Yup from "yup";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { FileText, Loader2, RefreshCw, ChevronDown, ChevronRight, Upload, MapPin, X, FileEdit } from "lucide-react";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import { getPreliminaryRequestsAPI } from "@/services/instantEstimateAPI";
 import { sendPdfsAPI } from "@/services/emailAPI";
@@ -274,7 +274,7 @@ export default function AdminPreliminaryEstimatesPage() {
   };
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -713,6 +713,6 @@ export default function AdminPreliminaryEstimatesPage() {
           </div>
         )}
       </motion.main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { parseCookies } from "nookies";
 import InstantEstimateLanding from "@/components/estimating/InstantEstimateLanding";
+import { CUSTOMER_BASE } from "@/lib/routes/portalPaths";
 
 export default function InstantEstimatePage() {
   const router = useRouter();
@@ -43,7 +44,7 @@ export default function InstantEstimatePage() {
 
       // If user is logged in, redirect to dashboard
       if (token || tokenFromStorage) {
-        router.replace("/customer-panel/dashboard");
+        router.replace(`${CUSTOMER_BASE}/dashboard`);
       }
     }
   }, [router, searchParams]);

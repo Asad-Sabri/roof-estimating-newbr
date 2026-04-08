@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import { CUSTOMER_BASE } from "@/lib/routes/portalPaths";
 import {
   Briefcase,
   FileText,
@@ -18,7 +19,7 @@ import {
   MapPin,
   DollarSign,
 } from "lucide-react";
-import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
+import CustomerLayout from "@/components/layout/CustomerLayout";
 import { useQueryClient } from "@tanstack/react-query";
 import { getUserInstantEstimatesAPI } from "@/services/instantEstimateAPI";
 
@@ -164,15 +165,15 @@ export default function DashboardPage() {
       : "bg-yellow-100 text-yellow-800";
 
   // Navigation helpers
-  const openProposal = (id: number) => router.push(`/customer-panel/proposal`);
-  const openPayment = (id: string) => router.push(`/customer-panel/payment`);
+  const openProposal = (id: number) => router.push(`${CUSTOMER_BASE}/proposal`);
+  const openPayment = (id: string) => router.push(`${CUSTOMER_BASE}/payment`);
   const openJobProgress = (id: number) =>
-    router.push(`/customer-panel/job-progress`);
+    router.push(`${CUSTOMER_BASE}/job-progress`);
   const openRequestEstimate = () =>
-    router.push(`/customer-panel/request-estimate`);
+    router.push(`${CUSTOMER_BASE}/request-estimate`);
 
   return (
-    <CustomerDashboardLayout>
+    <CustomerLayout>
       <motion.div
         className="space-y-8"
         initial={{ opacity: 0 }}
@@ -209,7 +210,7 @@ export default function DashboardPage() {
             </button>
 
             <Link
-              href="/customer-panel/estimating"
+              href={`${CUSTOMER_BASE}/estimating`}
               className="inline-flex items-center gap-1 text-gray-700 bg-gray-200 px-3 py-2 rounded-md hover:bg-gray-400"
             >
               <ClipboardList size={18} /> View All Estimates
@@ -278,7 +279,7 @@ export default function DashboardPage() {
               <Briefcase size={20} /> My Jobs
             </h2>
             <Link
-              href="/customer-panel/job-progress"
+              href={`${CUSTOMER_BASE}/job-progress`}
               className="text-sm text-blue-600 hover:underline flex items-center gap-1"
             >
               View all jobs
@@ -328,7 +329,7 @@ export default function DashboardPage() {
                     </button>
 
                     <Link
-                      href={`/customer-panel/estimates`}
+                      href={`${CUSTOMER_BASE}/estimates`}
                       className="flex items-center gap-1 px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                     >
                       <FileText size={14} /> Estimate
@@ -354,7 +355,7 @@ export default function DashboardPage() {
                 <FileText size={18} /> Recent Proposals
               </h3>
               <Link
-                href="/customer-panel/proposal"
+                href={`${CUSTOMER_BASE}/proposal`}
                 className="text-sm text-blue-600 hover:underline"
               >
                 All proposals
@@ -407,7 +408,7 @@ export default function DashboardPage() {
                 <CreditCard size={18} /> Recent Payments
               </h3>
               <Link
-                href="/customer-panel/payments"
+                href={`${CUSTOMER_BASE}/payments`}
                 className="text-sm text-blue-600 hover:underline"
               >
                 Payment history
@@ -459,7 +460,7 @@ export default function DashboardPage() {
               <TrendingUp size={20} /> Instant Estimates
             </h2>
             <Link
-              href="/customer-panel/estimating"
+              href={`${CUSTOMER_BASE}/estimating`}
               className="inline-flex items-center justify-center gap-1 xl:gap-2 text-white px-3 xl:px-4 py-2 rounded-lg shadow-md focus:outline-none focus:ring-2 transition-all text-sm shrink-0 cursor-pointer"
               style={{ backgroundColor: "#8b0e0f" }}
               onMouseEnter={(e) => {
@@ -494,7 +495,7 @@ export default function DashboardPage() {
                 Get your first instant estimate in just a few minutes
               </p>
               <Link
-                href="/customer-panel/instant-estimate"
+                href={`${CUSTOMER_BASE}/instant-estimate`}
                 className="px-6 py-3 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 mx-auto w-fit cursor-pointer"
                 style={{ backgroundColor: "#8b0e0f" }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#6d0b0c")}
@@ -567,6 +568,6 @@ export default function DashboardPage() {
           </a>
         </footer>
       </motion.div>
-    </CustomerDashboardLayout>
+    </CustomerLayout>
   );
 }

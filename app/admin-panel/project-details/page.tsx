@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { getUserProjectsAPI, deleteUserProjectsAPI } from "@/services/auth";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { Search, Eye, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -107,16 +107,16 @@ export default function AdminProjectDetailsPage() {
 
   if (loading) {
     return (
-      <AdminDashboardLayout>
+      <SubscriberLayout>
         <div className="min-h-[40vh] flex justify-center items-center">
           <p className="text-gray-500">Loading projects...</p>
         </div>
-      </AdminDashboardLayout>
+      </SubscriberLayout>
     );
   }
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <main className="min-h-screen px-4 md:px-8 py-6 bg-gray-50">
         <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Project Details</h1>
@@ -276,6 +276,6 @@ export default function AdminProjectDetailsPage() {
           </div>
         </div>
       </main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

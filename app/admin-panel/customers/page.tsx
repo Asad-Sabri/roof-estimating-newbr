@@ -13,7 +13,7 @@ import {
   CheckCircle,
   Loader2,
 } from "lucide-react";
-import AdminDashboardLayout from "@/components/layout/AdminDashboardLayout";
+import SubscriberLayout from "@/components/layout/SubscriberLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
 import { signupAPI, approveUserAPI, getProfileAPI } from "@/services/auth";
 import { getMyCustomersAPI } from "@/services/companyAPI";
@@ -28,9 +28,6 @@ type Customer = {
   email: string;
   phone: string;
   status: "Active" | "Inactive";
-  totalJobs: number;
-  totalProposals: number;
-  totalPayments: number;
   approved?: boolean;
   assignedToId?: string | null;
   createdById?: string | null;
@@ -54,9 +51,6 @@ function normalizeCustomersList(res: any): Customer[] {
       email: c.email ?? "—",
       phone: c.phone ?? c.mobile_number ?? c.mobile ?? "—",
       status: (c.status ?? (c.is_active === false ? "Inactive" : "Active")) as "Active" | "Inactive",
-      totalJobs: c.totalJobs ?? c.total_jobs ?? 0,
-      totalProposals: c.totalProposals ?? c.total_proposals ?? 0,
-      totalPayments: c.totalPayments ?? c.total_payments ?? 0,
       approved: c.approved ?? c.is_approved ?? true,
       assignedToId: assignedToId || undefined,
       createdById: createdById || undefined,
@@ -179,9 +173,6 @@ export default function AdminCustomersPage() {
         email: form.email.trim(),
         phone: mobile,
         status: "Active",
-        totalJobs: 0,
-        totalProposals: 0,
-        totalPayments: 0,
         approved: false,
       };
       setCustomers((prev) => [newCustomer, ...prev]);
@@ -295,17 +286,17 @@ export default function AdminCustomersPage() {
 
   if (loading) {
     return (
-      <AdminDashboardLayout>
+      <SubscriberLayout>
         <div className="flex items-center justify-center min-h-[40vh] gap-2">
           <Loader2 className="w-8 h-8 animate-spin text-[#8b0e0f]" />
           <span className="text-gray-600">Loading customers...</span>
         </div>
-      </AdminDashboardLayout>
+      </SubscriberLayout>
     );
   }
 
   return (
-    <AdminDashboardLayout>
+    <SubscriberLayout>
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -333,7 +324,7 @@ export default function AdminCustomersPage() {
 
         <section className="my-8">
           <div className="overflow-x-auto bg-white">
-            <table className="w-full border border-gray-300 rounded-lg shadow text-sm min-w-[1200px]">
+            <table className="w-full border border-gray-300 rounded-lg shadow text-sm min-w-[900px]">
               <thead className="text-white" style={{ backgroundColor: "#8b0e0f" }}>
                 <tr>
                   <th className="p-3 text-left">Name</th>
@@ -341,9 +332,6 @@ export default function AdminCustomersPage() {
                   <th className="p-3 text-left">Phone</th>
                   <th className="p-3 text-left">Status</th>
                   <th className="p-3 text-left">Approved</th>
-                  <th className="p-3 text-left">Jobs</th>
-                  <th className="p-3 text-left">Proposals</th>
-                  <th className="p-3 text-left">Payments</th>
                   <th className="p-3 text-left">Actions</th>
                 </tr>
               </thead>
@@ -392,9 +380,6 @@ export default function AdminCustomersPage() {
                         </button>
                       )}
                     </td>
-                    <td className="p-3">{c.totalJobs}</td>
-                    <td className="p-3">{c.totalProposals}</td>
-                    <td className="p-3">{c.totalPayments}</td>
                     <td className="p-3 flex gap-2 flex-wrap items-center">
                       {c._id && (
                         <button
@@ -679,6 +664,6 @@ export default function AdminCustomersPage() {
           </div>
         )}
       </motion.main>
-    </AdminDashboardLayout>
+    </SubscriberLayout>
   );
 }

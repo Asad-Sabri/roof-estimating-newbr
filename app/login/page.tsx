@@ -12,14 +12,24 @@ import { setCookie, parseCookies } from "nookies";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { Eye, EyeOff, MapPin, X } from "lucide-react";
-import { loginAPI } from "@/services/auth";
+import { loginAPI, syncProfileToStorage } from "@/services/auth";
 import { setCredentials } from "@/redux/slices/authSlice";
+import {
+  getPostLoginPath,
+  getTenantIdFromUser,
+  normalizeLoginRole,
+  STORAGE_TENANT,
+  STORAGE_PROFILE,
+} from "@/lib/auth/roles";
+import {
+  CANONICAL_ROLE_COOKIE,
+  CUSTOMER_BASE,
+  setCanonicalRoleCookieClient,
+} from "@/lib/routes/portalPaths";
+import { loginIncludeRoleField } from "@/lib/auth/env";
 import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 
 import logo from "../../public/logo-latest.png";
-
-// Backend Phase 1: super_admin, platform_admin, admin, manager, staff, customer
-type LoginRole = "super-admin" | "platform-admin" | "admin" | "customer";
 
 const geocodingClient = mbxGeocoding({
   accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN!,
@@ -302,17 +312,16 @@ export default function LoginPage() {
       const tokenFromStorage = localStorage.getItem("token");
 
       if (token || tokenFromStorage) {
-        const loginRole = localStorage.getItem("loginRole");
-        const accessType = localStorage.getItem("access_type");
-        if (accessType === "portal_only" || loginRole === "customer") {
-          router.replace("/customer-panel/dashboard");
-        } else if (loginRole === "super-admin" || loginRole === "platform-admin") {
-          router.replace("/super-admin/dashboard");
-        } else if (loginRole === "admin") {
-          router.replace("/admin-panel/dashboard");
-        } else {
-          router.replace("/customer-panel/dashboard");
+        const accessType = localStorage.getItem("access_type") || "";
+        let profile: Record<string, unknown> = {};
+        try {
+          const raw = localStorage.getItem("userProfile");
+          if (raw) profile = JSON.parse(raw) as Record<string, unknown>;
+        } catch {
+          profile = {};
         }
+        const path = getPostLoginPath(normalizeLoginRole(profile, {}), accessType);
+        router.replace(path);
       }
     }
   }, [router]);
@@ -324,49 +333,85 @@ export default function LoginPage() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: (values: { email: string; password: string }) => {
-      return loginAPI({
-        email: values.email,
+      const payload: Record<string, string> = {
+        email: values.email.trim().toLowerCase(),
         password: values.password,
-        role: "customer", // backend may expect role; redirect is based on response role
-      });
+      };
+      if (loginIncludeRoleField()) {
+        payload.role = "customer";
+      }
+      return loginAPI(payload);
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
       const { token, user } = data;
 
-      // access_type: "platform" | "portal_only" – portal_only/customer never see platform dashboard
       const accessType = (user?.access_type ?? data?.access_type ?? "").toString().toLowerCase();
       const isPortalOnly = accessType === "portal_only";
 
-      // Normalize backend role: super_admin, platform_admin, admin, manager, staff, customer
-      const rawRole = (user?.role ?? data?.role ?? "").toString().toLowerCase().replace(/\s+/g, "_");
-      const isSuperAdmin =
-        rawRole === "super_admin" ||
-        rawRole === "super-admin" ||
-        rawRole === "superadmin" ||
-        user?.is_super_admin === true ||
-        user?.isSuperAdmin === true ||
-        data?.is_super_admin === true ||
-        data?.isSuperAdmin === true;
-      const isPlatformAdmin =
-        !isSuperAdmin && (rawRole === "platform_admin" || rawRole === "platform-admin");
-      const isSubscriberStaff =
-        !isSuperAdmin &&
-        !isPlatformAdmin &&
-        ["admin", "manager", "staff"].includes(rawRole);
-      const actualRole: LoginRole = isSuperAdmin
-        ? "super-admin"
-        : isPlatformAdmin
-          ? "platform-admin"
-          : isSubscriberStaff
-            ? "admin"
-            : "customer";
+      const canonicalRole = normalizeLoginRole(user ?? {}, data);
 
       if (typeof window !== "undefined") {
         localStorage.setItem("token", token);
-        localStorage.setItem("loginRole", actualRole);
+        localStorage.setItem("loginRole", canonicalRole);
         localStorage.setItem("access_type", isPortalOnly ? "portal_only" : "platform");
         if (user) localStorage.setItem("userProfile", JSON.stringify(user));
+        const tid = getTenantIdFromUser(user, data);
+        if (tid) localStorage.setItem(STORAGE_TENANT, tid);
+        else localStorage.removeItem(STORAGE_TENANT);
         document.cookie = `token=${token}; path=/; max-age=${30 * 24 * 60 * 60}`;
+        setCanonicalRoleCookieClient(canonicalRole);
+      }
+
+      try {
+        await syncProfileToStorage();
+      } catch {
+        /* profile optional; login payload already stored */
+      }
+
+      /** If GET /api/profile omits `permissions` but login body had them, keep them for platform nav. */
+      if (typeof window !== "undefined" && user) {
+        try {
+          const raw = localStorage.getItem(STORAGE_PROFILE);
+          const cur = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+          const loginPerms =
+            (user as Record<string, unknown>).permissions ??
+            (user as Record<string, unknown>).platformPermissions ??
+            (data as Record<string, unknown>)?.permissions;
+          if (
+            Array.isArray(loginPerms) &&
+            cur.permissions === undefined &&
+            cur.platformPermissions === undefined
+          ) {
+            localStorage.setItem(
+              STORAGE_PROFILE,
+              JSON.stringify({
+                ...cur,
+                permissions: loginPerms.map(String),
+              })
+            );
+          }
+
+          const raw2 = localStorage.getItem(STORAGE_PROFILE);
+          const cur2 = raw2 ? (JSON.parse(raw2) as Record<string, unknown>) : {};
+          const loginSubPerms =
+            (user as Record<string, unknown>).subscriberPermissions ??
+            (data as Record<string, unknown>)?.subscriberPermissions;
+          if (
+            Array.isArray(loginSubPerms) &&
+            cur2.subscriberPermissions === undefined &&
+            cur2.subscriber_permissions === undefined
+          ) {
+            localStorage.setItem(
+              STORAGE_PROFILE,
+              JSON.stringify({
+                ...cur2,
+                subscriberPermissions: loginSubPerms.map(String),
+              })
+            );
+          }
+        } catch {
+          /* ignore */
+        }
       }
 
       setCookie(null, "token", token, {
@@ -375,28 +420,31 @@ export default function LoginPage() {
         secure: true,
         sameSite: "strict",
       });
+      setCookie(null, CANONICAL_ROLE_COOKIE, canonicalRole, {
+        maxAge: 30 * 24 * 60 * 60,
+        path: "/",
+        sameSite: "strict",
+      });
 
       dispatch(setCredentials({ user, token }));
       toast.success(data?.message || "Login successful!");
 
-      // Customer or portal_only → always subscriber portal (customer panel); never platform dashboard
-      if (actualRole === "customer" || isPortalOnly) {
-        router.push("/customer-panel/dashboard");
-        return;
-      }
-      if (actualRole === "super-admin") {
-        router.push("/super-admin/dashboard");
-      } else if (actualRole === "platform-admin") {
-        router.push("/super-admin/dashboard"); // Platform Admin: subscriber CRUD; same layout, backend restricts actions
-      } else {
-        router.push("/admin-panel/dashboard");
-      }
+      const dest = getPostLoginPath(canonicalRole, accessType);
+      router.push(dest);
     },
     onError: (error: any, variables: { email: string; password: string }) => {
-      const msg = error?.response?.data?.message || error?.response?.data?.detail || "";
+      const status = error?.response?.status;
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data?.detail ||
+        "";
       if (msg.toLowerCase().includes("not verified") || msg.toLowerCase().includes("verify")) {
         toast.info("Please verify your account with the OTP sent to your email.");
-        router.push(`/otp?email=${encodeURIComponent(variables.email || "")}`);
+        router.push(`/otp?email=${encodeURIComponent(variables.email?.trim() || "")}`);
+        return;
+      }
+      if (status === 401) {
+        toast.error(msg || "Invalid email or password");
         return;
       }
       toast.error(msg || "Login failed");
@@ -575,7 +623,7 @@ export default function LoginPage() {
           localStorage.setItem("isInstantEstimateVisitor", "true");
           setShowAddressModal(false);
           // Redirect to customer dashboard (API check baad me add karengay)
-          router.push("/customer-panel/dashboard");
+          router.push(`${CUSTOMER_BASE}/dashboard`);
         }}
       />
     </div>

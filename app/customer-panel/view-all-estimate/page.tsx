@@ -5,8 +5,9 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileText, Eye, ArrowLeft, DownloadCloud, X } from "lucide-react";
-import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
+import CustomerLayout from "@/components/layout/CustomerLayout";
 import { useProtectedRoute } from "@/services/hooks/useProtectedRoutes";
+import { CUSTOMER_BASE } from "@/lib/routes/portalPaths";
 
 type EstimateStatus = "Pending" | "Approved" | "Rejected";
 
@@ -113,11 +114,11 @@ export default function ViewAllEstimatesPage() {
   // navigate to full page
   const openFullPage = (id: number) => {
     closeModal();
-    router.push(`/customer-panel/estimates/${id}`);
+    router.push(`${CUSTOMER_BASE}/estimates/${id}`);
   };
 
   return (
-    <CustomerDashboardLayout>
+    <CustomerLayout>
       <motion.div
         className="space-y-6"
         initial={{ opacity: 0 }}
@@ -130,7 +131,7 @@ export default function ViewAllEstimatesPage() {
             <FileText className="text-blue-600" /> All Estimates
           </h1>
           <Link
-            href="/customer-panel/dashboard"
+            href={`${CUSTOMER_BASE}/dashboard`}
             className="inline-flex items-center gap-1 text-sm px-3 py-2 rounded-md border border-gray-300 hover:bg-gray-100"
           >
             <ArrowLeft size={16} /> Back to Dashboard
@@ -176,7 +177,7 @@ export default function ViewAllEstimatesPage() {
                   </button>
 
                   <Link
-                    href={`/customer-panel/estimates/${estimate.id}`}
+                    href={`${CUSTOMER_BASE}/estimates/${estimate.id}`}
                     className="flex items-center gap-1 px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                   >
                     Details
@@ -299,6 +300,6 @@ export default function ViewAllEstimatesPage() {
           </div>
         )}
       </motion.div>
-    </CustomerDashboardLayout>
+    </CustomerLayout>
   );
 }

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { getUserProjectsAPI } from "@/services/auth";
-import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
+import CustomerLayout from "@/components/layout/CustomerLayout";
 import { Search, Eye, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -155,16 +155,16 @@ export default function ProjectDetailsPage() {
 
   if (loading) {
     return (
-      <CustomerDashboardLayout>
+      <CustomerLayout>
         <div className="min-h-screen flex justify-center items-center">
           <p className="text-gray-500 text-lg">Loading projects...</p>
         </div>
-      </CustomerDashboardLayout>
+      </CustomerLayout>
     );
   }
 
   return (
-    <CustomerDashboardLayout>
+    <CustomerLayout>
       <main className="min-h-screen px-4 md:px-8 py-10 bg-gray-100">
         <h1 className="text-3xl font-bold text-gray-800 mb-6">My Projects</h1>
 
@@ -349,6 +349,6 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
       </main>
-    </CustomerDashboardLayout>
+    </CustomerLayout>
   );
 }

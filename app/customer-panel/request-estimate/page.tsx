@@ -5,7 +5,7 @@ import * as Yup from "yup";
 import { motion } from "framer-motion";
 import { Loader2, CheckCircle, MapPin } from "lucide-react";
 import { useState } from "react";
-import CustomerDashboardLayout from "@/components/layout/CustomerDashboardLayout";
+import CustomerLayout from "@/components/layout/CustomerLayout";
 import { useRouter } from "next/navigation";
 import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 import { createProjectAPI } from "../../../services/auth";
@@ -220,7 +220,7 @@ export default function CreateProjectForm() {
   };
 
   return (
-    <CustomerDashboardLayout>
+    <CustomerLayout>
       <main className="min-h-screen flex flex-col mt-15 items-center bg-gray-50">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -508,6 +508,6 @@ export default function CreateProjectForm() {
           )}
         </motion.div>
       </main>
-    </CustomerDashboardLayout>
+    </CustomerLayout>
   );
 }

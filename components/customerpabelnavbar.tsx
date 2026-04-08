@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import { getProfileAPI } from "@/services/auth";
+import { CUSTOMER_BASE } from "@/lib/routes/portalPaths";
 
 export default function CustomerPanelNavbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -32,7 +33,7 @@ export default function CustomerPanelNavbar() {
       />
 
       {/* Desktop Section */}
-      <Link href={"/customer-panel/dashboard"}>
+      <Link href={`${CUSTOMER_BASE}/dashboard`}>
         <div className="hidden md:flex flex-row-reverse items-center gap-3 cursor-pointer">
           <div className="flex flex-col">
             <span className="text-sm text-gray-600">
@@ -73,7 +74,7 @@ export default function CustomerPanelNavbar() {
       {/* Mobile Dropdown */}
       {menuOpen && (
         <div className="absolute top-16 right-4 bg-white shadow-md rounded-lg p-4 w-56 flex flex-col space-y-3 md:hidden">
-          <Link href={"/customer-panel/dashboard"}>
+          <Link href={`${CUSTOMER_BASE}/dashboard`}>
             <div className="flex items-center space-x-3">
               <img
                 src="https://i.pravatar.cc/40"
