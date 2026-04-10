@@ -690,12 +690,12 @@ export default function SubscriberAdminsPage() {
                               ) : (
                                 <>
                                   <p className="text-sm font-semibold text-red-950">Access for {m.name}</p>
-                                  <p className="text-xs text-gray-600 max-w-3xl">
+                                  {/* <p className="text-xs text-gray-600 max-w-3xl">
                                     Enable modules this user can use in the subscriber portal. If your API returns an
                                     empty catalog, the defaults below are shown — align codes with{" "}
                                     <code className="text-xs bg-white px-1 rounded">GET /api/subscriber/permissions</code>{" "}
                                     and <code className="text-xs bg-white px-1 rounded">tenant.*</code> codes.
-                                  </p>
+                                  </p> */}
                                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                     {catalog.map((entry) => {
                                       const id = rowId;
