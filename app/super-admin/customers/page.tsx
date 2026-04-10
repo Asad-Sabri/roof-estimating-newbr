@@ -107,6 +107,7 @@ const emptyForm = {
 
 export default function SuperAdminCustomersPage() {
   useProtectedRoute();
+  const { canManagePlatformCustomers } = usePlatformAccess();
   const [searchTerm, setSearchTerm] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [admins, setAdmins] = useState<AdminOption[]>([]);
