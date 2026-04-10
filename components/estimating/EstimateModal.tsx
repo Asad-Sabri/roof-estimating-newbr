@@ -98,7 +98,6 @@ export default function EstimateModal({
         selectedEstimateIndex: 0,
       }));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- REVIEW_ESTIMATES_LIST is module-level
   }, [currentStep, formData.estimates]);
 
   // Validation function to check if current step is valid
