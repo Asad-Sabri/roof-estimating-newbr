@@ -13,16 +13,7 @@
 # testing
 /coverage
 
-# next.js
-.next
-next
-.next/
-.next/trace
-.next/server
-.next/static
 .next/cache
-.next/build-manifest.json
-.next/build-manifest.json
 /out/
 
 # production
