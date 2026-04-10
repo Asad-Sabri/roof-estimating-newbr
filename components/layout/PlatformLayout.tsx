@@ -83,6 +83,7 @@ export default function PlatformLayout({
   }, []);
 
   const platformNavItems = useMemo(() => {
+    void profileSyncVersion;
     const base = platformBaseForRole(role);
     return ALL_PLATFORM_NAV.map((item) => ({
       ...item,
